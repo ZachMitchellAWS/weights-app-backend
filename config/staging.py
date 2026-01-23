@@ -1,0 +1,33 @@
+"""Staging environment configuration."""
+
+from aws_cdk import RemovalPolicy, Duration
+from aws_cdk.aws_logs import RetentionDays
+from aws_cdk.aws_dynamodb import BillingMode
+from .base import PROJECT_NAME, ACCOUNT_ID, REGION
+
+# Environment Name
+ENVIRONMENT = "staging"
+
+# Removal Policy - DESTROY for staging allows easy cleanup
+REMOVAL_POLICY = RemovalPolicy.DESTROY
+
+# CloudWatch Logs Configuration
+LOG_RETENTION = RetentionDays.ONE_WEEK  # 7 days retention for staging
+LOG_LEVEL = "INFO"
+
+# DynamoDB Configuration
+DYNAMODB_BILLING_MODE = BillingMode.PAY_PER_REQUEST  # On-demand pricing
+DYNAMODB_POINT_IN_TIME_RECOVERY = False  # Not needed for staging
+
+# Lambda Configuration
+LAMBDA_MEMORY_SIZE = 512  # MB
+LAMBDA_TIMEOUT = Duration.seconds(30)
+LAMBDA_RUNTIME_VERSION = "3.12"
+
+# Tags applied to all resources
+TAGS = {
+    "Project": PROJECT_NAME,
+    "Environment": "staging",
+    "ManagedBy": "CDK",
+    "CostCenter": "development",
+}
