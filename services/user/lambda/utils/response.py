@@ -2,7 +2,20 @@
 
 import json
 from datetime import datetime
+from decimal import Decimal
 from typing import Dict, Any, Optional
+
+
+class DecimalEncoder(json.JSONEncoder):
+    """JSON encoder that handles Decimal types from DynamoDB."""
+
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            # Convert to int if it's a whole number, otherwise float
+            if obj % 1 == 0:
+                return int(obj)
+            return float(obj)
+        return super().default(obj)
 
 
 def get_current_datetime_iso() -> str:
@@ -51,5 +64,5 @@ def create_response(
     return {
         "statusCode": status_code,
         "headers": default_headers,
-        "body": json.dumps(body),
+        "body": json.dumps(body, cls=DecimalEncoder),
     }

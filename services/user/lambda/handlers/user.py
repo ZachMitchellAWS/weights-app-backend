@@ -2,6 +2,7 @@
 
 import json
 import os
+from decimal import Decimal
 from typing import Dict, Any
 import traceback
 import boto3
@@ -89,7 +90,8 @@ def handle_get_properties(event: Dict[str, Any]) -> Dict[str, Any]:
     Response:
         {
             "userId": "user-uuid",
-            "placeholderBool": true,
+            "availableChangePlates": [2.5, 5, 10, 25, 35, 45],
+            "bodyweight": 185.5,
             "createdDatetime": "2024-01-17T19:30:45.123",
             "lastModifiedDatetime": "2024-01-17T19:35:22.456"
         }
@@ -162,16 +164,19 @@ def handle_update_properties(event: Dict[str, Any]) -> Dict[str, Any]:
 
     Updates user properties for the authenticated user.
     The user ID is extracted from the Lambda Authorizer context.
+    Only provided fields are updated (partial update supported).
 
-    Request body:
+    Request body (all fields optional, at least one required):
         {
-            "placeholderBool": true
+            "bodyweight": 185.5,
+            "availableChangePlates": [2.5, 5, 10, 25, 35, 45]
         }
 
     Response:
         {
             "userId": "user-uuid",
-            "placeholderBool": true,
+            "bodyweight": 185.5,
+            "availableChangePlates": [2.5, 5, 10, 25, 35, 45],
             "createdDatetime": "2024-01-17T19:30:45.123",
             "lastModifiedDatetime": "2024-01-17T19:35:22.456"
         }
@@ -199,24 +204,93 @@ def handle_update_properties(event: Dict[str, Any]) -> Dict[str, Any]:
 
         # Parse request body
         body = json.loads(event.get("body", "{}"))
-        placeholder_bool = body.get("placeholderBool")
 
-        # Validate placeholderBool is provided and is boolean
-        if placeholder_bool is None:
+        # Build update expression dynamically based on provided fields
+        update_parts = []
+        remove_parts = []
+        expression_values = {}
+
+        # Handle bodyweight (nullable - can be set or removed)
+        if "bodyweight" in body:
+            bodyweight = body.get("bodyweight")
+            if bodyweight is None:
+                # Remove bodyweight if explicitly set to null
+                remove_parts.append("bodyweight")
+            elif isinstance(bodyweight, (int, float)):
+                update_parts.append("bodyweight = :bodyweight")
+                # Convert to Decimal for DynamoDB
+                expression_values[":bodyweight"] = Decimal(str(bodyweight))
+            else:
+                return create_response(
+                    status_code=400,
+                    body={
+                        "error": "Invalid field type",
+                        "message": "bodyweight must be a number or null"
+                    }
+                )
+
+        # Handle availableChangePlates
+        if "availableChangePlates" in body:
+            available_change_plates = body.get("availableChangePlates")
+            if not isinstance(available_change_plates, list):
+                return create_response(
+                    status_code=400,
+                    body={
+                        "error": "Invalid field type",
+                        "message": "availableChangePlates must be a list"
+                    }
+                )
+            # Validate all items are numbers
+            for item in available_change_plates:
+                if not isinstance(item, (int, float)):
+                    return create_response(
+                        status_code=400,
+                        body={
+                            "error": "Invalid field type",
+                            "message": "availableChangePlates must contain only numbers"
+                        }
+                    )
+            update_parts.append("availableChangePlates = :availableChangePlates")
+            # Convert floats to Decimal for DynamoDB
+            expression_values[":availableChangePlates"] = [
+                Decimal(str(item)) for item in available_change_plates
+            ]
+
+        # Handle minReps
+        if "minReps" in body:
+            min_reps = body.get("minReps")
+            if not isinstance(min_reps, int) or min_reps < 1:
+                return create_response(
+                    status_code=400,
+                    body={
+                        "error": "Invalid field type",
+                        "message": "minReps must be a positive integer"
+                    }
+                )
+            update_parts.append("minReps = :minReps")
+            expression_values[":minReps"] = min_reps
+
+        # Handle maxReps
+        if "maxReps" in body:
+            max_reps = body.get("maxReps")
+            if not isinstance(max_reps, int) or max_reps < 1:
+                return create_response(
+                    status_code=400,
+                    body={
+                        "error": "Invalid field type",
+                        "message": "maxReps must be a positive integer"
+                    }
+                )
+            update_parts.append("maxReps = :maxReps")
+            expression_values[":maxReps"] = max_reps
+
+        # Require at least one field to update
+        if not update_parts and not remove_parts:
             return create_response(
                 status_code=400,
                 body={
-                    "error": "Missing required field",
-                    "message": "placeholderBool is required"
-                }
-            )
-
-        if not isinstance(placeholder_bool, bool):
-            return create_response(
-                status_code=400,
-                body={
-                    "error": "Invalid field type",
-                    "message": "placeholderBool must be a boolean"
+                    "error": "Missing fields",
+                    "message": "At least one field must be provided to update"
                 }
             )
 
@@ -230,14 +304,20 @@ def handle_update_properties(event: Dict[str, Any]) -> Dict[str, Any]:
         # Get current datetime for lastModifiedDatetime
         current_datetime = get_current_datetime_iso()
 
+        # Add lastModifiedDatetime to update
+        update_parts.append("lastModifiedDatetime = :datetime")
+        expression_values[":datetime"] = current_datetime
+
+        # Build final update expression
+        update_expression = "SET " + ", ".join(update_parts)
+        if remove_parts:
+            update_expression += " REMOVE " + ", ".join(remove_parts)
+
         # Update user properties in DynamoDB
         response = table.update_item(
             Key={"userId": user_id},
-            UpdateExpression="SET placeholderBool = :bool, lastModifiedDatetime = :datetime",
-            ExpressionAttributeValues={
-                ":bool": placeholder_bool,
-                ":datetime": current_datetime
-            },
+            UpdateExpression=update_expression,
+            ExpressionAttributeValues=expression_values,
             ReturnValues="ALL_NEW"
         )
 

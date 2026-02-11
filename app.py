@@ -29,6 +29,8 @@ from config import base, staging, production
 from services.auth.infrastructure.auth_stack import AuthStack
 from services.user.infrastructure.user_stack import UserStack
 from services.email.infrastructure.email_stack import EmailStack
+from services.checkin.infrastructure.checkin_stack import CheckinStack
+from services.entitlements.infrastructure.entitlements_stack import EntitlementsStack
 
 
 def main():
@@ -155,6 +157,49 @@ def main():
         "USER_PROPERTIES_TABLE_NAME",
         user_stack.user_properties_table.table_name
     )
+
+    # Create Checkin service stack
+    # This stack depends on the auth stack because it needs the API and authorizer
+    checkin_stack = CheckinStack(
+        app,
+        f"{project_name}-{env_name}-checkin",
+        project_name=project_name,
+        env_name=env_name,
+        config=config,
+        api=auth_stack.api,
+        authorizer=auth_stack.authorizer,
+        env=env,
+        description=f"Checkin service stack for {env_name} environment",
+    )
+
+    # Apply global tags to checkin stack
+    for key, value in config.TAGS.items():
+        Tags.of(checkin_stack).add(key, value)
+
+    # Add service-specific tag
+    Tags.of(checkin_stack).add("Service", "checkin")
+
+    # Create Entitlements service stack
+    # This stack manages subscription entitlements via Apple App Store Server API
+    entitlements_stack = EntitlementsStack(
+        app,
+        f"{project_name}-{env_name}-entitlements",
+        project_name=project_name,
+        env_name=env_name,
+        config=config,
+        api=auth_stack.api,
+        authorizer=auth_stack.authorizer,
+        users_table_name=f"{project_name}-{env_name}-users",
+        env=env,
+        description=f"Entitlements service stack for {env_name} environment",
+    )
+
+    # Apply global tags to entitlements stack
+    for key, value in config.TAGS.items():
+        Tags.of(entitlements_stack).add(key, value)
+
+    # Add service-specific tag
+    Tags.of(entitlements_stack).add("Service", "entitlements")
 
     # Synthesize CloudFormation templates
     # This generates the templates that will be deployed to AWS

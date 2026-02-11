@@ -24,6 +24,9 @@ LAMBDA_MEMORY_SIZE = 512  # MB
 LAMBDA_TIMEOUT = Duration.seconds(30)
 LAMBDA_RUNTIME_VERSION = "3.12"
 
+# Auth Token Configuration
+REFRESH_TOKEN_EXPIRATION_MINUTES = 43200  # 30 days (30 * 24 * 60)
+
 # Tags applied to all resources
 TAGS = {
     "Project": PROJECT_NAME,

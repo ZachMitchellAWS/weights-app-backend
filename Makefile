@@ -16,7 +16,7 @@
 #   5. make deploy-staging
 #   6. make test
 
-.PHONY: help venv install install-dev build-layer upload-email-templates-staging upload-email-templates-production bootstrap-staging bootstrap-production synth-staging synth-production diff-staging diff-production deploy-staging deploy-production destroy-staging destroy-production test lint format clean
+.PHONY: help venv install install-dev build-layer upload-email-templates-staging upload-email-templates-production bootstrap-staging bootstrap-production synth-staging synth-production diff-staging diff-production deploy-staging deploy-production destroy-staging destroy-production clear-staging-db save-user-staging load-user-staging test lint format clean
 
 # Python command - use python3 for macOS/Linux compatibility
 PYTHON := python3
@@ -41,6 +41,9 @@ help:
 	@echo "  make deploy-production    - Deploy to production (with confirmation)"
 	@echo "  make destroy-staging      - Destroy staging resources"
 	@echo "  make destroy-production   - Destroy production resources (with confirmation)"
+	@echo "  make clear-staging-db     - Delete all items from staging DynamoDB tables"
+	@echo "  make save-user-staging    - Save test user data to snapshot file"
+	@echo "  make load-user-staging    - Load test user data from snapshot file"
 	@echo "  make test                 - Run unit tests"
 	@echo "  make lint                 - Run linting (flake8, mypy)"
 	@echo "  make format               - Format code with black"
@@ -133,6 +136,27 @@ destroy-production:
 	@echo "This action cannot be undone. Press Ctrl+C to cancel, or Enter to continue..."
 	@read confirm
 	cdk destroy -c env=production --all
+
+# Clear all items from staging DynamoDB tables
+# WARNING: This deletes ALL data from staging tables
+clear-staging-db:
+	@echo "WARNING: This will delete ALL items from staging DynamoDB tables!"
+	@echo "Tables: users, user-properties, password-reset-codes, exercises, lift-sets, estimated-1rm"
+	@echo "Press Ctrl+C to cancel, or Enter to continue..."
+	@read confirm
+	$(PYTHON) scripts/clear_staging_db.py
+
+# Save test user data from staging DynamoDB to snapshot file
+# User ID is hardcoded in the script (18dee8ea-ac11-4b02-ae52-670cb830e44a)
+save-user-staging:
+	@echo "Saving test user data from staging DynamoDB tables..."
+	$(PYTHON) scripts/user_snapshot.py save
+
+# Load test user data from snapshot file back into staging DynamoDB
+# User ID is hardcoded in the script (18dee8ea-ac11-4b02-ae52-670cb830e44a)
+load-user-staging:
+	@echo "Loading test user data into staging DynamoDB tables..."
+	$(PYTHON) scripts/user_snapshot.py load
 
 # Run unit tests
 test:

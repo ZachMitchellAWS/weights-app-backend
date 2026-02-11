@@ -1,0 +1,2 @@
+# Apple App Store Server Library for subscription verification
+app-store-server-library>=1.0.0

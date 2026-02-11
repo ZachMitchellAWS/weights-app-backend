@@ -132,7 +132,8 @@ def handle_create_user(event: Dict[str, Any]) -> Dict[str, Any]:
             "emailAddress": "user@example.com",
             "accessToken": "jwt-access-token",
             "refreshToken": "jwt-refresh-token",
-            "expiresIn": 900
+            "accessTokenExpiresIn": 900,
+            "refreshTokenExpiresIn": 2592000
         }
 
     Args:
@@ -195,12 +196,11 @@ def handle_create_user(event: Dict[str, Any]) -> Dict[str, Any]:
         # Get current datetime for createdDatetime and lastModifiedDatetime
         current_datetime = get_current_datetime_iso()
 
-        # Create user item with hashed password and refresh token
+        # Create user item with hashed password
         user_item = {
             "userId": user_id,
             "emailAddress": email_address,
             "passwordHash": password_hash,  # Store bcrypt hash, not plaintext
-            "refreshToken": refresh_token,  # Store refresh token for validation
             "createdDatetime": current_datetime,  # Track when user was created
             "lastModifiedDatetime": current_datetime,  # Initially same as createdDatetime
         }
@@ -215,7 +215,8 @@ def handle_create_user(event: Dict[str, Any]) -> Dict[str, Any]:
             user_properties_table = dynamodb.Table(user_properties_table_name)
             user_properties_item = {
                 "userId": user_id,
-                "placeholderBool": True,  # Default value
+                "availableChangePlates": [],  # Empty list by default
+                # bodyweight is optional, not set by default
                 "createdDatetime": current_datetime,
                 "lastModifiedDatetime": current_datetime,
             }
@@ -258,7 +259,8 @@ def handle_create_user(event: Dict[str, Any]) -> Dict[str, Any]:
                 "emailAddress": email_address,
                 "accessToken": access_token,
                 "refreshToken": refresh_token,
-                "expiresIn": get_token_expiration_time("access")
+                "accessTokenExpiresIn": get_token_expiration_time("access"),
+                "refreshTokenExpiresIn": get_token_expiration_time("refresh")
             }
         )
 
@@ -302,7 +304,8 @@ def handle_login(event: Dict[str, Any]) -> Dict[str, Any]:
             "emailAddress": "user@example.com",
             "accessToken": "jwt-access-token",
             "refreshToken": "jwt-refresh-token",
-            "expiresIn": 900
+            "accessTokenExpiresIn": 900,
+            "refreshTokenExpiresIn": 2592000
         }
 
     Args:
@@ -385,19 +388,6 @@ def handle_login(event: Dict[str, Any]) -> Dict[str, Any]:
         user_id = user.get("userId")
         access_token, refresh_token = generate_token_pair(user_id, email_address)
 
-        # Get current datetime for lastModifiedDatetime
-        current_datetime = get_current_datetime_iso()
-
-        # Update user's refresh token and lastModifiedDatetime in DynamoDB
-        table.update_item(
-            Key={"userId": user_id},
-            UpdateExpression="SET refreshToken = :token, lastModifiedDatetime = :datetime",
-            ExpressionAttributeValues={
-                ":token": refresh_token,
-                ":datetime": current_datetime
-            }
-        )
-
         print(f"User {user_id} logged in successfully")
 
         # Return success with real JWT tokens
@@ -408,7 +398,8 @@ def handle_login(event: Dict[str, Any]) -> Dict[str, Any]:
                 "emailAddress": email_address,
                 "accessToken": access_token,
                 "refreshToken": refresh_token,
-                "expiresIn": get_token_expiration_time("access")
+                "accessTokenExpiresIn": get_token_expiration_time("access"),
+                "refreshTokenExpiresIn": get_token_expiration_time("refresh")
             }
         )
 
@@ -437,8 +428,8 @@ def handle_refresh(event: Dict[str, Any]) -> Dict[str, Any]:
     """
     Handle POST /refresh requests.
 
-    Validates the provided refresh token and issues a new access token.
-    The refresh token must be valid and match the one stored in DynamoDB.
+    Validates the provided refresh token (stateless - JWT signature and expiration only)
+    and issues a new access token.
 
     Request body:
         {
@@ -449,7 +440,7 @@ def handle_refresh(event: Dict[str, Any]) -> Dict[str, Any]:
         {
             "userId": "user-uuid",
             "accessToken": "new-jwt-access-token",
-            "expiresIn": 900
+            "accessTokenExpiresIn": 900
         }
 
     Args:
@@ -473,7 +464,7 @@ def handle_refresh(event: Dict[str, Any]) -> Dict[str, Any]:
                 }
             )
 
-        # Validate refresh token JWT signature and expiration
+        # Validate refresh token JWT signature and expiration (stateless)
         payload = validate_refresh_token(refresh_token)
         if not payload:
             return create_response(
@@ -502,7 +493,7 @@ def handle_refresh(event: Dict[str, Any]) -> Dict[str, Any]:
 
         table = dynamodb.Table(table_name)
 
-        # Get user from DynamoDB to verify refresh token matches
+        # Get user from DynamoDB to get email for new access token
         response = table.get_item(Key={"userId": user_id})
         user = response.get("Item")
 
@@ -515,19 +506,7 @@ def handle_refresh(event: Dict[str, Any]) -> Dict[str, Any]:
                 }
             )
 
-        # Verify the refresh token matches what's stored
-        # This prevents token reuse after logout or token rotation
-        stored_refresh_token = user.get("refreshToken")
-        if stored_refresh_token != refresh_token:
-            return create_response(
-                status_code=401,
-                body={
-                    "error": "Invalid token",
-                    "message": "Refresh token has been revoked or is invalid"
-                }
-            )
-
-        # Generate new access token (keep same refresh token)
+        # Generate new access token
         email_address = user.get("emailAddress")
         new_access_token = generate_access_token(user_id, email_address)
 
@@ -539,7 +518,7 @@ def handle_refresh(event: Dict[str, Any]) -> Dict[str, Any]:
             body={
                 "userId": user_id,
                 "accessToken": new_access_token,
-                "expiresIn": get_token_expiration_time("access")
+                "accessTokenExpiresIn": get_token_expiration_time("access")
             }
         )
 
@@ -568,11 +547,13 @@ def handle_logout(event: Dict[str, Any]) -> Dict[str, Any]:
     """
     Handle POST /logout requests.
 
-    Removes the refresh token from the user's DynamoDB record, effectively
-    invalidating all refresh tokens and requiring the user to log in again.
+    With stateless refresh tokens, this endpoint serves as a signal to the client
+    to discard tokens locally. No server-side state is modified.
+
+    Note: The refresh token remains valid until its natural expiration (30 days).
+    True revocation would require stateful token storage.
 
     This endpoint requires authentication via the Lambda Authorizer.
-    The user ID is extracted from the authorizer context.
 
     Response:
         {
@@ -601,27 +582,9 @@ def handle_logout(event: Dict[str, Any]) -> Dict[str, Any]:
                 }
             )
 
-        # Get table name from environment
-        table_name = os.environ.get("USERS_TABLE_NAME")
-        if not table_name:
-            raise ValueError("USERS_TABLE_NAME environment variable not set")
+        print(f"User {user_id} logged out (client should discard tokens)")
 
-        table = dynamodb.Table(table_name)
-
-        # Get current datetime for lastModifiedDatetime
-        current_datetime = get_current_datetime_iso()
-
-        # Remove refresh token from user record and update lastModifiedDatetime
-        # This invalidates all refresh tokens for this user
-        table.update_item(
-            Key={"userId": user_id},
-            UpdateExpression="REMOVE refreshToken SET lastModifiedDatetime = :datetime",
-            ExpressionAttributeValues={":datetime": current_datetime}
-        )
-
-        print(f"User {user_id} logged out successfully")
-
-        # Return success
+        # Return success - client should discard tokens locally
         return create_response(
             status_code=200,
             body={

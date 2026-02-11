@@ -61,7 +61,7 @@
 								"create-user"
 							]
 						},
-						"description": "Creates a new user account and returns JWT tokens.\n\n**Request Body:**\n- `emailAddress` (string, required): User's email address\n- `password` (string, required): User's password\n\n**Response (201 Created):**\n- `userId` (string): Generated unique user ID\n- `emailAddress` (string): User's email\n- `accessToken` (string): JWT access token (15 min expiry)\n- `refreshToken` (string): JWT refresh token (30 day expiry)\n- `expiresIn` (number): Token expiration in seconds (900)\n\n**What Happens:**\n- User account is created in database\n- User properties record is created\n- Password is hashed with SHA256 + pepper\n- JWT tokens are generated\n- Welcome email is sent asynchronously\n\n**Automatic Actions:**\n- Saves `accessToken` for use in protected endpoints\n- Saves `refreshToken` for token refresh\n- Saves `userId` and `userEmail` for reference\n- Welcome email sent to provided email address"
+						"description": "Creates a new user account and returns JWT tokens.\n\n**Request Body:**\n- `emailAddress` (string, required): User's email address\n- `password` (string, required): User's password\n\n**Response (201 Created):**\n- `userId` (string): Generated unique user ID\n- `emailAddress` (string): User's email\n- `accessToken` (string): JWT access token (15 min expiry)\n- `refreshToken` (string): JWT refresh token (30 day expiry)\n- `accessTokenExpiresIn` (number): Access token expiration in seconds (900)\n- `refreshTokenExpiresIn` (number): Refresh token expiration in seconds (2592000)\n\n**What Happens:**\n- User account is created in database\n- User properties record is created\n- Password is hashed with SHA256 + pepper\n- JWT tokens are generated\n- Welcome email is sent asynchronously\n\n**Automatic Actions:**\n- Saves `accessToken` for use in protected endpoints\n- Saves `refreshToken` for token refresh\n- Saves `userId` and `userEmail` for reference\n- Welcome email sent to provided email address"
 					},
 					"response": []
 				},
@@ -117,7 +117,7 @@
 								"login"
 							]
 						},
-						"description": "Authenticates an existing user and returns JWT tokens.\n\n**Request Body:**\n- `emailAddress` (string, required): User's email address\n- `password` (string, required): User's password\n\n**Response (200 OK):**\n- `userId` (string): User's unique ID\n- `emailAddress` (string): User's email\n- `accessToken` (string): JWT access token (15 min expiry)\n- `refreshToken` (string): JWT refresh token (30 day expiry)\n- `expiresIn` (number): Token expiration in seconds (900)\n\n**Error (401 Unauthorized):**\n- Invalid email or password\n\n**Automatic Actions:**\n- Saves `accessToken` for use in protected endpoints\n- Saves `refreshToken` for token refresh\n- Saves `userId` and `userEmail` for reference"
+						"description": "Authenticates an existing user and returns JWT tokens.\n\n**Request Body:**\n- `emailAddress` (string, required): User's email address\n- `password` (string, required): User's password\n\n**Response (200 OK):**\n- `userId` (string): User's unique ID\n- `emailAddress` (string): User's email\n- `accessToken` (string): JWT access token (15 min expiry)\n- `refreshToken` (string): JWT refresh token (30 day expiry)\n- `accessTokenExpiresIn` (number): Access token expiration in seconds (900)\n- `refreshTokenExpiresIn` (number): Refresh token expiration in seconds (2592000)\n\n**Error (401 Unauthorized):**\n- Invalid email or password\n\n**Automatic Actions:**\n- Saves `accessToken` for use in protected endpoints\n- Saves `refreshToken` for token refresh\n- Saves `userId` and `userEmail` for reference"
 					},
 					"response": []
 				},
@@ -169,7 +169,7 @@
 								"refresh"
 							]
 						},
-						"description": "Refreshes an expired access token using a valid refresh token.\n\n**Request Body:**\n- `refreshToken` (string, required): Valid JWT refresh token from login\n\n**Response (200 OK):**\n- `userId` (string): User's unique ID\n- `accessToken` (string): New JWT access token (15 min expiry)\n- `expiresIn` (number): Token expiration in seconds (900)\n\n**Error (401 Unauthorized):**\n- Invalid, expired, or revoked refresh token\n\n**When to use:**\n- When access token expires (after 15 minutes)\n- Before making API calls if token might be expired\n- To maintain user session without re-login\n\n**Automatic Actions:**\n- Saves new `accessToken` to environment\n- Token is immediately available for all protected endpoints"
+						"description": "Refreshes an expired access token using a valid refresh token.\n\n**Request Body:**\n- `refreshToken` (string, required): Valid JWT refresh token from login\n\n**Response (200 OK):**\n- `userId` (string): User's unique ID\n- `accessToken` (string): New JWT access token (15 min expiry)\n- `accessTokenExpiresIn` (number): Access token expiration in seconds (900)\n- `refreshTokenExpiresIn` (number): Refresh token expiration in seconds (2592000)\n\n**Error (401 Unauthorized):**\n- Invalid, expired, or revoked refresh token\n\n**When to use:**\n- When access token expires (after 15 minutes)\n- Before making API calls if token might be expired\n- To maintain user session without re-login\n\n**Automatic Actions:**\n- Saves new `accessToken` to environment\n- Token is immediately available for all protected endpoints"
 					},
 					"response": []
 				},
@@ -354,7 +354,7 @@
 								"properties"
 							]
 						},
-						"description": "Retrieves user properties for the authenticated user.\n\n**Authentication:**\n- Requires API key in x-api-key header\n- Requires valid access token in Authorization header\n- User ID is extracted from the JWT token\n\n**Response (200 OK):**\n- `userId` (string): User's unique ID\n- `placeholderBool` (boolean): Example boolean property\n- `createdDatetime` (string): When user properties were created\n- `lastModifiedDatetime` (string): When user properties were last modified\n\n**Error (401 Unauthorized):**\n- Invalid or expired access token\n- Missing Authorization header\n\n**Error (403 Forbidden):**\n- Missing or invalid API key\n\n**Error (404 Not Found):**\n- User properties not found (shouldn't happen if user was created properly)"
+						"description": "Retrieves user properties for the authenticated user.\n\n**Authentication:**\n- Requires API key in x-api-key header\n- Requires valid access token in Authorization header\n- User ID is extracted from the JWT token\n\n**Response (200 OK):**\n- `userId` (string): User's unique ID\n- `availableChangePlates` (array): List of available change plate weights (numbers)\n- `bodyweight` (number, optional): User's bodyweight (may be absent if not set)\n- `createdDatetime` (string): When user properties were created\n- `lastModifiedDatetime` (string): When user properties were last modified\n\n**Error (401 Unauthorized):**\n- Invalid or expired access token\n- Missing Authorization header\n\n**Error (403 Forbidden):**\n- Missing or invalid API key\n\n**Error (404 Not Found):**\n- User properties not found (shouldn't happen if user was created properly)"
 					},
 					"response": []
 				},
@@ -385,7 +385,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"placeholderBool\": false\n}"
+							"raw": "{\n  \"bodyweight\": 185.5,\n  \"availableChangePlates\": [2.5, 5, 10, 25, 35, 45]\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/{{environment}}/user/properties",
@@ -398,12 +398,535 @@
 								"properties"
 							]
 						},
-						"description": "Updates user properties for the authenticated user.\n\n**Authentication:**\n- Requires API key in x-api-key header\n- Requires valid access token in Authorization header\n- User ID is extracted from the JWT token\n\n**Request Body:**\n- `placeholderBool` (boolean, required): New value for placeholder property\n\n**Response (200 OK):**\n- `userId` (string): User's unique ID\n- `placeholderBool` (boolean): Updated value\n- `createdDatetime` (string): When user properties were created (unchanged)\n- `lastModifiedDatetime` (string): Updated to current datetime\n\n**Error (400 Bad Request):**\n- Missing required field\n- Invalid field type (placeholderBool must be boolean)\n\n**Error (401 Unauthorized):**\n- Invalid or expired access token\n- Missing Authorization header\n\n**Error (403 Forbidden):**\n- Missing or invalid API key"
+						"description": "Updates user properties for the authenticated user. Partial updates supported - only include fields you want to change.\n\n**Authentication:**\n- Requires API key in x-api-key header\n- Requires valid access token in Authorization header\n- User ID is extracted from the JWT token\n\n**Request Body (all fields optional, at least one required):**\n- `bodyweight` (number or null): User's bodyweight. Send null to remove.\n- `availableChangePlates` (array of numbers): List of available change plate weights\n\n**Response (200 OK):**\n- `userId` (string): User's unique ID\n- `bodyweight` (number, optional): Current bodyweight if set\n- `availableChangePlates` (array): Current list of change plates\n- `createdDatetime` (string): When user properties were created (unchanged)\n- `lastModifiedDatetime` (string): Updated to current datetime\n\n**Error (400 Bad Request):**\n- No fields provided\n- Invalid field type (bodyweight must be number or null, availableChangePlates must be array of numbers)\n\n**Error (401 Unauthorized):**\n- Invalid or expired access token\n- Missing Authorization header\n\n**Error (403 Forbidden):**\n- Missing or invalid API key"
 					},
 					"response": []
 				}
 			],
-			"description": "User service endpoints for managing user-specific properties.\n\n**All endpoints require authentication** via JWT access token.\n\n**User Properties:**\n- `placeholderBool`: Example boolean property (true/false)\n- `createdDatetime`: Timestamp when properties were created\n- `lastModifiedDatetime`: Timestamp when properties were last updated\n\nUser properties are automatically created when a user account is created."
+			"description": "User service endpoints for managing user-specific properties.\n\n**All endpoints require authentication** via JWT access token.\n\n**User Properties:**\n- `bodyweight`: User's bodyweight (number, optional)\n- `availableChangePlates`: List of available change plate weights (numbers)\n- `createdDatetime`: Timestamp when properties were created\n- `lastModifiedDatetime`: Timestamp when properties were last updated\n\nUser properties are automatically created when a user account is created with default values (availableChangePlates: [])."
+		},
+		{
+			"name": "Checkin Service",
+			"item": [
+				{
+					"name": "Upsert Exercises (Batch)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-api-key",
+								"value": "{{apiKey}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"exercises\": [\n    {\n      \"exerciseItemId\": \"{{$guid}}\",\n      \"name\": \"Bench Press\",\n      \"isCustom\": false,\n      \"loadType\": \"Barbell\",\n      \"createdTimezone\": \"America/Los_Angeles\",\n      \"createdDatetime\": \"{{$isoTimestamp}}\",\n      \"notes\": \"Felt strong today\",\n      \"icon\": \"figure.strengthtraining.traditional\"\n    },\n    {\n      \"exerciseItemId\": \"{{$guid}}\",\n      \"name\": \"Squats\",\n      \"isCustom\": false,\n      \"loadType\": \"Barbell\",\n      \"createdTimezone\": \"America/Los_Angeles\",\n      \"createdDatetime\": \"{{$isoTimestamp}}\",\n      \"icon\": \"figure.squat\"\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/{{environment}}/checkin/exercises",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"{{environment}}",
+								"checkin",
+								"exercises"
+							]
+						},
+						"description": "Creates or updates exercise check-ins for the authenticated user (upsert with batch support).\n\n**Upsert Behavior:**\n- **New items**: Creates with all fields including `createdDatetime`\n- **Existing items**: Updates mutable fields (`name`, `isCustom`, `loadType`, `notes`), preserves `createdDatetime` and `createdTimezone`\n- Ownership is verified via userId from JWT token (partition key)\n\n**Authentication:**\n- Requires API key in x-api-key header\n- Requires valid access token in Authorization header\n- User ID is extracted from the JWT token\n\n**Request Body:**\n```json\n{\n  \"exercises\": [\n    {\n      \"exerciseItemId\": \"uuid-string\",\n      \"name\": \"Exercise name\",\n      \"isCustom\": true/false,\n      \"loadType\": \"Barbell\" | \"Bodyweight + Single Load\" | \"Single Load\",\n      \"createdTimezone\": \"America/Los_Angeles\",\n      \"notes\": \"Optional notes\"\n    }\n  ]\n}\n```\n\n**Exercise Fields:**\n- `exerciseItemId` (string, required): Unique ID for this exercise (UUID from frontend)\n- `name` (string, required): Exercise name\n- `isCustom` (boolean, required): Whether this is a custom exercise\n- `loadType` (string, required): Type of load - must be one of:\n  - \"Barbell\"\n  - \"Bodyweight + Single Load\"\n  - \"Single Load\"\n- `createdTimezone` (string, required): Timezone identifier (e.g., \"America/Los_Angeles\")\n- `notes` (string, optional): Optional notes about the exercise\n\n**Response (200 OK for updates, 201 Created for new items):**\n```json\n{\n  \"exercises\": [\n    {\n      \"userId\": \"user-uuid\",\n      \"exerciseItemId\": \"exercise-uuid\",\n      \"name\": \"Bench Press\",\n      \"isCustom\": false,\n      \"loadType\": \"Barbell\",\n      \"createdTimezone\": \"America/Los_Angeles\",\n      \"notes\": \"Felt strong today\",\n      \"createdDatetime\": \"2026-01-27T10:30:00.000Z\",\n      \"lastModifiedDatetime\": \"2026-01-27T10:30:00.000Z\"\n    }\n  ],\n  \"created\": 1,\n  \"updated\": 0\n}\n```\n\n**Error (400 Bad Request):**\n- Missing required fields\n- Invalid loadType value\n- Empty exercises array\n- Validation errors (returns array of specific errors)\n\n**Error (401 Unauthorized):**\n- Invalid or expired access token\n\n**Error (403 Forbidden):**\n- Missing or invalid API key"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Exercises",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-api-key",
+								"value": "{{apiKey}}",
+								"type": "default"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/{{environment}}/checkin/exercises",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"{{environment}}",
+								"checkin",
+								"exercises"
+							]
+						},
+						"description": "Retrieves all non-deleted exercise check-ins for the authenticated user.\n\n**Authentication:**\n- Requires API key in x-api-key header\n- Requires valid access token in Authorization header\n- User ID is extracted from the JWT token\n\n**Response (200 OK):**\n```json\n{\n  \"exercises\": [\n    {\n      \"userId\": \"user-uuid\",\n      \"exerciseItemId\": \"exercise-uuid-1\",\n      \"name\": \"Bench Press\",\n      \"isCustom\": false,\n      \"loadType\": \"Barbell\",\n      \"createdTimezone\": \"America/Los_Angeles\",\n      \"notes\": \"Felt strong today\",\n      \"createdDatetime\": \"2026-01-27T10:30:00.000Z\",\n      \"lastModifiedDatetime\": \"2026-01-27T10:30:00.000Z\"\n    },\n    {\n      \"userId\": \"user-uuid\",\n      \"exerciseItemId\": \"exercise-uuid-2\",\n      \"name\": \"Squats\",\n      \"isCustom\": false,\n      \"loadType\": \"Barbell\",\n      \"createdTimezone\": \"America/Los_Angeles\",\n      \"createdDatetime\": \"2026-01-27T11:00:00.000Z\",\n      \"lastModifiedDatetime\": \"2026-01-27T11:00:00.000Z\"\n    }\n  ]\n}\n```\n\n**What it returns:**\n- Only non-deleted exercises (where deleted != true)\n- All exercises for the authenticated user\n- Sorted by exerciseItemId (DynamoDB sort key)\n\n**Error (401 Unauthorized):**\n- Invalid or expired access token\n\n**Error (403 Forbidden):**\n- Missing or invalid API key"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Exercises (Batch)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-api-key",
+								"value": "{{apiKey}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"exerciseItemIds\": [\n    \"exercise-uuid-to-delete-1\",\n    \"exercise-uuid-to-delete-2\"\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/{{environment}}/checkin/exercises",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"{{environment}}",
+								"checkin",
+								"exercises"
+							]
+						},
+						"description": "Soft deletes one or more exercise check-ins by setting deleted=true (batch support).\n\n**Authentication:**\n- Requires API key in x-api-key header\n- Requires valid access token in Authorization header\n- User ID is extracted from the JWT token\n\n**Request Body:**\n```json\n{\n  \"exerciseItemIds\": [\"uuid-1\", \"uuid-2\", ...]\n}\n```\n\n**Response (200 OK):**\n```json\n{\n  \"message\": \"Deleted 2 exercise(s)\",\n  \"deletedExercises\": [\n    {\n      \"userId\": \"user-uuid\",\n      \"exerciseItemId\": \"exercise-uuid\",\n      \"name\": \"Bench Press\",\n      \"isCustom\": false,\n      \"loadType\": \"Barbell\",\n      \"createdTimezone\": \"America/Los_Angeles\",\n      \"notes\": \"Felt strong today\",\n      \"createdDatetime\": \"2026-01-27T10:30:00.000Z\",\n      \"lastModifiedDatetime\": \"2026-01-27T15:00:00.000Z\",\n      \"deleted\": true\n    }\n  ],\n  \"notFoundIds\": [\"uuid-that-didnt-exist\"]\n}\n```\n\n**What happens:**\n- Sets `deleted` attribute to `true` for each exercise\n- Updates `lastModifiedDatetime` to current time\n- Exercises no longer appear in GET /checkin/exercises results\n- Exercise data is preserved in database (soft delete)\n- Returns list of successfully deleted exercises and any IDs that weren't found\n\n**Error (400 Bad Request):**\n- Missing exerciseItemIds field\n- Empty exerciseItemIds array\n- exerciseItemIds is not an array\n\n**Error (401 Unauthorized):**\n- Invalid or expired access token\n\n**Error (403 Forbidden):**\n- Missing or invalid API key"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Lift Sets (Batch)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-api-key",
+								"value": "{{apiKey}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"liftSets\": [\n    {\n      \"liftSetId\": \"{{$guid}}\",\n      \"exerciseId\": \"exercise-uuid-here\",\n      \"reps\": 10,\n      \"weight\": 135.5,\n      \"createdTimezone\": \"America/Los_Angeles\",\n      \"createdDatetime\": \"{{$isoTimestamp}}\"\n    },\n    {\n      \"liftSetId\": \"{{$guid}}\",\n      \"exerciseId\": \"exercise-uuid-here\",\n      \"reps\": 8,\n      \"weight\": 155.0,\n      \"createdTimezone\": \"America/Los_Angeles\",\n      \"createdDatetime\": \"{{$isoTimestamp}}\"\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/{{environment}}/checkin/lift-sets",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"{{environment}}",
+								"checkin",
+								"lift-sets"
+							]
+						},
+						"description": "Creates one or more lift sets for the authenticated user (batch support).\n\n**Authentication:**\n- Requires API key in x-api-key header\n- Requires valid access token in Authorization header\n- User ID is extracted from the JWT token\n\n**Request Body:**\n```json\n{\n  \"liftSets\": [\n    {\n      \"liftSetId\": \"uuid-string\",\n      \"exerciseId\": \"uuid-of-exercise\",\n      \"reps\": 10,\n      \"weight\": 135.5,\n      \"createdTimezone\": \"America/Los_Angeles\"\n    }\n  ]\n}\n```\n\n**Lift Set Fields:**\n- `liftSetId` (string, required): Unique ID for this lift set (UUID from frontend)\n- `exerciseId` (string, required): ID of the associated exercise\n- `reps` (integer, required): Number of repetitions (non-negative)\n- `weight` (number, required): Weight used (decimal allowed)\n- `createdTimezone` (string, required): Timezone identifier (e.g., \"America/Los_Angeles\")\n\n**Response (201 Created):**\n```json\n{\n  \"liftSets\": [\n    {\n      \"userId\": \"user-uuid\",\n      \"liftSetId\": \"lift-set-uuid\",\n      \"exerciseId\": \"exercise-uuid\",\n      \"reps\": 10,\n      \"weight\": 135.5,\n      \"createdTimezone\": \"America/Los_Angeles\",\n      \"createdDatetime\": \"2026-01-27T10:30:00.000Z\",\n      \"lastModifiedDatetime\": \"2026-01-27T10:30:00.000Z\"\n    }\n  ],\n  \"created\": 1\n}\n```\n\n**Error (400 Bad Request):**\n- Missing required fields\n- reps is not a non-negative integer\n- weight is not a number\n- Empty liftSets array\n\n**Error (401 Unauthorized):**\n- Invalid or expired access token\n\n**Error (403 Forbidden):**\n- Missing or invalid API key"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Lift Sets (Paginated)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-api-key",
+								"value": "{{apiKey}}",
+								"type": "default"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/{{environment}}/checkin/lift-sets?limit=100",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"{{environment}}",
+								"checkin",
+								"lift-sets"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "100",
+									"description": "Number of items per page (default 100, max 500)"
+								},
+								{
+									"key": "pageToken",
+									"value": "",
+									"description": "Token from previous response for next page",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Retrieves paginated lift sets for the authenticated user, ordered by most recent first.\n\n**Authentication:**\n- Requires API key in x-api-key header\n- Requires valid access token in Authorization header\n- User ID is extracted from the JWT token\n\n**Query Parameters:**\n- `limit` (optional): Number of items per page (default: 100, max: 500)\n- `pageToken` (optional): Token from previous response for pagination\n\n**Response (200 OK):**\n```json\n{\n  \"liftSets\": [\n    {\n      \"userId\": \"user-uuid\",\n      \"liftSetId\": \"lift-set-uuid\",\n      \"exerciseId\": \"exercise-uuid\",\n      \"reps\": 10,\n      \"weight\": 135.5,\n      \"createdTimezone\": \"America/Los_Angeles\",\n      \"createdDatetime\": \"2026-01-27T10:30:00.000Z\",\n      \"lastModifiedDatetime\": \"2026-01-27T10:30:00.000Z\"\n    }\n  ],\n  \"count\": 100,\n  \"hasMore\": true,\n  \"nextPageToken\": \"base64-encoded-token\"\n}\n```\n\n**Pagination:**\n- Results ordered by `createdDatetime` descending (most recent first)\n- Use `nextPageToken` in subsequent requests to get next page\n- `hasMore` indicates if more pages are available\n- Filters out soft-deleted items\n\n**Sync Strategy:**\n1. Call without pageToken to get most recent items\n2. If `hasMore` is true, call again with `pageToken=nextPageToken`\n3. Repeat until `hasMore` is false\n\n**Error (400 Bad Request):**\n- Invalid pageToken\n\n**Error (401 Unauthorized):**\n- Invalid or expired access token\n\n**Error (403 Forbidden):**\n- Missing or invalid API key"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Lift Sets (Batch)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-api-key",
+								"value": "{{apiKey}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"liftSetIds\": [\n    \"lift-set-uuid-to-delete-1\",\n    \"lift-set-uuid-to-delete-2\"\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/{{environment}}/checkin/lift-sets",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"{{environment}}",
+								"checkin",
+								"lift-sets"
+							]
+						},
+						"description": "Soft deletes one or more lift sets by setting deleted=true (batch support).\n\n**Authentication:**\n- Requires API key in x-api-key header\n- Requires valid access token in Authorization header\n- User ID is extracted from the JWT token\n\n**Request Body:**\n```json\n{\n  \"liftSetIds\": [\"uuid-1\", \"uuid-2\", ...]\n}\n```\n\n**Response (200 OK):**\n```json\n{\n  \"message\": \"Deleted 2 lift set(s)\",\n  \"deletedLiftSets\": [\n    {\n      \"userId\": \"user-uuid\",\n      \"liftSetId\": \"lift-set-uuid\",\n      \"exerciseId\": \"exercise-uuid\",\n      \"reps\": 10,\n      \"weight\": 135.5,\n      \"createdTimezone\": \"America/Los_Angeles\",\n      \"createdDatetime\": \"2026-01-27T10:30:00.000Z\",\n      \"lastModifiedDatetime\": \"2026-01-27T15:00:00.000Z\",\n      \"deleted\": true\n    }\n  ],\n  \"notFoundIds\": [\"uuid-that-didnt-exist\"]\n}\n```\n\n**What happens:**\n- Sets `deleted` attribute to `true` for each lift set\n- Updates `lastModifiedDatetime` to current time\n- Lift sets no longer appear in GET /checkin/lift-sets results\n- Data is preserved in database (soft delete)\n- Returns list of successfully deleted lift sets and any IDs not found\n\n**Error (400 Bad Request):**\n- Missing liftSetIds field\n- Empty liftSetIds array\n- liftSetIds is not an array\n\n**Error (401 Unauthorized):**\n- Invalid or expired access token\n\n**Error (403 Forbidden):**\n- Missing or invalid API key"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Estimated 1RM (Batch)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-api-key",
+								"value": "{{apiKey}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"estimated1RMs\": [\n    {\n      \"estimated1RMId\": \"{{$guid}}\",\n      \"liftSetId\": \"lift-set-uuid-here\",\n      \"exerciseId\": \"exercise-uuid-here\",\n      \"value\": 225.5,\n      \"createdTimezone\": \"America/Los_Angeles\",\n      \"createdDatetime\": \"{{$isoTimestamp}}\"\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/{{environment}}/checkin/estimated-1rm",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"{{environment}}",
+								"checkin",
+								"estimated-1rm"
+							]
+						},
+						"description": "Creates one or more estimated 1RM records for the authenticated user (batch support).\n\n**Authentication:**\n- Requires API key in x-api-key header\n- Requires valid access token in Authorization header\n- User ID is extracted from the JWT token\n\n**Request Body:**\n```json\n{\n  \"estimated1RMs\": [\n    {\n      \"estimated1RMId\": \"uuid-string\",\n      \"liftSetId\": \"uuid-of-lift-set\",\n      \"exerciseId\": \"uuid-of-exercise\",\n      \"value\": 225.5,\n      \"createdTimezone\": \"America/Los_Angeles\"\n    }\n  ]\n}\n```\n\n**Estimated 1RM Fields:**\n- `estimated1RMId` (string, required): Unique ID for this E1RM record (UUID from frontend)\n- `liftSetId` (string, required): ID of the lift set that achieved this E1RM\n- `exerciseId` (string, required): ID of the associated exercise\n- `value` (number, required): The estimated 1RM value (decimal allowed)\n- `createdTimezone` (string, required): Timezone identifier (e.g., \"America/Los_Angeles\")\n\n**Response (201 Created):**\n```json\n{\n  \"estimated1RMs\": [\n    {\n      \"userId\": \"user-uuid\",\n      \"liftSetId\": \"lift-set-uuid\",\n      \"estimated1RMId\": \"e1rm-uuid\",\n      \"exerciseId\": \"exercise-uuid\",\n      \"value\": 225.5,\n      \"createdTimezone\": \"America/Los_Angeles\",\n      \"createdDatetime\": \"2026-01-27T10:30:00.000Z\",\n      \"lastModifiedDatetime\": \"2026-01-27T10:30:00.000Z\"\n    }\n  ],\n  \"created\": 1\n}\n```\n\n**Error (400 Bad Request):**\n- Missing required fields\n- value is not a number\n- Empty estimated1RMs array\n\n**Error (401 Unauthorized):**\n- Invalid or expired access token\n\n**Error (403 Forbidden):**\n- Missing or invalid API key"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Estimated 1RM (Paginated)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-api-key",
+								"value": "{{apiKey}}",
+								"type": "default"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/{{environment}}/checkin/estimated-1rm?limit=100",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"{{environment}}",
+								"checkin",
+								"estimated-1rm"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "100",
+									"description": "Number of items per page (default 100, max 500)"
+								},
+								{
+									"key": "pageToken",
+									"value": "",
+									"description": "Token from previous response for next page",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Retrieves paginated estimated 1RM records for the authenticated user, ordered by most recent first.\n\n**Authentication:**\n- Requires API key in x-api-key header\n- Requires valid access token in Authorization header\n- User ID is extracted from the JWT token\n\n**Query Parameters:**\n- `limit` (optional): Number of items per page (default: 100, max: 500)\n- `pageToken` (optional): Token from previous response for pagination\n\n**Response (200 OK):**\n```json\n{\n  \"estimated1RMs\": [\n    {\n      \"userId\": \"user-uuid\",\n      \"liftSetId\": \"lift-set-uuid\",\n      \"estimated1RMId\": \"e1rm-uuid\",\n      \"exerciseId\": \"exercise-uuid\",\n      \"value\": 225.5,\n      \"createdTimezone\": \"America/Los_Angeles\",\n      \"createdDatetime\": \"2026-01-27T10:30:00.000Z\",\n      \"lastModifiedDatetime\": \"2026-01-27T10:30:00.000Z\"\n    }\n  ],\n  \"count\": 100,\n  \"hasMore\": true,\n  \"nextPageToken\": \"base64-encoded-token\"\n}\n```\n\n**Pagination:**\n- Results ordered by `createdDatetime` descending (most recent first)\n- Use `nextPageToken` in subsequent requests to get next page\n- `hasMore` indicates if more pages are available\n- Filters out soft-deleted items\n\n**Error (400 Bad Request):**\n- Invalid pageToken\n\n**Error (401 Unauthorized):**\n- Invalid or expired access token\n\n**Error (403 Forbidden):**\n- Missing or invalid API key"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Estimated 1RM (Batch)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-api-key",
+								"value": "{{apiKey}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"liftSetIds\": [\n    \"lift-set-uuid-1\",\n    \"lift-set-uuid-2\"\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/{{environment}}/checkin/estimated-1rm",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"{{environment}}",
+								"checkin",
+								"estimated-1rm"
+							]
+						},
+						"description": "Soft deletes one or more estimated 1RM records by setting deleted=true (batch support).\n\n**Authentication:**\n- Requires API key in x-api-key header\n- Requires valid access token in Authorization header\n- User ID is extracted from the JWT token\n\n**Request Body:**\n```json\n{\n  \"liftSetIds\": [\"lift-set-uuid-1\", \"lift-set-uuid-2\", ...]\n}\n```\n\nNote: We use `liftSetIds` because `liftSetId` is the sort key for this table.\n\n**Response (200 OK):**\n```json\n{\n  \"message\": \"Deleted 2 estimated 1RM record(s)\",\n  \"deletedEstimated1RMs\": [\n    {\n      \"userId\": \"user-uuid\",\n      \"liftSetId\": \"lift-set-uuid\",\n      \"estimated1RMId\": \"e1rm-uuid\",\n      \"exerciseId\": \"exercise-uuid\",\n      \"value\": 225.5,\n      \"createdTimezone\": \"America/Los_Angeles\",\n      \"createdDatetime\": \"2026-01-27T10:30:00.000Z\",\n      \"lastModifiedDatetime\": \"2026-01-27T15:00:00.000Z\",\n      \"deleted\": true\n    }\n  ],\n  \"notFoundIds\": [\"uuid-that-didnt-exist\"]\n}\n```\n\n**What happens:**\n- Sets `deleted` attribute to `true` for each estimated 1RM\n- Updates `lastModifiedDatetime` to current time\n- Records no longer appear in GET /checkin/estimated-1rm results\n- Data is preserved in database (soft delete)\n- Returns list of successfully deleted records and any IDs not found\n\n**Error (400 Bad Request):**\n- Missing liftSetIds field\n- Empty liftSetIds array\n- liftSetIds is not an array\n\n**Error (401 Unauthorized):**\n- Invalid or expired access token\n\n**Error (403 Forbidden):**\n- Missing or invalid API key"
+					},
+					"response": []
+				}
+			],
+			"description": "Checkin service endpoints for managing exercise check-ins, lift sets, and estimated 1RM records.\n\n**All endpoints require authentication** via JWT access token and API key.\n\n**Exercise Endpoints (/checkin/exercises):**\n- POST: Upsert exercises (batch)\n- GET: Get all non-deleted exercises\n- DELETE: Soft delete exercises (batch)\n\n**Lift Set Endpoints (/checkin/lift-sets):**\n- POST: Create lift sets (batch)\n- GET: Get paginated lift sets (most recent first)\n- DELETE: Soft delete lift sets (batch)\n\n**Estimated 1RM Endpoints (/checkin/estimated-1rm):**\n- POST: Create estimated 1RM records (batch)\n- GET: Get paginated estimated 1RM records (most recent first)\n- DELETE: Soft delete estimated 1RM records (batch)\n\n**Exercise Fields:**\n- `exerciseItemId`: Unique identifier (UUID from frontend)\n- `name`: Exercise name\n- `isCustom`: Whether this is a custom exercise (true/false)\n- `loadType`: Type of load - \"Barbell\", \"Bodyweight + Single Load\", or \"Single Load\"\n- `createdTimezone`: Timezone identifier\n- `notes`: Optional notes\n- `createdDatetime`: When exercise was created (ISO 8601)\n- `lastModifiedDatetime`: When exercise was last modified (ISO 8601)\n- `deleted`: Soft delete flag (only present when true)\n\n**Lift Set Fields:**\n- `liftSetId`: Unique identifier (UUID from frontend)\n- `exerciseId`: Associated exercise ID\n- `reps`: Number of repetitions (integer)\n- `weight`: Weight used (decimal)\n- `createdTimezone`: Timezone identifier\n- `createdDatetime`: When lift set was created (ISO 8601)\n- `lastModifiedDatetime`: When lift set was last modified (ISO 8601)\n- `deleted`: Soft delete flag\n\n**Estimated 1RM Fields:**\n- `estimated1RMId`: Unique identifier (UUID from frontend)\n- `liftSetId`: ID of the lift set that achieved this E1RM (also the sort key)\n- `exerciseId`: Associated exercise ID\n- `value`: The estimated 1RM value (decimal)\n- `createdTimezone`: Timezone identifier\n- `createdDatetime`: When E1RM was created (ISO 8601)\n- `lastModifiedDatetime`: When E1RM was last modified (ISO 8601)\n- `deleted`: Soft delete flag\n\n**Batch Operations:**\n- All POST endpoints accept arrays for batch create\n- All DELETE endpoints accept arrays for batch soft delete\n\n**Soft Delete:**\nDeleted items are marked with `deleted=true` and filtered out from GET requests. Data is preserved in the database."
+		},
+		{
+			"name": "Entitlements Service",
+			"item": [
+				{
+					"name": "Get Entitlement Status",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-api-key",
+								"value": "{{apiKey}}",
+								"type": "default"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/{{environment}}/entitlements/status",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"{{environment}}",
+								"entitlements",
+								"status"
+							]
+						},
+						"description": "Returns the current account subscription status for the authenticated user.\n\n**Authentication:**\n- Requires API key in x-api-key header\n- Requires valid access token in Authorization header\n- User ID is extracted from the JWT token\n\n**Response (200 OK):**\n```json\n{\n  \"accountStatus\": \"free\",\n  \"expirationUtc\": null\n}\n```\n\nOr for premium users:\n```json\n{\n  \"accountStatus\": \"premium\",\n  \"expirationUtc\": \"2025-12-01T09:32:55.000\"\n}\n```\n\n**Response Fields:**\n- `accountStatus` (string): Either \"free\" or \"premium\"\n- `expirationUtc` (string|null): ISO 8601 expiration date for premium, null for free\n\n**How it works:**\n- Queries entitlement grants table for active subscriptions\n- Returns \"premium\" if any grant has endUtc > current time\n- Returns the latest expiration date among active grants\n\n**Error (401 Unauthorized):**\n- Invalid or expired access token\n\n**Error (403 Forbidden):**\n- Missing or invalid API key"
+					},
+					"response": []
+				},
+				{
+					"name": "Process Apple Transactions",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-api-key",
+								"value": "{{apiKey}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"apple\": {\n    \"originalTransactionIds\": [\"1000000123456789\"]\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/{{environment}}/entitlements",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"{{environment}}",
+								"entitlements"
+							]
+						},
+						"description": "Process Apple App Store transactions and create entitlement grants.\n\n**Authentication:**\n- Requires API key in x-api-key header\n- Requires valid access token in Authorization header\n- User ID is extracted from the JWT token\n\n**Request Body:**\n```json\n{\n  \"apple\": {\n    \"originalTransactionIds\": [\"1000000123456789\"]\n  }\n}\n```\n\n**Request Fields:**\n- `apple.originalTransactionIds` (string[], required): Array of Apple original transaction IDs from StoreKit\n\n**Response (200 OK):**\n```json\n{\n  \"activeEntitlements\": [\n    {\n      \"userId\": \"user-uuid\",\n      \"startUtc\": \"2025-11-01T09:32:55.000\",\n      \"endUtc\": \"2025-12-01T09:32:55.000\",\n      \"entitlementName\": \"premium\",\n      \"paymentPlatformSource\": \"apple\",\n      \"originalTransactionId\": \"1000000123456789\",\n      \"productId\": \"com.app.premium.monthly\",\n      \"createdDatetime\": \"2025-11-01T09:32:55.000Z\",\n      \"lastModifiedDatetime\": \"2025-11-01T09:32:55.000Z\"\n    }\n  ],\n  \"created\": 2,\n  \"skipped\": 1\n}\n```\n\n**Response Fields:**\n- `activeEntitlements` (array): List of currently active entitlement grants for the user\n- `created` (number): Number of new entitlement grants created\n- `skipped` (number): Number of grants skipped because they already existed\n\n**How it works:**\n1. Fetches transaction history from Apple using originalTransactionId\n2. Creates entitlement grants for each subscription period\n3. Uses conditional writes to avoid duplicates (userId + startUtc must be unique)\n4. Returns all currently active entitlements\n\n**When to call:**\n- After a successful in-app purchase\n- On app launch to sync entitlements\n- After restoring purchases\n\n**Important:**\n- Use `originalTransactionId` from StoreKit (not the regular transactionId)\n- This fetches the full transaction history including renewals\n\n**Error (400 Bad Request):**\n- Missing apple.originalTransactionIds\n- Empty originalTransactionIds array\n\n**Error (401 Unauthorized):**\n- Invalid or expired access token\n\n**Error (403 Forbidden):**\n- Missing or invalid API key"
+					},
+					"response": []
+				},
+				{
+					"name": "Apple Notification Webhook",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-api-key",
+								"value": "{{apiKey}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"signedPayload\": \"eyJhbGciOiJFUzI1NiIsIng1YyI6W...signed-notification-from-apple...\"  \n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/{{environment}}/entitlements/apple-notification",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"{{environment}}",
+								"entitlements",
+								"apple-notification"
+							]
+						},
+						"description": "Apple Server Notification V2 webhook endpoint.\n\n**Authentication:**\n- Requires API key in x-api-key header\n- NO JWT authentication (Apple cannot authenticate with our tokens)\n\n**Request Body:**\nApple sends a signed notification payload:\n```json\n{\n  \"signedPayload\": \"eyJhbGciOiJFUzI1NiIsIng1YyI6W...\"\n}\n```\n\n**Response (200 OK - Always):**\n```json\n{\n  \"message\": \"ok\"\n}\n```\n\n**Important:** This endpoint ALWAYS returns 200, even on errors. This prevents Apple from retrying notifications unnecessarily.\n\n**How it works:**\n1. Receives signed notification from Apple\n2. Decodes and verifies the notification using Apple's certificates\n3. Extracts `appAccountToken` from the transaction (this is the userId)\n4. Verifies the user exists in our users table\n5. Fetches transaction history using originalTransactionId\n6. Creates entitlement grants for each subscription period\n\n**Notification Types Handled:**\n- SUBSCRIBED: New subscription\n- DID_RENEW: Subscription renewed\n- EXPIRED: Subscription expired\n- DID_CHANGE_RENEWAL_STATUS: Auto-renewal toggled\n- And others...\n\n**iOS App Setup:**\nWhen initiating purchases, set the `appAccountToken` to the user's userId:\n```swift\nlet purchase = try await product.purchase(options: [\n    .appAccountToken(UUID(uuidString: userId)!)\n])\n```\n\n**App Store Connect Setup:**\n1. Go to App Store Connect > Your App > App Information\n2. Scroll to \"App Store Server Notifications\"\n3. Set Production URL: `https://{api-id}.execute-api.{region}.amazonaws.com/production/entitlements/apple-notification`\n4. Set Sandbox URL: `https://{api-id}.execute-api.{region}.amazonaws.com/staging/entitlements/apple-notification`\n5. Note: You may need to include the API key as a query parameter or configure it separately\n\n**Testing:**\nThis endpoint is typically called by Apple automatically. For testing:\n1. Use Apple's Sandbox environment\n2. Make test purchases with sandbox accounts\n3. Monitor CloudWatch logs for notification processing"
+					},
+					"response": []
+				}
+			],
+			"description": "Entitlements service endpoints for managing subscription entitlements via Apple App Store Server API.\n\n**Endpoints:**\n- GET /entitlements/status: Get current account status (free/premium)\n- POST /entitlements: Process Apple transactions and sync entitlements\n- POST /entitlements/apple-notification: Apple webhook (called by Apple)\n\n**Entitlement Grant Fields:**\n- `userId`: User's unique identifier\n- `startUtc`: Subscription start date (ISO 8601)\n- `endUtc`: Subscription end date (ISO 8601)\n- `entitlementName`: Type of entitlement (e.g., \"premium\")\n- `paymentPlatformSource`: Payment platform (\"apple\")\n- `originalTransactionId`: Apple's original transaction ID\n- `productId`: Apple's product ID\n- `createdDatetime`: When grant was created\n- `lastModifiedDatetime`: When grant was last modified\n\n**Integration Flow:**\n1. iOS app makes in-app purchase with `appAccountToken` set to userId\n2. On purchase success, call POST /entitlements with originalTransactionId\n3. Apple sends notifications to webhook for renewals/cancellations\n4. Call GET /entitlements/status to check current subscription state\n\n**Apple Credentials (SSM Parameters):**\nBefore using, configure these in AWS SSM Parameter Store:\n- `/{project}/{env}/entitlements/apple-private-key`: .p8 file contents\n- `/{project}/{env}/entitlements/apple-key-id`: Key ID from App Store Connect\n- `/{project}/{env}/entitlements/apple-issuer-id`: Issuer ID\n- `/{project}/{env}/entitlements/apple-bundle-id`: App bundle ID"
 		}
 	],
 	"auth": {
@@ -441,7 +964,7 @@
 	"variable": [
 		{
 			"key": "baseUrl",
-			"value": "https://example.execute-api.us-west-1.amazonaws.com/staging",
+			"value": "https://h49ho1pn62.execute-api.us-west-1.amazonaws.com/staging",
 			"type": "string"
 		}
 	]
