@@ -177,6 +177,7 @@ def upsert_exercises(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
         # Validate each exercise
         required_fields = ['exerciseItemId', 'name', 'isCustom', 'loadType', 'createdTimezone', 'createdDatetime']
         valid_load_types = ['Barbell', 'Single Load']
+        valid_movement_types = ['Push', 'Pull', 'Hinge', 'Squat', 'Core', 'Other']
         validation_errors = []
 
         for idx, exercise in enumerate(exercises_input):
@@ -201,6 +202,12 @@ def upsert_exercises(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
                 validation_errors.append(
                     f"Exercise at index {idx}: notes must be a string or null"
                 )
+
+            if 'movementType' in exercise and exercise['movementType'] is not None:
+                if exercise['movementType'] not in valid_movement_types:
+                    validation_errors.append(
+                        f"Exercise at index {idx}: movementType must be one of: {', '.join(valid_movement_types)}"
+                    )
 
         if validation_errors:
             return create_response(
@@ -284,6 +291,14 @@ def upsert_exercises(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
                         # Remove icon if explicitly set to empty/null
                         update_expression += ' REMOVE icon'
 
+                # Handle movementType - update if provided, remove if explicitly set to None/empty
+                if 'movementType' in exercise:
+                    if exercise['movementType']:
+                        update_expression += ', movementType = :movementType'
+                        expression_attr_values[':movementType'] = exercise['movementType']
+                    else:
+                        update_expression += ' REMOVE movementType'
+
                 response = table.update_item(
                     Key={
                         'userId': user_id,
@@ -318,6 +333,10 @@ def upsert_exercises(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
                 # Add optional icon if provided
                 if 'icon' in exercise and exercise['icon']:
                     exercise_item['icon'] = exercise['icon']
+
+                # Add optional movementType if provided
+                if 'movementType' in exercise and exercise['movementType']:
+                    exercise_item['movementType'] = exercise['movementType']
 
                 table.put_item(Item=exercise_item)
                 result_exercises.append(exercise_item)
