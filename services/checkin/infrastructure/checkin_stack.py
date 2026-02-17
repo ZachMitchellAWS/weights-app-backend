@@ -58,6 +58,7 @@ class CheckinStack(Stack):
         self.exercises_table = self._create_exercises_table()
         self.lift_sets_table = self._create_lift_sets_table()
         self.estimated_1rm_table = self._create_estimated_1rm_table()
+        self.sequences_table = self._create_sequences_table()
         self.checkin_function = self._create_checkin_lambda()
         self._create_api_routes()
 
@@ -234,6 +235,42 @@ class CheckinStack(Stack):
 
         return table
 
+    def _create_sequences_table(self) -> dynamodb.Table:
+        """
+        Create DynamoDB table for workout sequences.
+
+        Table schema:
+        - userId (String, partition key): User's unique identifier
+        - sequenceId (String, sort key): Unique sequence ID (UUID from frontend)
+        - name (String): Sequence name
+        - exerciseIds (List): Ordered list of exercise IDs in this sequence
+        - createdTimezone (String): Timezone when sequence was created
+        - createdDatetime (String): ISO 8601 timestamp when created
+        - lastModifiedDatetime (String): ISO 8601 timestamp when last modified
+        - deleted (Boolean): Soft delete flag
+
+        Returns:
+            DynamoDB Table construct
+        """
+        table = dynamodb.Table(
+            self,
+            "SequencesTable",
+            table_name=f"{self.project_name}-{self.env_name}-sequences",
+            partition_key=dynamodb.Attribute(
+                name="userId",
+                type=dynamodb.AttributeType.STRING
+            ),
+            sort_key=dynamodb.Attribute(
+                name="sequenceId",
+                type=dynamodb.AttributeType.STRING
+            ),
+            billing_mode=self.config.DYNAMODB_BILLING_MODE,
+            point_in_time_recovery=self.config.DYNAMODB_POINT_IN_TIME_RECOVERY,
+            removal_policy=self.config.REMOVAL_POLICY,
+        )
+
+        return table
+
     def _create_checkin_lambda(self) -> lambda_.Function:
         """
         Create Lambda function for checkin service operations.
@@ -265,6 +302,7 @@ class CheckinStack(Stack):
                 "EXERCISES_TABLE_NAME": self.exercises_table.table_name,
                 "LIFT_SETS_TABLE_NAME": self.lift_sets_table.table_name,
                 "ESTIMATED_1RM_TABLE_NAME": self.estimated_1rm_table.table_name,
+                "SEQUENCES_TABLE_NAME": self.sequences_table.table_name,
                 "ENVIRONMENT": self.config.ENVIRONMENT,
                 "LOG_LEVEL": self.config.LOG_LEVEL,
             },
@@ -275,6 +313,7 @@ class CheckinStack(Stack):
         self.exercises_table.grant_read_write_data(function)
         self.lift_sets_table.grant_read_write_data(function)
         self.estimated_1rm_table.grant_read_write_data(function)
+        self.sequences_table.grant_read_write_data(function)
 
         return function
 
@@ -382,6 +421,36 @@ class CheckinStack(Stack):
 
         # Add DELETE method for estimated-1rm (batch soft delete)
         estimated_1rm_resource.add_method(
+            "DELETE",
+            checkin_integration,
+            api_key_required=True,
+            authorizer=self.authorizer,
+            authorization_type=apigateway.AuthorizationType.CUSTOM,
+        )
+
+        # Create /checkin/sequences resource
+        sequences_resource = checkin_resource.add_resource("sequences")
+
+        # Add POST method for sequences (batch upsert)
+        sequences_resource.add_method(
+            "POST",
+            checkin_integration,
+            api_key_required=True,
+            authorizer=self.authorizer,
+            authorization_type=apigateway.AuthorizationType.CUSTOM,
+        )
+
+        # Add GET method for sequences
+        sequences_resource.add_method(
+            "GET",
+            checkin_integration,
+            api_key_required=True,
+            authorizer=self.authorizer,
+            authorization_type=apigateway.AuthorizationType.CUSTOM,
+        )
+
+        # Add DELETE method for sequences (batch soft delete)
+        sequences_resource.add_method(
             "DELETE",
             checkin_integration,
             api_key_required=True,

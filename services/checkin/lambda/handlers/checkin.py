@@ -16,6 +16,11 @@ Handles estimated 1RM operations:
 - GET /checkin/estimated-1rm: Get paginated estimated 1RM records (most recent first)
 - DELETE /checkin/estimated-1rm: Soft delete estimated 1RM records (batch support)
 
+Handles workout sequence operations:
+- POST /checkin/sequences: Create or update sequences (upsert with batch support)
+- GET /checkin/sequences: Get all non-deleted sequences
+- DELETE /checkin/sequences: Soft delete sequences (batch support)
+
 Security: All operations use the userId from the JWT token as the DynamoDB
 partition key, ensuring users can only access/modify their own data.
 """
@@ -90,6 +95,13 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             return get_estimated_1rm(event, user_id)
         elif http_method == 'DELETE' and path.endswith('/checkin/estimated-1rm'):
             return delete_estimated_1rm(event, user_id)
+        # Sequence routes
+        elif http_method == 'POST' and path.endswith('/checkin/sequences'):
+            return upsert_sequences(event, user_id)
+        elif http_method == 'GET' and path.endswith('/checkin/sequences'):
+            return get_sequences(event, user_id)
+        elif http_method == 'DELETE' and path.endswith('/checkin/sequences'):
+            return delete_sequences(event, user_id)
         else:
             return create_response(
                 status_code=404,
@@ -739,7 +751,7 @@ def get_lift_sets(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     to return lift sets ordered by createdDatetime descending.
 
     Query parameters:
-    - limit: Number of items per page (default 100, max 500)
+    - limit: Number of items per page (default 2000, max 2000)
     - pageToken: Base64-encoded LastEvaluatedKey for pagination
 
     Args:
@@ -760,12 +772,12 @@ def get_lift_sets(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
         # Parse query parameters
         query_params = event.get('queryStringParameters') or {}
 
-        # Get limit (default 100, max 500)
+        # Get limit (default 2000, max 2000)
         try:
-            limit = int(query_params.get('limit', 100))
-            limit = min(max(limit, 1), 500)  # Clamp between 1 and 500
+            limit = int(query_params.get('limit', 2000))
+            limit = min(max(limit, 1), 2000)  # Clamp between 1 and 2000
         except ValueError:
-            limit = 100
+            limit = 2000
 
         # Get page token if provided
         page_token = query_params.get('pageToken')
@@ -1163,7 +1175,7 @@ def get_estimated_1rm(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     to return estimated 1RM records ordered by createdDatetime descending.
 
     Query parameters:
-    - limit: Number of items per page (default 100, max 500)
+    - limit: Number of items per page (default 2000, max 2000)
     - pageToken: Base64-encoded LastEvaluatedKey for pagination
 
     Args:
@@ -1184,12 +1196,12 @@ def get_estimated_1rm(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
         # Parse query parameters
         query_params = event.get('queryStringParameters') or {}
 
-        # Get limit (default 100, max 500)
+        # Get limit (default 2000, max 2000)
         try:
-            limit = int(query_params.get('limit', 100))
-            limit = min(max(limit, 1), 500)  # Clamp between 1 and 500
+            limit = int(query_params.get('limit', 2000))
+            limit = min(max(limit, 1), 2000)  # Clamp between 1 and 2000
         except ValueError:
-            limit = 100
+            limit = 2000
 
         # Get page token if provided
         page_token = query_params.get('pageToken')
@@ -1415,6 +1427,383 @@ def delete_estimated_1rm(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
         )
     except Exception as e:
         print(f"Error deleting estimated 1RM records: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return create_response(
+            status_code=500,
+            body={"message": "Internal server error"}
+        )
+
+
+# =============================================================================
+# Workout Sequence Operations
+# =============================================================================
+
+def upsert_sequences(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
+    """
+    Create or update one or more workout sequences (upsert with batch support).
+
+    - For new items: creates with all fields including createdDatetime
+    - For existing items: updates name, exerciseIds, lastModifiedDatetime
+
+    Expected request body:
+    {
+        "sequences": [
+            {
+                "sequenceId": "uuid-string",
+                "name": "Sequence name",
+                "exerciseIds": ["uuid-1", "uuid-2"],
+                "createdTimezone": "America/Los_Angeles",
+                "createdDatetime": "2026-01-27T10:30:00.000Z"
+            },
+            ...
+        ]
+    }
+
+    Args:
+        event: API Gateway event
+        user_id: User ID from JWT token
+
+    Returns:
+        API Gateway response with created/updated sequences
+    """
+    try:
+        body = json.loads(event.get('body', '{}'))
+
+        if 'sequences' not in body:
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Missing required field",
+                    "message": "Request body must contain 'sequences' array"
+                }
+            )
+
+        sequences_input = body['sequences']
+
+        if not isinstance(sequences_input, list):
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Invalid format",
+                    "message": "'sequences' must be an array"
+                }
+            )
+
+        if len(sequences_input) == 0:
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Empty sequences array",
+                    "message": "At least one sequence is required"
+                }
+            )
+
+        # Validate each sequence
+        required_fields = ['sequenceId', 'name', 'exerciseIds', 'createdTimezone', 'createdDatetime']
+        validation_errors = []
+
+        for idx, sequence in enumerate(sequences_input):
+            missing_fields = [field for field in required_fields if field not in sequence]
+            if missing_fields:
+                validation_errors.append(
+                    f"Sequence at index {idx}: missing fields: {', '.join(missing_fields)}"
+                )
+                continue
+
+            if not isinstance(sequence['name'], str) or not sequence['name'].strip():
+                validation_errors.append(
+                    f"Sequence at index {idx}: name must be a non-empty string"
+                )
+
+            if not isinstance(sequence['exerciseIds'], list):
+                validation_errors.append(
+                    f"Sequence at index {idx}: exerciseIds must be an array"
+                )
+            elif not all(isinstance(eid, str) for eid in sequence['exerciseIds']):
+                validation_errors.append(
+                    f"Sequence at index {idx}: exerciseIds must be an array of strings"
+                )
+
+        if validation_errors:
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Validation failed",
+                    "message": "One or more sequences have validation errors",
+                    "errors": validation_errors
+                }
+            )
+
+        # Get table
+        table_name = os.environ.get('SEQUENCES_TABLE_NAME')
+        if not table_name:
+            raise ValueError("SEQUENCES_TABLE_NAME environment variable not set")
+
+        table = dynamodb.Table(table_name)
+
+        current_datetime = get_current_datetime_iso()
+
+        # Batch get existing items to determine create vs update
+        sequence_ids = [seq['sequenceId'] for seq in sequences_input]
+        existing_items = {}
+        for i in range(0, len(sequence_ids), 100):
+            batch_ids = sequence_ids[i:i + 100]
+            keys = [{'userId': user_id, 'sequenceId': sid} for sid in batch_ids]
+
+            response = dynamodb.batch_get_item(
+                RequestItems={
+                    table_name: {
+                        'Keys': keys
+                    }
+                }
+            )
+
+            for item in response.get('Responses', {}).get(table_name, []):
+                existing_items[item['sequenceId']] = item
+
+        result_sequences = []
+        created_count = 0
+        updated_count = 0
+
+        for sequence in sequences_input:
+            sequence_id = sequence['sequenceId']
+            existing = existing_items.get(sequence_id)
+
+            if existing:
+                # UPDATE: update mutable fields only
+                response = table.update_item(
+                    Key={
+                        'userId': user_id,
+                        'sequenceId': sequence_id
+                    },
+                    UpdateExpression='SET #name = :name, exerciseIds = :exerciseIds, lastModifiedDatetime = :lastModified',
+                    ExpressionAttributeNames={'#name': 'name'},
+                    ExpressionAttributeValues={
+                        ':name': sequence['name'],
+                        ':exerciseIds': sequence['exerciseIds'],
+                        ':lastModified': current_datetime
+                    },
+                    ReturnValues='ALL_NEW'
+                )
+
+                result_sequences.append(response.get('Attributes', {}))
+                updated_count += 1
+            else:
+                # CREATE: new item
+                sequence_item = {
+                    'userId': user_id,
+                    'sequenceId': sequence_id,
+                    'name': sequence['name'],
+                    'exerciseIds': sequence['exerciseIds'],
+                    'createdTimezone': sequence['createdTimezone'],
+                    'createdDatetime': sequence['createdDatetime'],
+                    'lastModifiedDatetime': current_datetime,
+                }
+
+                table.put_item(Item=sequence_item)
+                result_sequences.append(sequence_item)
+                created_count += 1
+
+        print(f"Upserted sequences for user {user_id}: {created_count} created, {updated_count} updated")
+
+        return create_response(
+            status_code=200 if updated_count > 0 else 201,
+            body={
+                "sequences": result_sequences,
+                "created": created_count,
+                "updated": updated_count
+            }
+        )
+
+    except json.JSONDecodeError:
+        return create_response(
+            status_code=400,
+            body={
+                "error": "Invalid JSON",
+                "message": "Request body must be valid JSON"
+            }
+        )
+    except Exception as e:
+        print(f"Error upserting sequences: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return create_response(
+            status_code=500,
+            body={"message": "Internal server error"}
+        )
+
+
+def get_sequences(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
+    """
+    Get all non-deleted sequences for a user.
+
+    Args:
+        event: API Gateway event
+        user_id: User ID from JWT token
+
+    Returns:
+        API Gateway response with list of sequences
+    """
+    try:
+        table_name = os.environ.get('SEQUENCES_TABLE_NAME')
+        if not table_name:
+            raise ValueError("SEQUENCES_TABLE_NAME environment variable not set")
+
+        table = dynamodb.Table(table_name)
+
+        response = table.query(
+            KeyConditionExpression=Key('userId').eq(user_id)
+        )
+
+        sequences = response.get('Items', [])
+
+        non_deleted_sequences = [
+            seq for seq in sequences
+            if not seq.get('deleted', False)
+        ]
+
+        print(f"Retrieved {len(non_deleted_sequences)} non-deleted sequences for user: {user_id}")
+
+        return create_response(
+            status_code=200,
+            body={"sequences": non_deleted_sequences}
+        )
+
+    except Exception as e:
+        print(f"Error getting sequences: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return create_response(
+            status_code=500,
+            body={"message": "Internal server error"}
+        )
+
+
+def delete_sequences(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
+    """
+    Soft delete one or more sequences by setting deleted=True (batch support).
+
+    Expected request body:
+    {
+        "sequenceIds": ["uuid-string-1", "uuid-string-2", ...]
+    }
+
+    Args:
+        event: API Gateway event
+        user_id: User ID from JWT token
+
+    Returns:
+        API Gateway response confirming deletions
+    """
+    try:
+        body = json.loads(event.get('body', '{}'))
+
+        if 'sequenceIds' not in body:
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Missing required field",
+                    "message": "Request body must contain 'sequenceIds' array"
+                }
+            )
+
+        sequence_ids = body['sequenceIds']
+
+        if not isinstance(sequence_ids, list):
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Invalid format",
+                    "message": "'sequenceIds' must be an array"
+                }
+            )
+
+        if len(sequence_ids) == 0:
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Empty sequenceIds array",
+                    "message": "At least one sequenceId is required"
+                }
+            )
+
+        table_name = os.environ.get('SEQUENCES_TABLE_NAME')
+        if not table_name:
+            raise ValueError("SEQUENCES_TABLE_NAME environment variable not set")
+
+        table = dynamodb.Table(table_name)
+
+        # Verify which items exist
+        existing_items = {}
+        for i in range(0, len(sequence_ids), 100):
+            batch_ids = sequence_ids[i:i + 100]
+            keys = [{'userId': user_id, 'sequenceId': sid} for sid in batch_ids]
+
+            response = dynamodb.batch_get_item(
+                RequestItems={
+                    table_name: {
+                        'Keys': keys
+                    }
+                }
+            )
+
+            for item in response.get('Responses', {}).get(table_name, []):
+                existing_items[item['sequenceId']] = item
+
+        not_found_ids = [sid for sid in sequence_ids if sid not in existing_items]
+
+        if not_found_ids:
+            print(f"Sequences not found for user {user_id}: {not_found_ids}")
+
+        current_datetime = get_current_datetime_iso()
+
+        deleted_sequences = []
+
+        for sequence_id in sequence_ids:
+            if sequence_id not in existing_items:
+                continue
+
+            response = table.update_item(
+                Key={
+                    'userId': user_id,
+                    'sequenceId': sequence_id
+                },
+                UpdateExpression='SET deleted = :deleted, lastModifiedDatetime = :lastModified',
+                ExpressionAttributeValues={
+                    ':deleted': True,
+                    ':lastModified': current_datetime
+                },
+                ReturnValues='ALL_NEW'
+            )
+
+            deleted_sequences.append(response.get('Attributes', {}))
+
+        print(f"Soft deleted {len(deleted_sequences)} sequences for user: {user_id}")
+
+        response_body = {
+            "message": f"Deleted {len(deleted_sequences)} sequence(s)",
+            "deletedSequences": deleted_sequences
+        }
+
+        if not_found_ids:
+            response_body["notFoundIds"] = not_found_ids
+
+        return create_response(
+            status_code=200,
+            body=response_body
+        )
+
+    except json.JSONDecodeError:
+        return create_response(
+            status_code=400,
+            body={
+                "error": "Invalid JSON",
+                "message": "Request body must be valid JSON"
+            }
+        )
+    except Exception as e:
+        print(f"Error deleting sequences: {str(e)}")
         import traceback
         traceback.print_exc()
         return create_response(

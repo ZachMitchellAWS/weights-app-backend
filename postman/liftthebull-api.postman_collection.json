@@ -1,8 +1,8 @@
 {
 	"info": {
-		"_postman_id": "project-cdk-api-collection",
-		"name": "Project CDK API",
-		"description": "Complete API collection for Project CDK microservices.\n\n**Services:**\n- Auth Service (authentication and JWT tokens)\n- [Add more services here as you build them]\n\n**How to use:**\n1. Import this collection\n2. Import an environment file (staging or production)\n3. Select the environment in the top-right dropdown\n4. Start with Auth endpoints to get tokens\n5. Tokens are automatically saved and used in other requests\n\n**Authentication:**\nMost endpoints require authentication. After logging in, the `accessToken` is automatically:\n- Saved to environment variable\n- Added to Authorization header in requests\n- Refreshed when needed",
+		"_postman_id": "liftthebull-api-collection",
+		"name": "LiftTheBull API",
+		"description": "Complete API collection for LiftTheBull microservices.\n\n**Services:**\n- Auth Service (authentication and JWT tokens)\n- [Add more services here as you build them]\n\n**How to use:**\n1. Import this collection\n2. Import an environment file (staging or production)\n3. Select the environment in the top-right dropdown\n4. Start with Auth endpoints to get tokens\n5. Tokens are automatically saved and used in other requests\n\n**Authentication:**\nMost endpoints require authentication. After logging in, the `accessToken` is automatically:\n- Saved to environment variable\n- Added to Authorization header in requests\n- Refreshed when needed",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [

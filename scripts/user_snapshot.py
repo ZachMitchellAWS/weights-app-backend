@@ -22,7 +22,7 @@ from boto3.dynamodb.conditions import Key
 USER_ID = "18dee8ea-ac11-4b02-ae52-670cb830e44a"
 REGION = "us-west-1"
 ENV = "staging"
-PROJECT = "project"
+PROJECT = "liftthebull"
 
 # Output file location
 SNAPSHOT_DIR = Path(__file__).parent.parent / "snapshots"
@@ -37,6 +37,7 @@ TABLES = [
     ("exercises", "userId", "exerciseItemId"),
     ("lift-sets", "userId", "liftSetId"),
     ("estimated-1rm", "userId", "liftSetId"),
+    ("sequences", "userId", "sequenceId"),
 ]
 
 

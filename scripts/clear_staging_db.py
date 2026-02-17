@@ -13,7 +13,7 @@ from boto3.dynamodb.conditions import Key
 
 REGION = "us-west-1"
 ENV = "staging"
-PROJECT = "project"
+PROJECT = "liftthebull"
 
 # Tables: (suffix, partition_key, sort_key or None)
 TABLES = [

@@ -102,6 +102,16 @@ class AuthStack(Stack):
             projection_type=dynamodb.ProjectionType.ALL,  # Include all attributes in the index
         )
 
+        # Add Global Secondary Index on appleUserId for Apple Sign In lookups
+        table.add_global_secondary_index(
+            index_name="appleUserId-index",
+            partition_key=dynamodb.Attribute(
+                name="appleUserId",
+                type=dynamodb.AttributeType.STRING
+            ),
+            projection_type=dynamodb.ProjectionType.ALL,
+        )
+
         return table
 
     def _create_password_reset_codes_table(self) -> dynamodb.Table:
@@ -241,6 +251,8 @@ class AuthStack(Stack):
             environment={
                 "USERS_TABLE_NAME": self.users_table.table_name,
                 "EMAIL_INDEX_NAME": "emailAddress-index",
+                "APPLE_USER_ID_INDEX_NAME": "appleUserId-index",
+                "APPLE_BUNDLE_ID": "io.anthroverse.WeightApp,io.anthroverse.WeightApp.staging",
                 "PASSWORD_RESET_CODES_TABLE_NAME": self.password_reset_codes_table.table_name,
                 "ENVIRONMENT": self.config.ENVIRONMENT,
                 "LOG_LEVEL": self.config.LOG_LEVEL,
@@ -415,6 +427,14 @@ class AuthStack(Stack):
         # Create /auth/confirm-password-reset endpoint (requires API key)
         confirm_reset_resource = auth_resource.add_resource("confirm-password-reset")
         confirm_reset_resource.add_method(
+            "POST",
+            auth_integration,
+            api_key_required=True,
+        )
+
+        # Create /auth/apple-signin endpoint (requires API key, no JWT auth)
+        apple_signin_resource = auth_resource.add_resource("apple-signin")
+        apple_signin_resource.add_method(
             "POST",
             auth_integration,
             api_key_required=True,

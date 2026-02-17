@@ -25,6 +25,7 @@ from utils.jwt_utils import (
     get_token_expiration_time,
 )
 from utils.password import hash_password, verify_password
+from utils.apple_auth import verify_apple_identity_token
 
 
 # Initialize DynamoDB client
@@ -84,6 +85,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             return handle_initiate_password_reset(event)
         elif path.endswith("/confirm-password-reset"):
             return handle_confirm_password_reset(event)
+        elif path.endswith("/apple-signin"):
+            return handle_apple_signin(event)
         else:
             return create_response(
                 status_code=404,
@@ -1061,6 +1064,249 @@ def handle_confirm_password_reset(event: Dict[str, Any]) -> Dict[str, Any]:
             body={
                 "error": "Internal server error",
                 "message": "Failed to reset password"
+            }
+        )
+
+
+def handle_apple_signin(event: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Handle POST /apple-signin requests.
+
+    Three-case user resolution:
+    1. Lookup by Apple sub ID → login (existing Apple user)
+    2. Fallback by email → link Apple ID to existing account
+    3. No match → create new account
+
+    Request body:
+        {
+            "identityToken": "apple-jwt-token",
+            "authorizationCode": "apple-auth-code",
+            "email": "user@example.com" (optional),
+            "fullName": "John Doe" (optional)
+        }
+
+    Response:
+        {
+            "userId": "...",
+            "emailAddress": "...",
+            "accessToken": "...",
+            "refreshToken": "...",
+            "accessTokenExpiresIn": 900,
+            "refreshTokenExpiresIn": 2592000,
+            "isNewUser": true/false
+        }
+    """
+    try:
+        # Parse request body
+        body = json.loads(event.get("body", "{}"))
+        identity_token = body.get("identityToken")
+        email_from_client = body.get("email")
+        full_name = body.get("fullName")
+
+        if not identity_token:
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Missing required field",
+                    "message": "identityToken is required"
+                }
+            )
+
+        # Verify Apple identity token
+        try:
+            apple_payload = verify_apple_identity_token(identity_token)
+        except Exception as e:
+            print(f"Apple token verification failed: {str(e)}")
+            return create_response(
+                status_code=401,
+                body={
+                    "error": "Authentication failed",
+                    "message": "Invalid Apple identity token"
+                }
+            )
+
+        apple_sub = apple_payload.get("sub")
+        apple_email = apple_payload.get("email") or email_from_client
+
+        if not apple_sub:
+            return create_response(
+                status_code=401,
+                body={
+                    "error": "Authentication failed",
+                    "message": "Apple identity token missing sub claim"
+                }
+            )
+
+        # Get table names and indexes from environment
+        table_name = os.environ.get("USERS_TABLE_NAME")
+        email_index_name = os.environ.get("EMAIL_INDEX_NAME")
+        apple_user_id_index_name = os.environ.get("APPLE_USER_ID_INDEX_NAME")
+
+        if not table_name:
+            raise ValueError("USERS_TABLE_NAME environment variable not set")
+
+        table = dynamodb.Table(table_name)
+
+        # Case 1: Lookup by Apple sub ID
+        if apple_user_id_index_name:
+            response = table.query(
+                IndexName=apple_user_id_index_name,
+                KeyConditionExpression=Key('appleUserId').eq(apple_sub)
+            )
+            items = response.get('Items', [])
+
+            if items:
+                user = items[0]
+                user_id = user.get("userId")
+                email_address = user.get("emailAddress")
+
+                access_token, refresh_token = generate_token_pair(user_id, email_address)
+                print(f"Apple Sign In: existing user login for {user_id}")
+
+                return create_response(
+                    status_code=200,
+                    body={
+                        "userId": user_id,
+                        "emailAddress": email_address,
+                        "accessToken": access_token,
+                        "refreshToken": refresh_token,
+                        "accessTokenExpiresIn": get_token_expiration_time("access"),
+                        "refreshTokenExpiresIn": get_token_expiration_time("refresh"),
+                        "isNewUser": False,
+                    }
+                )
+
+        # Case 2: Lookup by email
+        if apple_email and email_index_name:
+            response = table.query(
+                IndexName=email_index_name,
+                KeyConditionExpression=Key('emailAddress').eq(apple_email)
+            )
+            items = response.get('Items', [])
+
+            if items:
+                user = items[0]
+                user_id = user.get("userId")
+                email_address = user.get("emailAddress")
+
+                # Link Apple sub to existing account
+                current_datetime = get_current_datetime_iso()
+                table.update_item(
+                    Key={"userId": user_id},
+                    UpdateExpression="SET appleUserId = :asub, lastModifiedDatetime = :dt",
+                    ExpressionAttributeValues={
+                        ":asub": apple_sub,
+                        ":dt": current_datetime,
+                    }
+                )
+
+                access_token, refresh_token = generate_token_pair(user_id, email_address)
+                print(f"Apple Sign In: linked Apple ID to existing user {user_id}")
+
+                return create_response(
+                    status_code=200,
+                    body={
+                        "userId": user_id,
+                        "emailAddress": email_address,
+                        "accessToken": access_token,
+                        "refreshToken": refresh_token,
+                        "accessTokenExpiresIn": get_token_expiration_time("access"),
+                        "refreshTokenExpiresIn": get_token_expiration_time("refresh"),
+                        "isNewUser": False,
+                    }
+                )
+
+        # Case 3: Create new account
+        if not apple_email:
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Missing email",
+                    "message": "Email is required for new account creation"
+                }
+            )
+
+        user_id = str(uuid.uuid4())
+        current_datetime = get_current_datetime_iso()
+
+        user_item = {
+            "userId": user_id,
+            "emailAddress": apple_email,
+            "appleUserId": apple_sub,
+            "createdDatetime": current_datetime,
+            "lastModifiedDatetime": current_datetime,
+        }
+
+        if full_name:
+            user_item["fullName"] = full_name
+
+        table.put_item(Item=user_item)
+
+        # Create user_properties item
+        user_properties_table_name = os.environ.get("USER_PROPERTIES_TABLE_NAME")
+        if user_properties_table_name:
+            user_properties_table = dynamodb.Table(user_properties_table_name)
+            user_properties_item = {
+                "userId": user_id,
+                "availableChangePlates": [],
+                "createdDatetime": current_datetime,
+                "lastModifiedDatetime": current_datetime,
+            }
+            user_properties_table.put_item(Item=user_properties_item)
+            print(f"Created user_properties for Apple user: {user_id}")
+
+        # Send welcome email
+        email_lambda_arn = os.environ.get("EMAIL_LAMBDA_ARN")
+        if email_lambda_arn:
+            try:
+                lambda_client = boto3.client('lambda')
+                email_payload = {
+                    'emailAddress': apple_email,
+                    'templateType': 'welcome',
+                    'variables': {}
+                }
+                lambda_client.invoke(
+                    FunctionName=email_lambda_arn,
+                    InvocationType='Event',
+                    Payload=json.dumps(email_payload)
+                )
+                print(f"Welcome email Lambda invoked for Apple user {user_id}")
+            except Exception as e:
+                print(f"Error invoking welcome email Lambda: {str(e)}")
+
+        access_token, refresh_token = generate_token_pair(user_id, apple_email)
+        print(f"Apple Sign In: created new user {user_id} with email {apple_email}")
+
+        return create_response(
+            status_code=201,
+            body={
+                "userId": user_id,
+                "emailAddress": apple_email,
+                "accessToken": access_token,
+                "refreshToken": refresh_token,
+                "accessTokenExpiresIn": get_token_expiration_time("access"),
+                "refreshTokenExpiresIn": get_token_expiration_time("refresh"),
+                "isNewUser": True,
+            }
+        )
+
+    except json.JSONDecodeError:
+        return create_response(
+            status_code=400,
+            body={
+                "error": "Invalid JSON",
+                "message": "Request body must be valid JSON"
+            }
+        )
+    except Exception as e:
+        print(f"Error in handle_apple_signin: {str(e)}")
+        print(traceback.format_exc())
+
+        return create_response(
+            status_code=500,
+            body={
+                "error": "Internal server error",
+                "message": "Failed to authenticate with Apple"
             }
         )
 

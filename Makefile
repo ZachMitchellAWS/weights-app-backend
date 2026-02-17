@@ -64,32 +64,31 @@ install:
 install-dev:
 	$(PIP) install -r requirements-dev.txt
 
-# Build Lambda layer with dependencies (PyJWT, pydantic)
-# No Docker needed - all pure Python packages
+# Build Lambda layer with dependencies (PyJWT, pydantic, cryptography)
+# Uses --platform to get Linux-compatible wheels for Lambda (Amazon Linux 2)
 build-layer:
 	@echo "Building Lambda layer for auth service..."
-	@echo "Installing pure Python dependencies (PyJWT, pydantic)..."
 	cd services/auth && rm -rf layer/python && mkdir -p layer/python
-	cd services/auth && pip3 install -r requirements.txt -t layer/python/ --upgrade
+	cd services/auth && pip3 install -r requirements.txt -t layer/python/ --upgrade --platform manylinux2014_x86_64 --only-binary=:all:
 	@echo "Lambda layer built successfully at services/auth/layer/"
 
 # Upload email templates to staging S3 bucket
 upload-email-templates-staging:
 	@echo "Uploading email templates to staging S3 bucket..."
-	aws s3 sync email-templates/ s3://project-staging-email-templates/ \
+	aws s3 sync email-templates/ s3://liftthebull-staging-email-templates/ \
 		--exclude "*" \
 		--include "*.html" \
 		--region us-west-1
-	@echo "Email templates uploaded successfully to project-staging-email-templates"
+	@echo "Email templates uploaded successfully to liftthebull-staging-email-templates"
 
 # Upload email templates to production S3 bucket
 upload-email-templates-production:
 	@echo "Uploading email templates to production S3 bucket..."
-	aws s3 sync email-templates/ s3://project-production-email-templates/ \
+	aws s3 sync email-templates/ s3://liftthebull-production-email-templates/ \
 		--exclude "*" \
 		--include "*.html" \
 		--region us-west-1
-	@echo "Email templates uploaded successfully to project-production-email-templates"
+	@echo "Email templates uploaded successfully to liftthebull-production-email-templates"
 
 # Bootstrap CDK for staging environment
 bootstrap-staging:
@@ -145,6 +144,7 @@ clear-staging-db:
 	@echo "Press Ctrl+C to cancel, or Enter to continue..."
 	@read confirm
 	$(PYTHON) scripts/clear_staging_db.py
+
 
 # Save test user data from staging DynamoDB to snapshot file
 # User ID is hardcoded in the script (18dee8ea-ac11-4b02-ae52-670cb830e44a)
