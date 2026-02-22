@@ -16,7 +16,7 @@
 #   5. make deploy-staging
 #   6. make test
 
-.PHONY: help venv install install-dev build-layer upload-email-templates-staging upload-email-templates-production bootstrap-staging bootstrap-production synth-staging synth-production diff-staging diff-production deploy-staging deploy-production destroy-staging destroy-production clear-staging-db save-user-staging load-user-staging test lint format clean
+.PHONY: help venv install install-dev build-layer upload-email-templates-staging upload-email-templates-production bootstrap-staging bootstrap-production synth-staging synth-production diff-staging diff-production deploy-staging deploy-production destroy-staging destroy-production clear-staging-db clear-production-db save-user-staging load-user-staging load-power-user-staging test lint format clean
 
 # Python command - use python3 for macOS/Linux compatibility
 PYTHON := python3
@@ -42,6 +42,7 @@ help:
 	@echo "  make destroy-staging      - Destroy staging resources"
 	@echo "  make destroy-production   - Destroy production resources (with confirmation)"
 	@echo "  make clear-staging-db     - Delete all items from staging DynamoDB tables"
+	@echo "  make clear-production-db  - Delete all items from production DynamoDB tables"
 	@echo "  make save-user-staging    - Save test user data to snapshot file"
 	@echo "  make load-user-staging    - Load test user data from snapshot file"
 	@echo "  make test                 - Run unit tests"
@@ -71,6 +72,11 @@ build-layer:
 	cd services/auth && rm -rf layer/python && mkdir -p layer/python
 	cd services/auth && pip3 install -r requirements.txt -t layer/python/ --upgrade --platform manylinux2014_x86_64 --only-binary=:all:
 	@echo "Lambda layer built successfully at services/auth/layer/"
+	@echo ""
+	@echo "Building Lambda layer for entitlements service..."
+	cd services/entitlements && rm -rf layer/python && mkdir -p layer/python
+	cd services/entitlements && pip3 install -r requirements.txt -t layer/python/ --upgrade --platform manylinux2014_x86_64 --only-binary=:all:
+	@echo "Lambda layer built successfully at services/entitlements/layer/"
 
 # Upload email templates to staging S3 bucket
 upload-email-templates-staging:
@@ -140,10 +146,19 @@ destroy-production:
 # WARNING: This deletes ALL data from staging tables
 clear-staging-db:
 	@echo "WARNING: This will delete ALL items from staging DynamoDB tables!"
-	@echo "Tables: users, user-properties, password-reset-codes, exercises, lift-sets, estimated-1rm"
+	@echo "Tables: users, user-properties, password-reset-codes, exercises, lift-sets, estimated-1rm, sequences, entitlement-grants, subscription-events"
 	@echo "Press Ctrl+C to cancel, or Enter to continue..."
 	@read confirm
 	$(PYTHON) scripts/clear_staging_db.py
+
+# Clear all items from production DynamoDB tables
+# WARNING: This deletes ALL data from production tables
+clear-production-db:
+	@echo "WARNING: This will delete ALL items from PRODUCTION DynamoDB tables!"
+	@echo "Tables: users, user-properties, password-reset-codes, exercises, lift-sets, estimated-1rm, sequences, entitlement-grants, subscription-events"
+	@echo "This action cannot be undone. Press Ctrl+C to cancel, or Enter to continue..."
+	@read confirm
+	$(PYTHON) scripts/clear_production_db.py
 
 
 # Save test user data from staging DynamoDB to snapshot file
@@ -157,6 +172,12 @@ save-user-staging:
 load-user-staging:
 	@echo "Loading test user data into staging DynamoDB tables..."
 	$(PYTHON) scripts/user_snapshot.py load
+
+# Generate and load power user data (large dataset) into staging DynamoDB
+# MONTHS defaults to 12 but can be overridden: make load-power-user-staging MONTHS=6
+load-power-user-staging:
+	@echo "Loading power user data into staging DynamoDB ($(or $(MONTHS),12) months)..."
+	$(PYTHON) scripts/generate_power_user.py --months $(or $(MONTHS),12)
 
 # Run unit tests
 test:

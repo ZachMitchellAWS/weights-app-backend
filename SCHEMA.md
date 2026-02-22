@@ -10,6 +10,8 @@
 | Checkin | exercises | userId | exerciseItemId | - | - | Yes |
 | Checkin | lift-sets | userId | liftSetId | userId-createdDatetime-index | - | Yes |
 | Checkin | estimated-1rm | userId | liftSetId | userId-createdDatetime-index | - | Yes |
+| Checkin | sequences | userId | sequenceId | - | - | Yes |
+| Checkin | splits | userId | splitId | - | - | Yes |
 | Entitlements | entitlement-grants | userId | startUtc | userId-endUtc-index | - | No |
 
 ---
@@ -81,6 +83,7 @@ Auto-created when a user registers.
 | exerciseId | String | Yes | References exercises table |
 | reps | Number | Yes | Integer |
 | weight | Decimal | Yes | Stored as Decimal, returned as float |
+| bodyweightUsed | Decimal | No | Bodyweight at time of logging (for Bodyweight + Single Load exercises) |
 | createdTimezone | String | Yes | |
 | createdDatetime | String | Yes | ISO 8601 |
 | lastModifiedDatetime | String | Yes | ISO 8601 |
@@ -103,6 +106,32 @@ Auto-created when a user registers.
 | deleted | Boolean | No | Only present when true |
 
 **GSI:** `userId-createdDatetime-index` -- enables "most recent first" pagination.
+
+### sequences
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| userId | String | Yes | Partition key |
+| sequenceId | String | Yes | Sort key (UUID) |
+| name | String | Yes | Day/sequence name |
+| exerciseIds | List\<String\> | Yes | Ordered list of exercise IDs |
+| createdTimezone | String | Yes | e.g. "America/Los_Angeles" |
+| createdDatetime | String | Yes | ISO 8601 |
+| lastModifiedDatetime | String | Yes | ISO 8601 |
+| deleted | Boolean | No | Only present when true |
+
+### splits
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| userId | String | Yes | Partition key |
+| splitId | String | Yes | Sort key (UUID) |
+| name | String | Yes | Split name |
+| dayIds | List\<String\> | Yes | Ordered list of sequence (day) IDs |
+| createdTimezone | String | Yes | e.g. "America/Los_Angeles" |
+| createdDatetime | String | Yes | ISO 8601 |
+| lastModifiedDatetime | String | Yes | ISO 8601 |
+| deleted | Boolean | No | Only present when true |
 
 ---
 
@@ -139,6 +168,10 @@ users ──── user-properties     (userId)
   │         │     └── estimated-1rm  (liftSetId → liftSetId)
   │         │
   │         └── estimated-1rm  (exerciseId → exerciseItemId)
+  │
+  ├────── splits               (userId)
+  │         │
+  │         └── sequences      (dayIds → sequenceId)
   │
   └────── entitlement-grants   (userId)
 ```

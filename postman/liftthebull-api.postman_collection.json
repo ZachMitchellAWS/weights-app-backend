@@ -51,12 +51,11 @@
 							"raw": "{\n  \"emailAddress\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\"\n}"
 						},
 						"url": {
-							"raw": "{{baseUrl}}/{{environment}}/auth/create-user",
+							"raw": "{{baseUrl}}/auth/create-user",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
-								"{{environment}}",
 								"auth",
 								"create-user"
 							]
@@ -107,12 +106,11 @@
 							"raw": "{\n  \"emailAddress\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\"\n}"
 						},
 						"url": {
-							"raw": "{{baseUrl}}/{{environment}}/auth/login",
+							"raw": "{{baseUrl}}/auth/login",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
-								"{{environment}}",
 								"auth",
 								"login"
 							]
@@ -159,12 +157,11 @@
 							"raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
 						},
 						"url": {
-							"raw": "{{baseUrl}}/{{environment}}/auth/refresh",
+							"raw": "{{baseUrl}}/auth/refresh",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
-								"{{environment}}",
 								"auth",
 								"refresh"
 							]
@@ -217,12 +214,11 @@
 							"raw": ""
 						},
 						"url": {
-							"raw": "{{baseUrl}}/{{environment}}/auth/logout",
+							"raw": "{{baseUrl}}/auth/logout",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
-								"{{environment}}",
 								"auth",
 								"logout"
 							]
@@ -268,12 +264,11 @@
 							"raw": "{\n  \"emailAddress\": \"{{userEmail}}\"\n}"
 						},
 						"url": {
-							"raw": "{{baseUrl}}/{{environment}}/auth/initiate-password-reset",
+							"raw": "{{baseUrl}}/auth/initiate-password-reset",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
-								"{{environment}}",
 								"auth",
 								"initiate-password-reset"
 							]
@@ -302,12 +297,11 @@
 							"raw": "{\n  \"emailAddress\": \"{{userEmail}}\",\n  \"code\": \"123456\",\n  \"newPassword\": \"newpassword123\"\n}"
 						},
 						"url": {
-							"raw": "{{baseUrl}}/{{environment}}/auth/confirm-password-reset",
+							"raw": "{{baseUrl}}/auth/confirm-password-reset",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
-								"{{environment}}",
 								"auth",
 								"confirm-password-reset"
 							]
@@ -344,12 +338,11 @@
 							}
 						],
 						"url": {
-							"raw": "{{baseUrl}}/{{environment}}/user/properties",
+							"raw": "{{baseUrl}}/user/properties",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
-								"{{environment}}",
 								"user",
 								"properties"
 							]
@@ -388,12 +381,11 @@
 							"raw": "{\n  \"bodyweight\": 185.5,\n  \"availableChangePlates\": [2.5, 5, 10, 25, 35, 45]\n}"
 						},
 						"url": {
-							"raw": "{{baseUrl}}/{{environment}}/user/properties",
+							"raw": "{{baseUrl}}/user/properties",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
-								"{{environment}}",
 								"user",
 								"properties"
 							]
@@ -438,12 +430,11 @@
 							"raw": "{\n  \"exercises\": [\n    {\n      \"exerciseItemId\": \"{{$guid}}\",\n      \"name\": \"Bench Press\",\n      \"isCustom\": false,\n      \"loadType\": \"Barbell\",\n      \"createdTimezone\": \"America/Los_Angeles\",\n      \"createdDatetime\": \"{{$isoTimestamp}}\",\n      \"notes\": \"Felt strong today\",\n      \"icon\": \"figure.strengthtraining.traditional\"\n    },\n    {\n      \"exerciseItemId\": \"{{$guid}}\",\n      \"name\": \"Squats\",\n      \"isCustom\": false,\n      \"loadType\": \"Barbell\",\n      \"createdTimezone\": \"America/Los_Angeles\",\n      \"createdDatetime\": \"{{$isoTimestamp}}\",\n      \"icon\": \"figure.squat\"\n    }\n  ]\n}"
 						},
 						"url": {
-							"raw": "{{baseUrl}}/{{environment}}/checkin/exercises",
+							"raw": "{{baseUrl}}/checkin/exercises",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
-								"{{environment}}",
 								"checkin",
 								"exercises"
 							]
@@ -474,12 +465,11 @@
 							}
 						],
 						"url": {
-							"raw": "{{baseUrl}}/{{environment}}/checkin/exercises",
+							"raw": "{{baseUrl}}/checkin/exercises",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
-								"{{environment}}",
 								"checkin",
 								"exercises"
 							]
@@ -518,12 +508,11 @@
 							"raw": "{\n  \"exerciseItemIds\": [\n    \"exercise-uuid-to-delete-1\",\n    \"exercise-uuid-to-delete-2\"\n  ]\n}"
 						},
 						"url": {
-							"raw": "{{baseUrl}}/{{environment}}/checkin/exercises",
+							"raw": "{{baseUrl}}/checkin/exercises",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
-								"{{environment}}",
 								"checkin",
 								"exercises"
 							]
@@ -562,12 +551,11 @@
 							"raw": "{\n  \"liftSets\": [\n    {\n      \"liftSetId\": \"{{$guid}}\",\n      \"exerciseId\": \"exercise-uuid-here\",\n      \"reps\": 10,\n      \"weight\": 135.5,\n      \"createdTimezone\": \"America/Los_Angeles\",\n      \"createdDatetime\": \"{{$isoTimestamp}}\"\n    },\n    {\n      \"liftSetId\": \"{{$guid}}\",\n      \"exerciseId\": \"exercise-uuid-here\",\n      \"reps\": 8,\n      \"weight\": 155.0,\n      \"createdTimezone\": \"America/Los_Angeles\",\n      \"createdDatetime\": \"{{$isoTimestamp}}\"\n    }\n  ]\n}"
 						},
 						"url": {
-							"raw": "{{baseUrl}}/{{environment}}/checkin/lift-sets",
+							"raw": "{{baseUrl}}/checkin/lift-sets",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
-								"{{environment}}",
 								"checkin",
 								"lift-sets"
 							]
@@ -598,12 +586,11 @@
 							}
 						],
 						"url": {
-							"raw": "{{baseUrl}}/{{environment}}/checkin/lift-sets?limit=100",
+							"raw": "{{baseUrl}}/checkin/lift-sets?limit=100",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
-								"{{environment}}",
 								"checkin",
 								"lift-sets"
 							],
@@ -655,12 +642,11 @@
 							"raw": "{\n  \"liftSetIds\": [\n    \"lift-set-uuid-to-delete-1\",\n    \"lift-set-uuid-to-delete-2\"\n  ]\n}"
 						},
 						"url": {
-							"raw": "{{baseUrl}}/{{environment}}/checkin/lift-sets",
+							"raw": "{{baseUrl}}/checkin/lift-sets",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
-								"{{environment}}",
 								"checkin",
 								"lift-sets"
 							]
@@ -699,12 +685,11 @@
 							"raw": "{\n  \"estimated1RMs\": [\n    {\n      \"estimated1RMId\": \"{{$guid}}\",\n      \"liftSetId\": \"lift-set-uuid-here\",\n      \"exerciseId\": \"exercise-uuid-here\",\n      \"value\": 225.5,\n      \"createdTimezone\": \"America/Los_Angeles\",\n      \"createdDatetime\": \"{{$isoTimestamp}}\"\n    }\n  ]\n}"
 						},
 						"url": {
-							"raw": "{{baseUrl}}/{{environment}}/checkin/estimated-1rm",
+							"raw": "{{baseUrl}}/checkin/estimated-1rm",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
-								"{{environment}}",
 								"checkin",
 								"estimated-1rm"
 							]
@@ -735,12 +720,11 @@
 							}
 						],
 						"url": {
-							"raw": "{{baseUrl}}/{{environment}}/checkin/estimated-1rm?limit=100",
+							"raw": "{{baseUrl}}/checkin/estimated-1rm?limit=100",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
-								"{{environment}}",
 								"checkin",
 								"estimated-1rm"
 							],
@@ -792,12 +776,11 @@
 							"raw": "{\n  \"liftSetIds\": [\n    \"lift-set-uuid-1\",\n    \"lift-set-uuid-2\"\n  ]\n}"
 						},
 						"url": {
-							"raw": "{{baseUrl}}/{{environment}}/checkin/estimated-1rm",
+							"raw": "{{baseUrl}}/checkin/estimated-1rm",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
-								"{{environment}}",
 								"checkin",
 								"estimated-1rm"
 							]
@@ -834,12 +817,11 @@
 							}
 						],
 						"url": {
-							"raw": "{{baseUrl}}/{{environment}}/entitlements/status",
+							"raw": "{{baseUrl}}/entitlements/status",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
-								"{{environment}}",
 								"entitlements",
 								"status"
 							]
@@ -878,12 +860,11 @@
 							"raw": "{\n  \"apple\": {\n    \"originalTransactionIds\": [\"1000000123456789\"]\n  }\n}"
 						},
 						"url": {
-							"raw": "{{baseUrl}}/{{environment}}/entitlements",
+							"raw": "{{baseUrl}}/entitlements",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
-								"{{environment}}",
 								"entitlements"
 							]
 						},
@@ -911,12 +892,11 @@
 							"raw": "{\n  \"signedPayload\": \"eyJhbGciOiJFUzI1NiIsIng1YyI6W...signed-notification-from-apple...\"  \n}"
 						},
 						"url": {
-							"raw": "{{baseUrl}}/{{environment}}/entitlements/apple-notification",
+							"raw": "{{baseUrl}}/entitlements/apple-notification",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
-								"{{environment}}",
 								"entitlements",
 								"apple-notification"
 							]

@@ -8,6 +8,9 @@ from .base import PROJECT_NAME, ACCOUNT_ID, REGION
 # Environment Name
 ENVIRONMENT = "production"
 
+# Custom Domain
+API_SUBDOMAIN = "api"
+
 # Removal Policy - RETAIN for production protects data
 REMOVAL_POLICY = RemovalPolicy.RETAIN
 

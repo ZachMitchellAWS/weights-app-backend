@@ -9,9 +9,13 @@ from aws_cdk import (
     aws_apigateway as apigateway,
     aws_ssm as ssm,
     aws_iam as iam,
+    aws_route53 as route53,
+    aws_route53_targets as targets,
+    aws_certificatemanager as acm,
 )
 from constructs import Construct
 from pathlib import Path
+from config import base
 
 
 class AuthStack(Stack):
@@ -63,6 +67,7 @@ class AuthStack(Stack):
         self.dependencies_layer = self._create_dependencies_layer()
         self.auth_function = self._create_auth_lambda()
         self.api = self._create_api_gateway()
+        self._create_custom_domain()
 
     def _create_dynamodb_table(self) -> dynamodb.Table:
         """
@@ -252,7 +257,7 @@ class AuthStack(Stack):
                 "USERS_TABLE_NAME": self.users_table.table_name,
                 "EMAIL_INDEX_NAME": "emailAddress-index",
                 "APPLE_USER_ID_INDEX_NAME": "appleUserId-index",
-                "APPLE_BUNDLE_ID": "io.anthroverse.WeightApp,io.anthroverse.WeightApp.staging",
+                "APPLE_BUNDLE_ID": "io.anthroverse.WeightApp",
                 "PASSWORD_RESET_CODES_TABLE_NAME": self.password_reset_codes_table.table_name,
                 "ENVIRONMENT": self.config.ENVIRONMENT,
                 "LOG_LEVEL": self.config.LOG_LEVEL,
@@ -452,3 +457,55 @@ class AuthStack(Stack):
         )
 
         return api
+
+    def _create_custom_domain(self) -> None:
+        """
+        Create custom domain name for the API Gateway.
+
+        Sets up:
+        - ACM certificate with DNS validation
+        - Custom domain name on the API Gateway
+        - Route 53 A record alias pointing to the API Gateway domain
+        """
+        domain_name = f"{self.config.API_SUBDOMAIN}.{base.DOMAIN_NAME}"
+
+        # Look up existing hosted zone
+        hosted_zone = route53.HostedZone.from_lookup(
+            self,
+            "HostedZone",
+            domain_name=base.DOMAIN_NAME,
+        )
+
+        # Create ACM certificate with DNS validation
+        certificate = acm.Certificate(
+            self,
+            "ApiCertificate",
+            domain_name=domain_name,
+            validation=acm.CertificateValidation.from_dns(hosted_zone),
+        )
+
+        # Add custom domain to the API Gateway
+        custom_domain = self.api.add_domain_name(
+            "CustomDomain",
+            domain_name=domain_name,
+            certificate=certificate,
+            endpoint_type=apigateway.EndpointType.REGIONAL,
+        )
+
+        # Create Route 53 A record alias
+        route53.ARecord(
+            self,
+            "ApiAliasRecord",
+            zone=hosted_zone,
+            record_name=self.config.API_SUBDOMAIN,
+            target=route53.RecordTarget.from_alias(
+                targets.ApiGatewayDomain(custom_domain)
+            ),
+        )
+
+        CfnOutput(
+            self,
+            "CustomDomainUrl",
+            value=f"https://{domain_name}",
+            description=f"Custom domain URL for {self.env_name} API",
+        )

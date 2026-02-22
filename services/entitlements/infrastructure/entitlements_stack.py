@@ -61,6 +61,7 @@ class EntitlementsStack(Stack):
         # Create resources
         self._create_ssm_parameters()
         self.entitlement_grants_table = self._create_entitlement_grants_table()
+        self.subscription_events_table = self._create_subscription_events_table()
         self.dependencies_layer = self._create_dependencies_layer()
         self.entitlements_function = self._create_entitlements_lambda()
         self._create_api_routes()
@@ -194,6 +195,78 @@ class EntitlementsStack(Stack):
 
         return table
 
+    def _create_subscription_events_table(self) -> dynamodb.Table:
+        """
+        Create DynamoDB table for subscription event logging.
+
+        Captures every Apple Server Notification V2 event for cohort analysis.
+        Write-only from Lambda; reads happen via analysis scripts.
+
+        Table schema:
+        - userId (String, partition key): User's unique identifier
+        - eventTimestamp (String, sort key): Server-receive time (ISO 8601, ms precision)
+        - notificationType (String): Apple notification type (e.g., SUBSCRIBED, EXPIRED)
+        - subtype (String): Apple notification subtype (e.g., INITIAL_BUY, VOLUNTARY)
+        - originalTransactionId (String): Groups all events for one subscription
+        - transactionId (String): Identifies individual renewal periods
+        - productId (String): Which plan (monthly/yearly)
+        - purchaseDateMs (Number): Raw Apple timestamp
+        - expiresDateMs (Number): Raw Apple timestamp
+
+        GSIs:
+        - originalTransactionId-eventTimestamp-index: Reconstruct one subscription's lifecycle
+        - notificationType-eventTimestamp-index: Cohort queries by event type
+
+        Returns:
+            DynamoDB Table construct
+        """
+        table = dynamodb.Table(
+            self,
+            "SubscriptionEventsTable",
+            table_name=f"{self.project_name}-{self.env_name}-subscription-events",
+            partition_key=dynamodb.Attribute(
+                name="userId",
+                type=dynamodb.AttributeType.STRING
+            ),
+            sort_key=dynamodb.Attribute(
+                name="eventTimestamp",
+                type=dynamodb.AttributeType.STRING
+            ),
+            billing_mode=self.config.DYNAMODB_BILLING_MODE,
+            point_in_time_recovery=self.config.DYNAMODB_POINT_IN_TIME_RECOVERY,
+            removal_policy=self.config.REMOVAL_POLICY,
+        )
+
+        # GSI: Reconstruct one subscription's lifecycle
+        table.add_global_secondary_index(
+            index_name="originalTransactionId-eventTimestamp-index",
+            partition_key=dynamodb.Attribute(
+                name="originalTransactionId",
+                type=dynamodb.AttributeType.STRING
+            ),
+            sort_key=dynamodb.Attribute(
+                name="eventTimestamp",
+                type=dynamodb.AttributeType.STRING
+            ),
+            projection_type=dynamodb.ProjectionType.ALL,
+        )
+
+        # GSI: Cohort queries by event type
+        table.add_global_secondary_index(
+            index_name="notificationType-eventTimestamp-index",
+            partition_key=dynamodb.Attribute(
+                name="notificationType",
+                type=dynamodb.AttributeType.STRING
+            ),
+            sort_key=dynamodb.Attribute(
+                name="eventTimestamp",
+                type=dynamodb.AttributeType.STRING
+            ),
+            projection_type=dynamodb.ProjectionType.ALL,
+        )
+
+        return table
+
     def _create_dependencies_layer(self) -> lambda_.LayerVersion:
         """
         Create Lambda Layer with Python dependencies.
@@ -247,6 +320,7 @@ class EntitlementsStack(Stack):
             timeout=self.config.LAMBDA_TIMEOUT,
             environment={
                 "ENTITLEMENT_GRANTS_TABLE_NAME": self.entitlement_grants_table.table_name,
+                "SUBSCRIPTION_EVENTS_TABLE_NAME": self.subscription_events_table.table_name,
                 "USERS_TABLE_NAME": self.users_table_name,
                 "ENVIRONMENT": self.config.ENVIRONMENT,
                 "LOG_LEVEL": self.config.LOG_LEVEL,
@@ -262,6 +336,9 @@ class EntitlementsStack(Stack):
 
         # Grant read/write permissions to entitlement grants table
         self.entitlement_grants_table.grant_read_write_data(function)
+
+        # Grant write permissions to subscription events table (read not needed from Lambda)
+        self.subscription_events_table.grant_write_data(function)
 
         # Grant read permission to users table (for webhook user validation)
         # Using IAM policy statement to avoid cross-stack reference
@@ -328,11 +405,11 @@ class EntitlementsStack(Stack):
         # Create /entitlements/apple-notification resource
         apple_notification_resource = entitlements_resource.add_resource("apple-notification")
 
-        # Add POST method for Apple webhook (API key only, no JWT auth)
-        # Apple sends notifications here and cannot include our JWT
+        # Add POST method for Apple webhook (no API key, no JWT auth)
+        # Apple sends notifications here and cannot include our API key or JWT.
+        # Security: payload is cryptographically verified via Apple's JWS signature.
         apple_notification_resource.add_method(
             "POST",
             entitlements_integration,
-            api_key_required=True,
-            # No authorizer - Apple webhook doesn't use JWT
+            api_key_required=False,
         )

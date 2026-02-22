@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Clear all items from staging DynamoDB tables.
+"""Clear all items from production DynamoDB tables.
 
 Uses batch_writer for efficient bulk deletes (up to 25 items per API call)
 instead of individual delete-item CLI calls.
 
 Usage:
-    python scripts/clear_staging_db.py
+    python scripts/clear_production_db.py
 """
 
 import boto3
@@ -13,7 +13,7 @@ from botocore.exceptions import ClientError
 from boto3.dynamodb.conditions import Key
 
 REGION = "us-west-1"
-ENV = "staging"
+ENV = "production"
 PROJECT = "liftthebull"
 
 # Tables: (suffix, partition_key, sort_key or None)

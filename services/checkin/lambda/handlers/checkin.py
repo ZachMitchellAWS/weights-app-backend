@@ -102,6 +102,13 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             return get_sequences(event, user_id)
         elif http_method == 'DELETE' and path.endswith('/checkin/sequences'):
             return delete_sequences(event, user_id)
+        # Split routes
+        elif http_method == 'POST' and path.endswith('/checkin/splits'):
+            return upsert_splits(event, user_id)
+        elif http_method == 'GET' and path.endswith('/checkin/splits'):
+            return get_splits(event, user_id)
+        elif http_method == 'DELETE' and path.endswith('/checkin/splits'):
+            return delete_splits(event, user_id)
         else:
             return create_response(
                 status_code=404,
@@ -135,7 +142,7 @@ def upsert_exercises(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
                 "exerciseItemId": "uuid-string",
                 "name": "Exercise name",
                 "isCustom": true/false,
-                "loadType": "Barbell" | "Single Load",
+                "loadType": "Barbell" | "Single Load" | "Bodyweight + Single Load",
                 "createdTimezone": "America/Los_Angeles",
                 "createdDatetime": "2026-01-27T10:30:00.000Z",
                 "notes": "Optional notes",
@@ -188,7 +195,7 @@ def upsert_exercises(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
 
         # Validate each exercise
         required_fields = ['exerciseItemId', 'name', 'isCustom', 'loadType', 'createdTimezone', 'createdDatetime']
-        valid_load_types = ['Barbell', 'Single Load']
+        valid_load_types = ['Barbell', 'Single Load', 'Bodyweight + Single Load']
         valid_movement_types = ['Push', 'Pull', 'Hinge', 'Squat', 'Core', 'Other']
         validation_errors = []
 
@@ -220,6 +227,20 @@ def upsert_exercises(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
                     validation_errors.append(
                         f"Exercise at index {idx}: movementType must be one of: {', '.join(valid_movement_types)}"
                     )
+
+            if 'setPlan' in exercise and exercise['setPlan'] is not None:
+                valid_effort_levels = ['easy', 'moderate', 'hard', 'pr']
+                if not isinstance(exercise['setPlan'], list):
+                    validation_errors.append(
+                        f"Exercise at index {idx}: setPlan must be an array"
+                    )
+                else:
+                    for i, level in enumerate(exercise['setPlan']):
+                        if level not in valid_effort_levels:
+                            validation_errors.append(
+                                f"Exercise at index {idx}: setPlan[{i}] must be one of: {', '.join(valid_effort_levels)}"
+                            )
+                            break
 
         if validation_errors:
             return create_response(
@@ -311,6 +332,14 @@ def upsert_exercises(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
                     else:
                         update_expression += ' REMOVE movementType'
 
+                # Handle setPlan - update if provided, remove if explicitly set to None/empty
+                if 'setPlan' in exercise:
+                    if exercise['setPlan']:
+                        update_expression += ', setPlan = :setPlan'
+                        expression_attr_values[':setPlan'] = exercise['setPlan']
+                    else:
+                        update_expression += ' REMOVE setPlan'
+
                 response = table.update_item(
                     Key={
                         'userId': user_id,
@@ -349,6 +378,10 @@ def upsert_exercises(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
                 # Add optional movementType if provided
                 if 'movementType' in exercise and exercise['movementType']:
                     exercise_item['movementType'] = exercise['movementType']
+
+                # Add optional setPlan if provided
+                if 'setPlan' in exercise and exercise['setPlan']:
+                    exercise_item['setPlan'] = exercise['setPlan']
 
                 table.put_item(Item=exercise_item)
                 result_exercises.append(exercise_item)
@@ -419,6 +452,11 @@ def get_exercises(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
             exercise for exercise in exercises
             if not exercise.get('deleted', False)
         ]
+
+        # Normalize old setSequence attribute to setPlan for backward compatibility
+        for exercise in non_deleted_exercises:
+            if 'setSequence' in exercise and 'setPlan' not in exercise:
+                exercise['setPlan'] = exercise.pop('setSequence')
 
         print(f"Retrieved {len(non_deleted_exercises)} non-deleted exercises for user: {user_id}")
 
@@ -674,6 +712,26 @@ def create_lift_sets(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
                     f"Lift set at index {idx}: weight must be a number"
                 )
 
+            # Validate optional isBaselineSet is a boolean
+            if 'isBaselineSet' in lift_set and not isinstance(lift_set['isBaselineSet'], bool):
+                validation_errors.append(
+                    f"Lift set at index {idx}: isBaselineSet must be a boolean"
+                )
+
+            # Validate optional rir is an integer 0-5
+            if 'rir' in lift_set and lift_set['rir'] is not None:
+                if not isinstance(lift_set['rir'], int) or lift_set['rir'] < 0 or lift_set['rir'] > 5:
+                    validation_errors.append(
+                        f"Lift set at index {idx}: rir must be an integer between 0 and 5"
+                    )
+
+            # Validate optional bodyweightUsed is a number
+            if 'bodyweightUsed' in lift_set and lift_set['bodyweightUsed'] is not None:
+                if not isinstance(lift_set['bodyweightUsed'], (int, float)):
+                    validation_errors.append(
+                        f"Lift set at index {idx}: bodyweightUsed must be a number"
+                    )
+
         if validation_errors:
             return create_response(
                 status_code=400,
@@ -709,10 +767,22 @@ def create_lift_sets(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
                 'lastModifiedDatetime': current_datetime,
             }
 
+            # Add optional baseline fields if provided
+            if lift_set.get('isBaselineSet'):
+                lift_set_item['isBaselineSet'] = True
+            if lift_set.get('rir') is not None:
+                lift_set_item['rir'] = lift_set['rir']
+
+            # Add optional bodyweightUsed if provided
+            if 'bodyweightUsed' in lift_set and lift_set['bodyweightUsed'] is not None:
+                lift_set_item['bodyweightUsed'] = Decimal(str(lift_set['bodyweightUsed']))
+
             table.put_item(Item=lift_set_item)
 
             # Convert Decimal back to float for JSON response
             response_item = {**lift_set_item, 'weight': float(lift_set_item['weight'])}
+            if 'bodyweightUsed' in response_item:
+                response_item['bodyweightUsed'] = float(response_item['bodyweightUsed'])
             result_lift_sets.append(response_item)
 
         print(f"Created {len(result_lift_sets)} lift sets for user {user_id}")
@@ -821,6 +891,10 @@ def get_lift_sets(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
                     lift_set['weight'] = float(lift_set['weight'])
                 if 'reps' in lift_set:
                     lift_set['reps'] = int(lift_set['reps'])
+                if 'rir' in lift_set:
+                    lift_set['rir'] = int(lift_set['rir'])
+                if 'bodyweightUsed' in lift_set:
+                    lift_set['bodyweightUsed'] = float(lift_set['bodyweightUsed'])
                 non_deleted_lift_sets.append(lift_set)
 
         print(f"Retrieved {len(non_deleted_lift_sets)} non-deleted lift sets for user: {user_id}")
@@ -977,6 +1051,8 @@ def delete_lift_sets(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
                 updated_item['weight'] = float(updated_item['weight'])
             if 'reps' in updated_item:
                 updated_item['reps'] = int(updated_item['reps'])
+            if 'bodyweightUsed' in updated_item:
+                updated_item['bodyweightUsed'] = float(updated_item['bodyweightUsed'])
             deleted_lift_sets.append(updated_item)
 
         print(f"Soft deleted {len(deleted_lift_sets)} lift sets for user: {user_id}")
@@ -1804,6 +1880,359 @@ def delete_sequences(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
         )
     except Exception as e:
         print(f"Error deleting sequences: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return create_response(
+            status_code=500,
+            body={"message": "Internal server error"}
+        )
+
+
+# =============================================================================
+# Workout Split Operations
+# =============================================================================
+
+def upsert_splits(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
+    """
+    Create or update one or more workout splits (upsert with batch support).
+
+    Expected request body:
+    {
+        "splits": [
+            {
+                "splitId": "uuid-string",
+                "name": "Split name",
+                "dayIds": ["uuid-1", "uuid-2"],
+                "createdTimezone": "America/Los_Angeles",
+                "createdDatetime": "2026-01-27T10:30:00.000Z"
+            },
+            ...
+        ]
+    }
+    """
+    try:
+        body = json.loads(event.get('body', '{}'))
+
+        if 'splits' not in body:
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Missing required field",
+                    "message": "Request body must contain 'splits' array"
+                }
+            )
+
+        splits_input = body['splits']
+
+        if not isinstance(splits_input, list):
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Invalid format",
+                    "message": "'splits' must be an array"
+                }
+            )
+
+        if len(splits_input) == 0:
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Empty splits array",
+                    "message": "At least one split is required"
+                }
+            )
+
+        # Validate each split
+        required_fields = ['splitId', 'name', 'dayIds', 'createdTimezone', 'createdDatetime']
+        validation_errors = []
+
+        for idx, split in enumerate(splits_input):
+            missing_fields = [field for field in required_fields if field not in split]
+            if missing_fields:
+                validation_errors.append(
+                    f"Split at index {idx}: missing fields: {', '.join(missing_fields)}"
+                )
+                continue
+
+            if not isinstance(split['name'], str) or not split['name'].strip():
+                validation_errors.append(
+                    f"Split at index {idx}: name must be a non-empty string"
+                )
+
+            if not isinstance(split['dayIds'], list):
+                validation_errors.append(
+                    f"Split at index {idx}: dayIds must be an array"
+                )
+            elif not all(isinstance(did, str) for did in split['dayIds']):
+                validation_errors.append(
+                    f"Split at index {idx}: dayIds must be an array of strings"
+                )
+
+        if validation_errors:
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Validation failed",
+                    "message": "One or more splits have validation errors",
+                    "errors": validation_errors
+                }
+            )
+
+        # Get table
+        table_name = os.environ.get('SPLITS_TABLE_NAME')
+        if not table_name:
+            raise ValueError("SPLITS_TABLE_NAME environment variable not set")
+
+        table = dynamodb.Table(table_name)
+
+        current_datetime = get_current_datetime_iso()
+
+        # Batch get existing items to determine create vs update
+        split_ids = [s['splitId'] for s in splits_input]
+        existing_items = {}
+        for i in range(0, len(split_ids), 100):
+            batch_ids = split_ids[i:i + 100]
+            keys = [{'userId': user_id, 'splitId': sid} for sid in batch_ids]
+
+            response = dynamodb.batch_get_item(
+                RequestItems={
+                    table_name: {
+                        'Keys': keys
+                    }
+                }
+            )
+
+            for item in response.get('Responses', {}).get(table_name, []):
+                existing_items[item['splitId']] = item
+
+        result_splits = []
+        created_count = 0
+        updated_count = 0
+
+        for split in splits_input:
+            split_id = split['splitId']
+            existing = existing_items.get(split_id)
+
+            if existing:
+                # UPDATE: update mutable fields only
+                response = table.update_item(
+                    Key={
+                        'userId': user_id,
+                        'splitId': split_id
+                    },
+                    UpdateExpression='SET #name = :name, dayIds = :dayIds, lastModifiedDatetime = :lastModified',
+                    ExpressionAttributeNames={'#name': 'name'},
+                    ExpressionAttributeValues={
+                        ':name': split['name'],
+                        ':dayIds': split['dayIds'],
+                        ':lastModified': current_datetime
+                    },
+                    ReturnValues='ALL_NEW'
+                )
+
+                result_splits.append(response.get('Attributes', {}))
+                updated_count += 1
+            else:
+                # CREATE: new item
+                split_item = {
+                    'userId': user_id,
+                    'splitId': split_id,
+                    'name': split['name'],
+                    'dayIds': split['dayIds'],
+                    'createdTimezone': split['createdTimezone'],
+                    'createdDatetime': split['createdDatetime'],
+                    'lastModifiedDatetime': current_datetime,
+                }
+
+                table.put_item(Item=split_item)
+                result_splits.append(split_item)
+                created_count += 1
+
+        print(f"Upserted splits for user {user_id}: {created_count} created, {updated_count} updated")
+
+        return create_response(
+            status_code=200 if updated_count > 0 else 201,
+            body={
+                "splits": result_splits,
+                "created": created_count,
+                "updated": updated_count
+            }
+        )
+
+    except json.JSONDecodeError:
+        return create_response(
+            status_code=400,
+            body={
+                "error": "Invalid JSON",
+                "message": "Request body must be valid JSON"
+            }
+        )
+    except Exception as e:
+        print(f"Error upserting splits: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return create_response(
+            status_code=500,
+            body={"message": "Internal server error"}
+        )
+
+
+def get_splits(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
+    """
+    Get all non-deleted splits for a user.
+    """
+    try:
+        table_name = os.environ.get('SPLITS_TABLE_NAME')
+        if not table_name:
+            raise ValueError("SPLITS_TABLE_NAME environment variable not set")
+
+        table = dynamodb.Table(table_name)
+
+        response = table.query(
+            KeyConditionExpression=Key('userId').eq(user_id)
+        )
+
+        splits = response.get('Items', [])
+
+        non_deleted_splits = [
+            s for s in splits
+            if not s.get('deleted', False)
+        ]
+
+        print(f"Retrieved {len(non_deleted_splits)} non-deleted splits for user: {user_id}")
+
+        return create_response(
+            status_code=200,
+            body={"splits": non_deleted_splits}
+        )
+
+    except Exception as e:
+        print(f"Error getting splits: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return create_response(
+            status_code=500,
+            body={"message": "Internal server error"}
+        )
+
+
+def delete_splits(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
+    """
+    Soft delete one or more splits by setting deleted=True (batch support).
+
+    Expected request body:
+    {
+        "splitIds": ["uuid-string-1", "uuid-string-2", ...]
+    }
+    """
+    try:
+        body = json.loads(event.get('body', '{}'))
+
+        if 'splitIds' not in body:
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Missing required field",
+                    "message": "Request body must contain 'splitIds' array"
+                }
+            )
+
+        split_ids = body['splitIds']
+
+        if not isinstance(split_ids, list):
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Invalid format",
+                    "message": "'splitIds' must be an array"
+                }
+            )
+
+        if len(split_ids) == 0:
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Empty splitIds array",
+                    "message": "At least one splitId is required"
+                }
+            )
+
+        table_name = os.environ.get('SPLITS_TABLE_NAME')
+        if not table_name:
+            raise ValueError("SPLITS_TABLE_NAME environment variable not set")
+
+        table = dynamodb.Table(table_name)
+
+        # Verify which items exist
+        existing_items = {}
+        for i in range(0, len(split_ids), 100):
+            batch_ids = split_ids[i:i + 100]
+            keys = [{'userId': user_id, 'splitId': sid} for sid in batch_ids]
+
+            response = dynamodb.batch_get_item(
+                RequestItems={
+                    table_name: {
+                        'Keys': keys
+                    }
+                }
+            )
+
+            for item in response.get('Responses', {}).get(table_name, []):
+                existing_items[item['splitId']] = item
+
+        not_found_ids = [sid for sid in split_ids if sid not in existing_items]
+
+        if not_found_ids:
+            print(f"Splits not found for user {user_id}: {not_found_ids}")
+
+        current_datetime = get_current_datetime_iso()
+
+        deleted_splits = []
+
+        for split_id in split_ids:
+            if split_id not in existing_items:
+                continue
+
+            response = table.update_item(
+                Key={
+                    'userId': user_id,
+                    'splitId': split_id
+                },
+                UpdateExpression='SET deleted = :deleted, lastModifiedDatetime = :lastModified',
+                ExpressionAttributeValues={
+                    ':deleted': True,
+                    ':lastModified': current_datetime
+                },
+                ReturnValues='ALL_NEW'
+            )
+
+            deleted_splits.append(response.get('Attributes', {}))
+
+        print(f"Soft deleted {len(deleted_splits)} splits for user: {user_id}")
+
+        response_body = {
+            "message": f"Deleted {len(deleted_splits)} split(s)",
+            "deletedSplits": deleted_splits
+        }
+
+        if not_found_ids:
+            response_body["notFoundIds"] = not_found_ids
+
+        return create_response(
+            status_code=200,
+            body=response_body
+        )
+
+    except json.JSONDecodeError:
+        return create_response(
+            status_code=400,
+            body={
+                "error": "Invalid JSON",
+                "message": "Request body must be valid JSON"
+            }
+        )
+    except Exception as e:
+        print(f"Error deleting splits: {str(e)}")
         import traceback
         traceback.print_exc()
         return create_response(

@@ -139,7 +139,7 @@ def get_status(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
             return create_response(
                 status_code=200,
                 body={
-                    "accountStatus": latest_grant.get('entitlementName', 'premium'),
+                    "accountStatus": "premium",
                     "expirationUtc": latest_grant.get('endUtc')
                 }
             )
@@ -194,71 +194,35 @@ def process_transactions(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     try:
         body = json.loads(event.get('body', '{}'))
 
-        # Validate request body
-        if 'apple' not in body:
-            return create_response(
-                status_code=400,
-                body={
-                    "error": "Missing required field",
-                    "message": "Request body must contain 'apple' object"
-                }
-            )
+        # Extract transaction IDs if provided
+        original_transaction_ids = []
+        apple_data = body.get('apple', {})
+        if apple_data:
+            ids = apple_data.get('originalTransactionIds', [])
+            if isinstance(ids, list):
+                original_transaction_ids = ids
 
-        apple_data = body['apple']
-        if 'originalTransactionIds' not in apple_data:
-            return create_response(
-                status_code=400,
-                body={
-                    "error": "Missing required field",
-                    "message": "'apple' object must contain 'originalTransactionIds' array"
-                }
-            )
+        # Process any provided transaction IDs
+        if original_transaction_ids:
+            client = get_apple_api_client()
 
-        original_transaction_ids = apple_data['originalTransactionIds']
-        if not isinstance(original_transaction_ids, list) or len(original_transaction_ids) == 0:
-            return create_response(
-                status_code=400,
-                body={
-                    "error": "Invalid format",
-                    "message": "'originalTransactionIds' must be a non-empty array"
-                }
-            )
+            for original_transaction_id in original_transaction_ids:
+                try:
+                    transactions = fetch_transaction_history(client, original_transaction_id)
 
-        # Get Apple API client
-        client = get_apple_api_client()
+                    for transaction in transactions:
+                        _create_entitlement_grant(user_id, transaction)
 
-        # Process each transaction ID
-        all_grants = []
-        created_count = 0
-        skipped_count = 0
+                except Exception as e:
+                    print(f"Error processing transaction {original_transaction_id}: {str(e)}")
 
-        for original_transaction_id in original_transaction_ids:
-            try:
-                # Fetch transaction history from Apple
-                transactions = fetch_transaction_history(client, original_transaction_id)
-
-                for transaction in transactions:
-                    grant, was_created = _create_entitlement_grant(user_id, transaction)
-                    if grant:
-                        all_grants.append(grant)
-                        if was_created:
-                            created_count += 1
-                        else:
-                            skipped_count += 1
-
-            except Exception as e:
-                print(f"Error processing transaction {original_transaction_id}: {str(e)}")
-                # Continue processing other transactions
-
-        # Get active entitlements for the user
+        # Always return current active entitlements
         active_entitlements = _get_active_entitlements(user_id)
 
         return create_response(
             status_code=200,
             body={
                 "activeEntitlements": active_entitlements,
-                "created": created_count,
-                "skipped": skipped_count
             }
         )
 
@@ -306,6 +270,10 @@ def handle_apple_notification(event: Dict[str, Any]) -> Dict[str, Any]:
         if not notification_data:
             print("Failed to parse notification")
             return create_response(status_code=200, body={"message": "ok"})
+
+        # Log subscription event before any user validation — captures events
+        # even for unknown users. Fire-and-forget: errors never block the response.
+        _log_subscription_event(notification_data)
 
         user_id = notification_data.get('userId')
         original_transaction_id = notification_data.get('originalTransactionId')
@@ -454,8 +422,70 @@ def _get_active_entitlements(user_id: str) -> List[Dict[str, Any]]:
             ScanIndexForward=False,
         )
 
-        return response.get('Items', [])
+        # Return only client-relevant fields
+        return [
+            {
+                'userId': item['userId'],
+                'startUtc': item['startUtc'],
+                'endUtc': item['endUtc'],
+                'entitlementName': item.get('entitlementName', ''),
+            }
+            for item in response.get('Items', [])
+        ]
 
     except Exception as e:
         print(f"Error getting active entitlements: {str(e)}")
         return []
+
+
+def _log_subscription_event(notification_data: Dict[str, Any]) -> None:
+    """
+    Log a subscription event to the subscription-events table.
+
+    Fire-and-forget: errors are logged but never propagated.
+    Called before user validation so events are captured even for unknown users.
+
+    Args:
+        notification_data: Parsed notification from parse_notification()
+    """
+    try:
+        table_name = os.environ.get('SUBSCRIPTION_EVENTS_TABLE_NAME')
+        if not table_name:
+            print("SUBSCRIPTION_EVENTS_TABLE_NAME environment variable not set")
+            return
+
+        table = dynamodb.Table(table_name)
+
+        user_id = notification_data.get('userId', '')
+        notification_type = notification_data.get('notificationType', '')
+        subtype = notification_data.get('subtype', '')
+        original_transaction_id = notification_data.get('originalTransactionId', '')
+        transaction = notification_data.get('transaction', {})
+
+        now = datetime.now(timezone.utc)
+        event_timestamp = now.strftime('%Y-%m-%dT%H:%M:%S.') + f"{now.microsecond // 1000:03d}Z"
+
+        item = {
+            'userId': user_id,
+            'eventTimestamp': event_timestamp,
+            'notificationType': notification_type,
+            'originalTransactionId': original_transaction_id,
+            'transactionId': transaction.get('transactionId', ''),
+            'productId': transaction.get('productId', ''),
+            'purchaseDateMs': transaction.get('purchaseDate', 0),
+            'expiresDateMs': transaction.get('expiresDate', 0),
+        }
+
+        # Only include subtype if present (not all notification types have one)
+        if subtype:
+            item['subtype'] = subtype
+
+        table.put_item(Item=item)
+
+        subtype_str = f"/{subtype}" if subtype else ""
+        print(f"Logged subscription event: {notification_type}{subtype_str} for user {user_id}")
+
+    except Exception as e:
+        print(f"Error logging subscription event: {str(e)}")
+        import traceback
+        traceback.print_exc()

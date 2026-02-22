@@ -3,9 +3,14 @@
 import os
 import json
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Dict, Any, List, Optional
 
 import boto3
+
+# Load Apple Root CA certificate for transaction verification
+_CERTS_DIR = Path(__file__).parent.parent / "certs"
+_APPLE_ROOT_CA = (_CERTS_DIR / "AppleRootCA-G3.cer").read_bytes()
 
 # Import Apple App Store Server Library
 from appstoreserverlibrary.api_client import AppStoreServerAPIClient, Environment
@@ -26,8 +31,8 @@ _ssm_cache: Dict[str, str] = {}
 # Product ID to entitlement name mapping
 # Update this mapping with your actual Apple product IDs
 PRODUCT_ENTITLEMENT_MAPPING = {
-    "com.app.premium.monthly": "premium",
-    "com.app.premium.annual": "premium",
+    "com.weightapp.premium.monthly.499": "io.liftthebull.full_access.monthly.499",
+    "com.weightapp.premium.yearly.3999": "io.liftthebull.full_access.yearly.3999",
 }
 
 
@@ -91,7 +96,7 @@ def get_apple_api_client() -> AppStoreServerAPIClient:
     environment = get_apple_environment()
 
     return AppStoreServerAPIClient(
-        signing_key=credentials['private_key'],
+        signing_key=credentials['private_key'].encode('utf-8'),
         key_id=credentials['key_id'],
         issuer_id=credentials['issuer_id'],
         bundle_id=credentials['bundle_id'],
@@ -132,20 +137,20 @@ def fetch_transaction_history(
     )
 
     # Process signed transactions
-    if response and response.signed_transactions:
+    if response and response.signedTransactions:
         credentials = get_apple_credentials()
         environment = get_apple_environment()
 
         # Create verifier for decoding signed transactions
         verifier = SignedDataVerifier(
-            root_certificates=[],  # Apple's root certs are included in the library
+            root_certificates=[_APPLE_ROOT_CA],  # Apple's root certs are included in the library
             enable_online_checks=False,
             environment=environment,
             bundle_id=credentials['bundle_id'],
             app_apple_id=None,  # Not required for subscription verification
         )
 
-        for signed_transaction in response.signed_transactions:
+        for signed_transaction in response.signedTransactions:
             try:
                 # Decode the signed transaction
                 transaction = verifier.verify_and_decode_signed_transaction(signed_transaction)
@@ -154,15 +159,15 @@ def fetch_transaction_history(
                 print(f"Error decoding transaction: {str(e)}")
 
     # Handle pagination if there are more results
-    while response and response.has_more and response.revision:
+    while response and response.hasMore and response.revision:
         response = client.get_transaction_history(
             transaction_id=original_transaction_id,
             revision=response.revision,
             transaction_history_request=request,
         )
 
-        if response and response.signed_transactions:
-            for signed_transaction in response.signed_transactions:
+        if response and response.signedTransactions:
+            for signed_transaction in response.signedTransactions:
                 try:
                     transaction = verifier.verify_and_decode_signed_transaction(signed_transaction)
                     transactions.append(_transaction_to_dict(transaction))
@@ -183,14 +188,14 @@ def _transaction_to_dict(transaction) -> Dict[str, Any]:
         Dictionary with transaction data
     """
     return {
-        'originalTransactionId': getattr(transaction, 'original_transaction_id', ''),
-        'transactionId': getattr(transaction, 'transaction_id', ''),
-        'productId': getattr(transaction, 'product_id', ''),
-        'purchaseDate': getattr(transaction, 'purchase_date', 0),
-        'expiresDate': getattr(transaction, 'expires_date', 0),
+        'originalTransactionId': getattr(transaction, 'originalTransactionId', ''),
+        'transactionId': getattr(transaction, 'transactionId', ''),
+        'productId': getattr(transaction, 'productId', ''),
+        'purchaseDate': getattr(transaction, 'purchaseDate', 0),
+        'expiresDate': getattr(transaction, 'expiresDate', 0),
         'quantity': getattr(transaction, 'quantity', 1),
         'type': str(getattr(transaction, 'type', '')),
-        'appAccountToken': getattr(transaction, 'app_account_token', ''),
+        'appAccountToken': getattr(transaction, 'appAccountToken', ''),
     }
 
 
@@ -225,7 +230,7 @@ def parse_notification(body: str) -> Optional[Dict[str, Any]]:
         environment = get_apple_environment()
 
         verifier = SignedDataVerifier(
-            root_certificates=[],
+            root_certificates=[_APPLE_ROOT_CA],
             enable_online_checks=False,
             environment=environment,
             bundle_id=credentials['bundle_id'],
@@ -240,8 +245,8 @@ def parse_notification(body: str) -> Optional[Dict[str, Any]]:
             return None
 
         # Extract data from the notification
-        notification_type = getattr(notification, 'notification_type', '')
-        subtype = getattr(notification, 'subtype', '')
+        notification_type = getattr(notification, 'rawNotificationType', '') or ''
+        subtype = getattr(notification, 'rawSubtype', '') or ''
 
         print(f"Notification type: {notification_type}, subtype: {subtype}")
 
@@ -251,7 +256,7 @@ def parse_notification(body: str) -> Optional[Dict[str, Any]]:
             print("No data in notification")
             return None
 
-        signed_transaction_info = getattr(data, 'signed_transaction_info', None)
+        signed_transaction_info = getattr(data, 'signedTransactionInfo', None)
         if not signed_transaction_info:
             print("No signedTransactionInfo in notification data")
             return None
@@ -263,8 +268,8 @@ def parse_notification(body: str) -> Optional[Dict[str, Any]]:
             return None
 
         # Extract appAccountToken (this is the userId set by the iOS app)
-        app_account_token = getattr(transaction, 'app_account_token', '')
-        original_transaction_id = getattr(transaction, 'original_transaction_id', '')
+        app_account_token = getattr(transaction, 'appAccountToken', '')
+        original_transaction_id = getattr(transaction, 'originalTransactionId', '')
 
         return {
             'userId': app_account_token,

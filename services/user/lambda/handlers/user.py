@@ -284,6 +284,21 @@ def handle_update_properties(event: Dict[str, Any]) -> Dict[str, Any]:
             update_parts.append("maxReps = :maxReps")
             expression_values[":maxReps"] = max_reps
 
+        # Handle per-mode effort rep range fields
+        for field in ["easyMinReps", "easyMaxReps", "moderateMinReps", "moderateMaxReps", "hardMinReps", "hardMaxReps"]:
+            if field in body:
+                val = body.get(field)
+                if not isinstance(val, int) or val < 1:
+                    return create_response(
+                        status_code=400,
+                        body={
+                            "error": "Invalid field type",
+                            "message": f"{field} must be a positive integer"
+                        }
+                    )
+                update_parts.append(f"{field} = :{field}")
+                expression_values[f":{field}"] = val
+
         # Require at least one field to update
         if not update_parts and not remove_parts:
             return create_response(

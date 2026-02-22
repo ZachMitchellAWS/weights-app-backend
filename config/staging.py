@@ -8,6 +8,9 @@ from .base import PROJECT_NAME, ACCOUNT_ID, REGION
 # Environment Name
 ENVIRONMENT = "staging"
 
+# Custom Domain
+API_SUBDOMAIN = "api-staging"
+
 # Removal Policy - DESTROY for staging allows easy cleanup
 REMOVAL_POLICY = RemovalPolicy.DESTROY
 
