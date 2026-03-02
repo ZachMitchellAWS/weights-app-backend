@@ -16,10 +16,15 @@ Handles estimated 1RM operations:
 - GET /checkin/estimated-1rm: Get paginated estimated 1RM records (most recent first)
 - DELETE /checkin/estimated-1rm: Soft delete estimated 1RM records (batch support)
 
-Handles workout sequence operations:
-- POST /checkin/sequences: Create or update sequences (upsert with batch support)
-- GET /checkin/sequences: Get all non-deleted sequences
-- DELETE /checkin/sequences: Soft delete sequences (batch support)
+Handles workout split operations (days embedded as array within splits):
+- POST /checkin/splits: Create or update splits (upsert with batch support)
+- GET /checkin/splits: Get all non-deleted splits
+- DELETE /checkin/splits: Soft delete splits (batch support)
+
+Handles set plan template operations:
+- POST /checkin/set-plan-templates: Create or update set plan templates (upsert with batch support)
+- GET /checkin/set-plan-templates: Get all non-deleted set plan templates
+- DELETE /checkin/set-plan-templates: Soft delete set plan templates (batch support)
 
 Security: All operations use the userId from the JWT token as the DynamoDB
 partition key, ensuring users can only access/modify their own data.
@@ -95,13 +100,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             return get_estimated_1rm(event, user_id)
         elif http_method == 'DELETE' and path.endswith('/checkin/estimated-1rm'):
             return delete_estimated_1rm(event, user_id)
-        # Sequence routes
-        elif http_method == 'POST' and path.endswith('/checkin/sequences'):
-            return upsert_sequences(event, user_id)
-        elif http_method == 'GET' and path.endswith('/checkin/sequences'):
-            return get_sequences(event, user_id)
-        elif http_method == 'DELETE' and path.endswith('/checkin/sequences'):
-            return delete_sequences(event, user_id)
         # Split routes
         elif http_method == 'POST' and path.endswith('/checkin/splits'):
             return upsert_splits(event, user_id)
@@ -109,6 +107,13 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             return get_splits(event, user_id)
         elif http_method == 'DELETE' and path.endswith('/checkin/splits'):
             return delete_splits(event, user_id)
+        # Set plan template routes
+        elif http_method == 'POST' and path.endswith('/checkin/set-plan-templates'):
+            return upsert_set_plan_templates(event, user_id)
+        elif http_method == 'GET' and path.endswith('/checkin/set-plan-templates'):
+            return get_set_plan_templates(event, user_id)
+        elif http_method == 'DELETE' and path.endswith('/checkin/set-plan-templates'):
+            return delete_set_plan_templates(event, user_id)
         else:
             return create_response(
                 status_code=404,
@@ -142,7 +147,7 @@ def upsert_exercises(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
                 "exerciseItemId": "uuid-string",
                 "name": "Exercise name",
                 "isCustom": true/false,
-                "loadType": "Barbell" | "Single Load" | "Bodyweight + Single Load",
+                "loadType": "Barbell" | "Single Load",
                 "createdTimezone": "America/Los_Angeles",
                 "createdDatetime": "2026-01-27T10:30:00.000Z",
                 "notes": "Optional notes",
@@ -195,7 +200,7 @@ def upsert_exercises(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
 
         # Validate each exercise
         required_fields = ['exerciseItemId', 'name', 'isCustom', 'loadType', 'createdTimezone', 'createdDatetime']
-        valid_load_types = ['Barbell', 'Single Load', 'Bodyweight + Single Load']
+        valid_load_types = ['Barbell', 'Single Load']
         valid_movement_types = ['Push', 'Pull', 'Hinge', 'Squat', 'Core', 'Other']
         validation_errors = []
 
@@ -229,7 +234,7 @@ def upsert_exercises(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
                     )
 
             if 'setPlan' in exercise and exercise['setPlan'] is not None:
-                valid_effort_levels = ['easy', 'moderate', 'hard', 'pr']
+                valid_effort_levels = ['easy', 'moderate', 'hard', 'redline', 'pr']
                 if not isinstance(exercise['setPlan'], list):
                     validation_errors.append(
                         f"Exercise at index {idx}: setPlan must be an array"
@@ -340,6 +345,14 @@ def upsert_exercises(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
                     else:
                         update_expression += ' REMOVE setPlan'
 
+                # Handle setPlanTemplateId - update if provided, remove if explicitly set to None
+                if 'setPlanTemplateId' in exercise:
+                    if exercise['setPlanTemplateId']:
+                        update_expression += ', setPlanTemplateId = :setPlanTemplateId'
+                        expression_attr_values[':setPlanTemplateId'] = exercise['setPlanTemplateId']
+                    else:
+                        update_expression += ' REMOVE setPlanTemplateId'
+
                 response = table.update_item(
                     Key={
                         'userId': user_id,
@@ -382,6 +395,10 @@ def upsert_exercises(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
                 # Add optional setPlan if provided
                 if 'setPlan' in exercise and exercise['setPlan']:
                     exercise_item['setPlan'] = exercise['setPlan']
+
+                # Add optional setPlanTemplateId if provided
+                if 'setPlanTemplateId' in exercise and exercise['setPlanTemplateId']:
+                    exercise_item['setPlanTemplateId'] = exercise['setPlanTemplateId']
 
                 table.put_item(Item=exercise_item)
                 result_exercises.append(exercise_item)
@@ -725,13 +742,6 @@ def create_lift_sets(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
                         f"Lift set at index {idx}: rir must be an integer between 0 and 5"
                     )
 
-            # Validate optional bodyweightUsed is a number
-            if 'bodyweightUsed' in lift_set and lift_set['bodyweightUsed'] is not None:
-                if not isinstance(lift_set['bodyweightUsed'], (int, float)):
-                    validation_errors.append(
-                        f"Lift set at index {idx}: bodyweightUsed must be a number"
-                    )
-
         if validation_errors:
             return create_response(
                 status_code=400,
@@ -773,16 +783,10 @@ def create_lift_sets(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
             if lift_set.get('rir') is not None:
                 lift_set_item['rir'] = lift_set['rir']
 
-            # Add optional bodyweightUsed if provided
-            if 'bodyweightUsed' in lift_set and lift_set['bodyweightUsed'] is not None:
-                lift_set_item['bodyweightUsed'] = Decimal(str(lift_set['bodyweightUsed']))
-
             table.put_item(Item=lift_set_item)
 
             # Convert Decimal back to float for JSON response
             response_item = {**lift_set_item, 'weight': float(lift_set_item['weight'])}
-            if 'bodyweightUsed' in response_item:
-                response_item['bodyweightUsed'] = float(response_item['bodyweightUsed'])
             result_lift_sets.append(response_item)
 
         print(f"Created {len(result_lift_sets)} lift sets for user {user_id}")
@@ -893,8 +897,6 @@ def get_lift_sets(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
                     lift_set['reps'] = int(lift_set['reps'])
                 if 'rir' in lift_set:
                     lift_set['rir'] = int(lift_set['rir'])
-                if 'bodyweightUsed' in lift_set:
-                    lift_set['bodyweightUsed'] = float(lift_set['bodyweightUsed'])
                 non_deleted_lift_sets.append(lift_set)
 
         print(f"Retrieved {len(non_deleted_lift_sets)} non-deleted lift sets for user: {user_id}")
@@ -1051,8 +1053,6 @@ def delete_lift_sets(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
                 updated_item['weight'] = float(updated_item['weight'])
             if 'reps' in updated_item:
                 updated_item['reps'] = int(updated_item['reps'])
-            if 'bodyweightUsed' in updated_item:
-                updated_item['bodyweightUsed'] = float(updated_item['bodyweightUsed'])
             deleted_lift_sets.append(updated_item)
 
         print(f"Soft deleted {len(deleted_lift_sets)} lift sets for user: {user_id}")
@@ -1512,383 +1512,6 @@ def delete_estimated_1rm(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
 
 
 # =============================================================================
-# Workout Sequence Operations
-# =============================================================================
-
-def upsert_sequences(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
-    """
-    Create or update one or more workout sequences (upsert with batch support).
-
-    - For new items: creates with all fields including createdDatetime
-    - For existing items: updates name, exerciseIds, lastModifiedDatetime
-
-    Expected request body:
-    {
-        "sequences": [
-            {
-                "sequenceId": "uuid-string",
-                "name": "Sequence name",
-                "exerciseIds": ["uuid-1", "uuid-2"],
-                "createdTimezone": "America/Los_Angeles",
-                "createdDatetime": "2026-01-27T10:30:00.000Z"
-            },
-            ...
-        ]
-    }
-
-    Args:
-        event: API Gateway event
-        user_id: User ID from JWT token
-
-    Returns:
-        API Gateway response with created/updated sequences
-    """
-    try:
-        body = json.loads(event.get('body', '{}'))
-
-        if 'sequences' not in body:
-            return create_response(
-                status_code=400,
-                body={
-                    "error": "Missing required field",
-                    "message": "Request body must contain 'sequences' array"
-                }
-            )
-
-        sequences_input = body['sequences']
-
-        if not isinstance(sequences_input, list):
-            return create_response(
-                status_code=400,
-                body={
-                    "error": "Invalid format",
-                    "message": "'sequences' must be an array"
-                }
-            )
-
-        if len(sequences_input) == 0:
-            return create_response(
-                status_code=400,
-                body={
-                    "error": "Empty sequences array",
-                    "message": "At least one sequence is required"
-                }
-            )
-
-        # Validate each sequence
-        required_fields = ['sequenceId', 'name', 'exerciseIds', 'createdTimezone', 'createdDatetime']
-        validation_errors = []
-
-        for idx, sequence in enumerate(sequences_input):
-            missing_fields = [field for field in required_fields if field not in sequence]
-            if missing_fields:
-                validation_errors.append(
-                    f"Sequence at index {idx}: missing fields: {', '.join(missing_fields)}"
-                )
-                continue
-
-            if not isinstance(sequence['name'], str) or not sequence['name'].strip():
-                validation_errors.append(
-                    f"Sequence at index {idx}: name must be a non-empty string"
-                )
-
-            if not isinstance(sequence['exerciseIds'], list):
-                validation_errors.append(
-                    f"Sequence at index {idx}: exerciseIds must be an array"
-                )
-            elif not all(isinstance(eid, str) for eid in sequence['exerciseIds']):
-                validation_errors.append(
-                    f"Sequence at index {idx}: exerciseIds must be an array of strings"
-                )
-
-        if validation_errors:
-            return create_response(
-                status_code=400,
-                body={
-                    "error": "Validation failed",
-                    "message": "One or more sequences have validation errors",
-                    "errors": validation_errors
-                }
-            )
-
-        # Get table
-        table_name = os.environ.get('SEQUENCES_TABLE_NAME')
-        if not table_name:
-            raise ValueError("SEQUENCES_TABLE_NAME environment variable not set")
-
-        table = dynamodb.Table(table_name)
-
-        current_datetime = get_current_datetime_iso()
-
-        # Batch get existing items to determine create vs update
-        sequence_ids = [seq['sequenceId'] for seq in sequences_input]
-        existing_items = {}
-        for i in range(0, len(sequence_ids), 100):
-            batch_ids = sequence_ids[i:i + 100]
-            keys = [{'userId': user_id, 'sequenceId': sid} for sid in batch_ids]
-
-            response = dynamodb.batch_get_item(
-                RequestItems={
-                    table_name: {
-                        'Keys': keys
-                    }
-                }
-            )
-
-            for item in response.get('Responses', {}).get(table_name, []):
-                existing_items[item['sequenceId']] = item
-
-        result_sequences = []
-        created_count = 0
-        updated_count = 0
-
-        for sequence in sequences_input:
-            sequence_id = sequence['sequenceId']
-            existing = existing_items.get(sequence_id)
-
-            if existing:
-                # UPDATE: update mutable fields only
-                response = table.update_item(
-                    Key={
-                        'userId': user_id,
-                        'sequenceId': sequence_id
-                    },
-                    UpdateExpression='SET #name = :name, exerciseIds = :exerciseIds, lastModifiedDatetime = :lastModified',
-                    ExpressionAttributeNames={'#name': 'name'},
-                    ExpressionAttributeValues={
-                        ':name': sequence['name'],
-                        ':exerciseIds': sequence['exerciseIds'],
-                        ':lastModified': current_datetime
-                    },
-                    ReturnValues='ALL_NEW'
-                )
-
-                result_sequences.append(response.get('Attributes', {}))
-                updated_count += 1
-            else:
-                # CREATE: new item
-                sequence_item = {
-                    'userId': user_id,
-                    'sequenceId': sequence_id,
-                    'name': sequence['name'],
-                    'exerciseIds': sequence['exerciseIds'],
-                    'createdTimezone': sequence['createdTimezone'],
-                    'createdDatetime': sequence['createdDatetime'],
-                    'lastModifiedDatetime': current_datetime,
-                }
-
-                table.put_item(Item=sequence_item)
-                result_sequences.append(sequence_item)
-                created_count += 1
-
-        print(f"Upserted sequences for user {user_id}: {created_count} created, {updated_count} updated")
-
-        return create_response(
-            status_code=200 if updated_count > 0 else 201,
-            body={
-                "sequences": result_sequences,
-                "created": created_count,
-                "updated": updated_count
-            }
-        )
-
-    except json.JSONDecodeError:
-        return create_response(
-            status_code=400,
-            body={
-                "error": "Invalid JSON",
-                "message": "Request body must be valid JSON"
-            }
-        )
-    except Exception as e:
-        print(f"Error upserting sequences: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return create_response(
-            status_code=500,
-            body={"message": "Internal server error"}
-        )
-
-
-def get_sequences(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
-    """
-    Get all non-deleted sequences for a user.
-
-    Args:
-        event: API Gateway event
-        user_id: User ID from JWT token
-
-    Returns:
-        API Gateway response with list of sequences
-    """
-    try:
-        table_name = os.environ.get('SEQUENCES_TABLE_NAME')
-        if not table_name:
-            raise ValueError("SEQUENCES_TABLE_NAME environment variable not set")
-
-        table = dynamodb.Table(table_name)
-
-        response = table.query(
-            KeyConditionExpression=Key('userId').eq(user_id)
-        )
-
-        sequences = response.get('Items', [])
-
-        non_deleted_sequences = [
-            seq for seq in sequences
-            if not seq.get('deleted', False)
-        ]
-
-        print(f"Retrieved {len(non_deleted_sequences)} non-deleted sequences for user: {user_id}")
-
-        return create_response(
-            status_code=200,
-            body={"sequences": non_deleted_sequences}
-        )
-
-    except Exception as e:
-        print(f"Error getting sequences: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return create_response(
-            status_code=500,
-            body={"message": "Internal server error"}
-        )
-
-
-def delete_sequences(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
-    """
-    Soft delete one or more sequences by setting deleted=True (batch support).
-
-    Expected request body:
-    {
-        "sequenceIds": ["uuid-string-1", "uuid-string-2", ...]
-    }
-
-    Args:
-        event: API Gateway event
-        user_id: User ID from JWT token
-
-    Returns:
-        API Gateway response confirming deletions
-    """
-    try:
-        body = json.loads(event.get('body', '{}'))
-
-        if 'sequenceIds' not in body:
-            return create_response(
-                status_code=400,
-                body={
-                    "error": "Missing required field",
-                    "message": "Request body must contain 'sequenceIds' array"
-                }
-            )
-
-        sequence_ids = body['sequenceIds']
-
-        if not isinstance(sequence_ids, list):
-            return create_response(
-                status_code=400,
-                body={
-                    "error": "Invalid format",
-                    "message": "'sequenceIds' must be an array"
-                }
-            )
-
-        if len(sequence_ids) == 0:
-            return create_response(
-                status_code=400,
-                body={
-                    "error": "Empty sequenceIds array",
-                    "message": "At least one sequenceId is required"
-                }
-            )
-
-        table_name = os.environ.get('SEQUENCES_TABLE_NAME')
-        if not table_name:
-            raise ValueError("SEQUENCES_TABLE_NAME environment variable not set")
-
-        table = dynamodb.Table(table_name)
-
-        # Verify which items exist
-        existing_items = {}
-        for i in range(0, len(sequence_ids), 100):
-            batch_ids = sequence_ids[i:i + 100]
-            keys = [{'userId': user_id, 'sequenceId': sid} for sid in batch_ids]
-
-            response = dynamodb.batch_get_item(
-                RequestItems={
-                    table_name: {
-                        'Keys': keys
-                    }
-                }
-            )
-
-            for item in response.get('Responses', {}).get(table_name, []):
-                existing_items[item['sequenceId']] = item
-
-        not_found_ids = [sid for sid in sequence_ids if sid not in existing_items]
-
-        if not_found_ids:
-            print(f"Sequences not found for user {user_id}: {not_found_ids}")
-
-        current_datetime = get_current_datetime_iso()
-
-        deleted_sequences = []
-
-        for sequence_id in sequence_ids:
-            if sequence_id not in existing_items:
-                continue
-
-            response = table.update_item(
-                Key={
-                    'userId': user_id,
-                    'sequenceId': sequence_id
-                },
-                UpdateExpression='SET deleted = :deleted, lastModifiedDatetime = :lastModified',
-                ExpressionAttributeValues={
-                    ':deleted': True,
-                    ':lastModified': current_datetime
-                },
-                ReturnValues='ALL_NEW'
-            )
-
-            deleted_sequences.append(response.get('Attributes', {}))
-
-        print(f"Soft deleted {len(deleted_sequences)} sequences for user: {user_id}")
-
-        response_body = {
-            "message": f"Deleted {len(deleted_sequences)} sequence(s)",
-            "deletedSequences": deleted_sequences
-        }
-
-        if not_found_ids:
-            response_body["notFoundIds"] = not_found_ids
-
-        return create_response(
-            status_code=200,
-            body=response_body
-        )
-
-    except json.JSONDecodeError:
-        return create_response(
-            status_code=400,
-            body={
-                "error": "Invalid JSON",
-                "message": "Request body must be valid JSON"
-            }
-        )
-    except Exception as e:
-        print(f"Error deleting sequences: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return create_response(
-            status_code=500,
-            body={"message": "Internal server error"}
-        )
-
-
-# =============================================================================
 # Workout Split Operations
 # =============================================================================
 
@@ -1896,13 +1519,18 @@ def upsert_splits(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """
     Create or update one or more workout splits (upsert with batch support).
 
+    Days are embedded directly in the split as a 'days' array.
+
     Expected request body:
     {
         "splits": [
             {
                 "splitId": "uuid-string",
                 "name": "Split name",
-                "dayIds": ["uuid-1", "uuid-2"],
+                "days": [
+                    {"dayId": "uuid", "name": "Push", "exerciseIds": ["uuid-1", "uuid-2"]},
+                    ...
+                ],
                 "createdTimezone": "America/Los_Angeles",
                 "createdDatetime": "2026-01-27T10:30:00.000Z"
             },
@@ -1943,7 +1571,7 @@ def upsert_splits(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
             )
 
         # Validate each split
-        required_fields = ['splitId', 'name', 'dayIds', 'createdTimezone', 'createdDatetime']
+        required_fields = ['splitId', 'name', 'days', 'createdTimezone', 'createdDatetime']
         validation_errors = []
 
         for idx, split in enumerate(splits_input):
@@ -1959,14 +1587,23 @@ def upsert_splits(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
                     f"Split at index {idx}: name must be a non-empty string"
                 )
 
-            if not isinstance(split['dayIds'], list):
+            if not isinstance(split['days'], list):
                 validation_errors.append(
-                    f"Split at index {idx}: dayIds must be an array"
+                    f"Split at index {idx}: days must be an array"
                 )
-            elif not all(isinstance(did, str) for did in split['dayIds']):
-                validation_errors.append(
-                    f"Split at index {idx}: dayIds must be an array of strings"
-                )
+            else:
+                for didx, day in enumerate(split['days']):
+                    if not isinstance(day, dict):
+                        validation_errors.append(
+                            f"Split at index {idx}, day at index {didx}: must be an object"
+                        )
+                        continue
+                    day_required = ['dayId', 'name', 'exerciseIds']
+                    day_missing = [f for f in day_required if f not in day]
+                    if day_missing:
+                        validation_errors.append(
+                            f"Split at index {idx}, day at index {didx}: missing fields: {', '.join(day_missing)}"
+                        )
 
         if validation_errors:
             return create_response(
@@ -2015,18 +1652,30 @@ def upsert_splits(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
 
             if existing:
                 # UPDATE: update mutable fields only
+                update_expression = 'SET #name = :name, days = :days, lastModifiedDatetime = :lastModified'
+                expression_attr_names = {'#name': 'name'}
+                expression_attr_values = {
+                    ':name': split['name'],
+                    ':days': split['days'],
+                    ':lastModified': current_datetime
+                }
+
+                # Handle setPlanTemplateId - update if provided, remove if explicitly set to None
+                if 'setPlanTemplateId' in split:
+                    if split['setPlanTemplateId']:
+                        update_expression += ', setPlanTemplateId = :setPlanTemplateId'
+                        expression_attr_values[':setPlanTemplateId'] = split['setPlanTemplateId']
+                    else:
+                        update_expression += ' REMOVE setPlanTemplateId'
+
                 response = table.update_item(
                     Key={
                         'userId': user_id,
                         'splitId': split_id
                     },
-                    UpdateExpression='SET #name = :name, dayIds = :dayIds, lastModifiedDatetime = :lastModified',
-                    ExpressionAttributeNames={'#name': 'name'},
-                    ExpressionAttributeValues={
-                        ':name': split['name'],
-                        ':dayIds': split['dayIds'],
-                        ':lastModified': current_datetime
-                    },
+                    UpdateExpression=update_expression,
+                    ExpressionAttributeNames=expression_attr_names,
+                    ExpressionAttributeValues=expression_attr_values,
                     ReturnValues='ALL_NEW'
                 )
 
@@ -2038,11 +1687,15 @@ def upsert_splits(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
                     'userId': user_id,
                     'splitId': split_id,
                     'name': split['name'],
-                    'dayIds': split['dayIds'],
+                    'days': split['days'],
                     'createdTimezone': split['createdTimezone'],
                     'createdDatetime': split['createdDatetime'],
                     'lastModifiedDatetime': current_datetime,
                 }
+
+                # Add optional setPlanTemplateId if provided
+                if 'setPlanTemplateId' in split and split['setPlanTemplateId']:
+                    split_item['setPlanTemplateId'] = split['setPlanTemplateId']
 
                 table.put_item(Item=split_item)
                 result_splits.append(split_item)
@@ -2233,6 +1886,351 @@ def delete_splits(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
         )
     except Exception as e:
         print(f"Error deleting splits: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return create_response(
+            status_code=500,
+            body={"message": "Internal server error"}
+        )
+
+
+def upsert_set_plan_templates(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
+    """Create or update set plan templates (upsert with batch support)."""
+    try:
+        body = json.loads(event.get('body', '{}'))
+
+        if 'templates' not in body:
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Missing required field",
+                    "message": "Request body must contain 'templates' array"
+                }
+            )
+
+        templates_input = body['templates']
+
+        if not isinstance(templates_input, list):
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Invalid format",
+                    "message": "'templates' must be an array"
+                }
+            )
+
+        if len(templates_input) == 0:
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Empty templates array",
+                    "message": "At least one template is required"
+                }
+            )
+
+        # Validate
+        required_fields = ['templateId', 'name', 'effortSequence', 'isCustom', 'createdTimezone', 'createdDatetime']
+        valid_effort_levels = ['easy', 'moderate', 'hard', 'redline', 'pr']
+        validation_errors = []
+
+        for idx, template in enumerate(templates_input):
+            missing_fields = [field for field in required_fields if field not in template]
+            if missing_fields:
+                validation_errors.append(
+                    f"Template at index {idx}: missing fields: {', '.join(missing_fields)}"
+                )
+                continue
+
+            if not isinstance(template['name'], str) or not template['name'].strip():
+                validation_errors.append(
+                    f"Template at index {idx}: name must be a non-empty string"
+                )
+
+            if not isinstance(template['effortSequence'], list):
+                validation_errors.append(
+                    f"Template at index {idx}: effortSequence must be an array"
+                )
+            else:
+                for i, level in enumerate(template['effortSequence']):
+                    if level not in valid_effort_levels:
+                        validation_errors.append(
+                            f"Template at index {idx}: effortSequence[{i}] must be one of: {', '.join(valid_effort_levels)}"
+                        )
+                        break
+
+            if 'templateDescription' in template and template['templateDescription'] is not None and not isinstance(template['templateDescription'], str):
+                validation_errors.append(
+                    f"Template at index {idx}: templateDescription must be a string or null"
+                )
+
+        if validation_errors:
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Validation failed",
+                    "message": "One or more templates have validation errors",
+                    "errors": validation_errors
+                }
+            )
+
+        table_name = os.environ.get('SET_PLAN_TEMPLATES_TABLE_NAME')
+        if not table_name:
+            raise ValueError("SET_PLAN_TEMPLATES_TABLE_NAME environment variable not set")
+
+        table = dynamodb.Table(table_name)
+        current_datetime = get_current_datetime_iso()
+
+        # Batch get existing items
+        template_ids = [t['templateId'] for t in templates_input]
+        existing_items = {}
+        for i in range(0, len(template_ids), 100):
+            batch_ids = template_ids[i:i + 100]
+            keys = [{'userId': user_id, 'templateId': tid} for tid in batch_ids]
+
+            response = dynamodb.batch_get_item(
+                RequestItems={
+                    table_name: {
+                        'Keys': keys
+                    }
+                }
+            )
+
+            for item in response.get('Responses', {}).get(table_name, []):
+                existing_items[item['templateId']] = item
+
+        result_templates = []
+        created_count = 0
+        updated_count = 0
+
+        for template in templates_input:
+            template_id = template['templateId']
+            existing = existing_items.get(template_id)
+
+            if existing:
+                update_expression = 'SET #name = :name, effortSequence = :effortSequence, isCustom = :isCustom, lastModifiedDatetime = :lastModified'
+                expression_attr_names = {'#name': 'name'}
+                expression_attr_values = {
+                    ':name': template['name'],
+                    ':effortSequence': template['effortSequence'],
+                    ':isCustom': template['isCustom'],
+                    ':lastModified': current_datetime
+                }
+
+                if 'templateDescription' in template:
+                    if template['templateDescription']:
+                        update_expression += ', templateDescription = :templateDescription'
+                        expression_attr_values[':templateDescription'] = template['templateDescription']
+                    else:
+                        update_expression += ' REMOVE templateDescription'
+
+                response = table.update_item(
+                    Key={
+                        'userId': user_id,
+                        'templateId': template_id
+                    },
+                    UpdateExpression=update_expression,
+                    ExpressionAttributeNames=expression_attr_names,
+                    ExpressionAttributeValues=expression_attr_values,
+                    ReturnValues='ALL_NEW'
+                )
+
+                result_templates.append(response.get('Attributes', {}))
+                updated_count += 1
+            else:
+                template_item = {
+                    'userId': user_id,
+                    'templateId': template_id,
+                    'name': template['name'],
+                    'effortSequence': template['effortSequence'],
+                    'isCustom': template['isCustom'],
+                    'createdTimezone': template['createdTimezone'],
+                    'createdDatetime': template['createdDatetime'],
+                    'lastModifiedDatetime': current_datetime,
+                }
+
+                if 'templateDescription' in template and template['templateDescription']:
+                    template_item['templateDescription'] = template['templateDescription']
+
+                table.put_item(Item=template_item)
+                result_templates.append(template_item)
+                created_count += 1
+
+        print(f"Upserted set plan templates for user {user_id}: {created_count} created, {updated_count} updated")
+
+        return create_response(
+            status_code=200 if updated_count > 0 else 201,
+            body={
+                "templates": result_templates,
+                "created": created_count,
+                "updated": updated_count
+            }
+        )
+
+    except json.JSONDecodeError:
+        return create_response(
+            status_code=400,
+            body={
+                "error": "Invalid JSON",
+                "message": "Request body must be valid JSON"
+            }
+        )
+    except Exception as e:
+        print(f"Error upserting set plan templates: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return create_response(
+            status_code=500,
+            body={"message": "Internal server error"}
+        )
+
+
+def get_set_plan_templates(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
+    """Get all non-deleted set plan templates for a user."""
+    try:
+        table_name = os.environ.get('SET_PLAN_TEMPLATES_TABLE_NAME')
+        if not table_name:
+            raise ValueError("SET_PLAN_TEMPLATES_TABLE_NAME environment variable not set")
+
+        table = dynamodb.Table(table_name)
+
+        response = table.query(
+            KeyConditionExpression=Key('userId').eq(user_id)
+        )
+
+        templates = response.get('Items', [])
+
+        non_deleted_templates = [
+            t for t in templates
+            if not t.get('deleted', False)
+        ]
+
+        print(f"Retrieved {len(non_deleted_templates)} non-deleted set plan templates for user: {user_id}")
+
+        return create_response(
+            status_code=200,
+            body={"templates": non_deleted_templates}
+        )
+
+    except Exception as e:
+        print(f"Error getting set plan templates: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return create_response(
+            status_code=500,
+            body={"message": "Internal server error"}
+        )
+
+
+def delete_set_plan_templates(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
+    """Soft delete set plan templates (batch support). Built-in templates cannot be deleted."""
+    try:
+        body = json.loads(event.get('body', '{}'))
+
+        if 'templateIds' not in body:
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Missing required field",
+                    "message": "Request body must contain 'templateIds' array"
+                }
+            )
+
+        template_ids = body['templateIds']
+
+        if not isinstance(template_ids, list):
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Invalid format",
+                    "message": "'templateIds' must be an array"
+                }
+            )
+
+        if len(template_ids) == 0:
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Empty templateIds array",
+                    "message": "At least one templateId is required"
+                }
+            )
+
+        table_name = os.environ.get('SET_PLAN_TEMPLATES_TABLE_NAME')
+        if not table_name:
+            raise ValueError("SET_PLAN_TEMPLATES_TABLE_NAME environment variable not set")
+
+        table = dynamodb.Table(table_name)
+
+        # Verify which items exist
+        existing_items = {}
+        for i in range(0, len(template_ids), 100):
+            batch_ids = template_ids[i:i + 100]
+            keys = [{'userId': user_id, 'templateId': tid} for tid in batch_ids]
+
+            response = dynamodb.batch_get_item(
+                RequestItems={
+                    table_name: {
+                        'Keys': keys
+                    }
+                }
+            )
+
+            for item in response.get('Responses', {}).get(table_name, []):
+                existing_items[item['templateId']] = item
+
+        # Reject deletion of built-in templates
+        built_in_ids = [tid for tid in template_ids if tid in existing_items and not existing_items[tid].get('isCustom', True)]
+        if built_in_ids:
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Cannot delete built-in templates",
+                    "message": f"The following template IDs are built-in and cannot be deleted: {built_in_ids}"
+                }
+            )
+
+        current_datetime = get_current_datetime_iso()
+        deleted_templates = []
+
+        for template_id in template_ids:
+            if template_id not in existing_items:
+                continue
+
+            response = table.update_item(
+                Key={
+                    'userId': user_id,
+                    'templateId': template_id
+                },
+                UpdateExpression='SET deleted = :deleted, lastModifiedDatetime = :lastModified',
+                ExpressionAttributeValues={
+                    ':deleted': True,
+                    ':lastModified': current_datetime
+                },
+                ReturnValues='ALL_NEW'
+            )
+
+            deleted_templates.append(response.get('Attributes', {}))
+
+        print(f"Soft deleted {len(deleted_templates)} set plan templates for user: {user_id}")
+
+        return create_response(
+            status_code=200,
+            body={
+                "message": f"Successfully deleted {len(deleted_templates)} template(s)",
+                "deletedTemplates": deleted_templates
+            }
+        )
+
+    except json.JSONDecodeError:
+        return create_response(
+            status_code=400,
+            body={
+                "error": "Invalid JSON",
+                "message": "Request body must be valid JSON"
+            }
+        )
+    except Exception as e:
+        print(f"Error deleting set plan templates: {str(e)}")
         import traceback
         traceback.print_exc()
         return create_response(

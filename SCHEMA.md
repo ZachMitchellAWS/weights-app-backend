@@ -10,8 +10,8 @@
 | Checkin | exercises | userId | exerciseItemId | - | - | Yes |
 | Checkin | lift-sets | userId | liftSetId | userId-createdDatetime-index | - | Yes |
 | Checkin | estimated-1rm | userId | liftSetId | userId-createdDatetime-index | - | Yes |
-| Checkin | sequences | userId | sequenceId | - | - | Yes |
 | Checkin | splits | userId | splitId | - | - | Yes |
+| Checkin | set-plan-templates | userId | templateId | - | - | Yes |
 | Entitlements | entitlement-grants | userId | startUtc | userId-endUtc-index | - | No |
 
 ---
@@ -49,6 +49,15 @@
 | userId | String | Yes | Partition key |
 | availableChangePlates | Number[] | Yes | List of plate weights (can be empty []) |
 | bodyweight | Number | No | Nullable -- can be removed via null in POST |
+| minReps | Number | No | Global minimum reps target |
+| maxReps | Number | No | Global maximum reps target |
+| easyMinReps | Number | No | Easy effort min reps |
+| easyMaxReps | Number | No | Easy effort max reps |
+| moderateMinReps | Number | No | Moderate effort min reps |
+| moderateMaxReps | Number | No | Moderate effort max reps |
+| hardMinReps | Number | No | Hard effort min reps |
+| hardMaxReps | Number | No | Hard effort max reps |
+| activeSetPlanTemplateId | String | No | Nullable -- UUID of active set plan template |
 | createdDatetime | String | Yes | ISO 8601 |
 | lastModifiedDatetime | String | Yes | ISO 8601 |
 
@@ -66,10 +75,11 @@ Auto-created when a user registers.
 | exerciseItemId | String | Yes | Sort key (UUID) |
 | name | String | Yes | |
 | isCustom | Boolean | Yes | |
-| loadType | String | Yes | "Barbell", "Bodyweight + Single Load", or "Single Load" |
+| loadType | String | Yes | "Barbell" or "Single Load" |
 | createdTimezone | String | Yes | e.g. "America/Los_Angeles" |
 | createdDatetime | String | Yes | ISO 8601 |
 | lastModifiedDatetime | String | Yes | ISO 8601 |
+| movementType | String | No | e.g. "Push", "Pull", "Legs" |
 | notes | String | No | Removed if set to null/empty |
 | icon | String | No | |
 | deleted | Boolean | No | Only present when true |
@@ -83,10 +93,11 @@ Auto-created when a user registers.
 | exerciseId | String | Yes | References exercises table |
 | reps | Number | Yes | Integer |
 | weight | Decimal | Yes | Stored as Decimal, returned as float |
-| bodyweightUsed | Decimal | No | Bodyweight at time of logging (for Bodyweight + Single Load exercises) |
 | createdTimezone | String | Yes | |
 | createdDatetime | String | Yes | ISO 8601 |
 | lastModifiedDatetime | String | Yes | ISO 8601 |
+| isBaselineSet | Boolean | No | Whether this set is a baseline measurement |
+| rir | Number | No | Reps in reserve (integer) |
 | deleted | Boolean | No | Only present when true |
 
 **GSI:** `userId-createdDatetime-index` -- enables "most recent first" pagination.
@@ -107,19 +118,6 @@ Auto-created when a user registers.
 
 **GSI:** `userId-createdDatetime-index` -- enables "most recent first" pagination.
 
-### sequences
-
-| Field | Type | Required | Notes |
-|-------|------|----------|-------|
-| userId | String | Yes | Partition key |
-| sequenceId | String | Yes | Sort key (UUID) |
-| name | String | Yes | Day/sequence name |
-| exerciseIds | List\<String\> | Yes | Ordered list of exercise IDs |
-| createdTimezone | String | Yes | e.g. "America/Los_Angeles" |
-| createdDatetime | String | Yes | ISO 8601 |
-| lastModifiedDatetime | String | Yes | ISO 8601 |
-| deleted | Boolean | No | Only present when true |
-
 ### splits
 
 | Field | Type | Required | Notes |
@@ -128,6 +126,21 @@ Auto-created when a user registers.
 | splitId | String | Yes | Sort key (UUID) |
 | name | String | Yes | Split name |
 | dayIds | List\<String\> | Yes | Ordered list of sequence (day) IDs |
+| createdTimezone | String | Yes | e.g. "America/Los_Angeles" |
+| createdDatetime | String | Yes | ISO 8601 |
+| lastModifiedDatetime | String | Yes | ISO 8601 |
+| deleted | Boolean | No | Only present when true |
+
+### set-plan-templates
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| userId | String | Yes | Partition key |
+| templateId | String | Yes | Sort key (UUID) |
+| name | String | Yes | Template name |
+| effortSequence | List\<String\> | Yes | Ordered list of effort levels (easy, moderate, hard, redline, pr) |
+| isCustom | Boolean | Yes | Whether template is user-created or built-in |
+| templateDescription | String | No | Optional description |
 | createdTimezone | String | Yes | e.g. "America/Los_Angeles" |
 | createdDatetime | String | Yes | ISO 8601 |
 | lastModifiedDatetime | String | Yes | ISO 8601 |
@@ -170,8 +183,8 @@ users ──── user-properties     (userId)
   │         └── estimated-1rm  (exerciseId → exerciseItemId)
   │
   ├────── splits               (userId)
-  │         │
-  │         └── sequences      (dayIds → sequenceId)
+  │
+  ├────── set-plan-templates   (userId, activeSetPlanTemplateId in user-properties)
   │
   └────── entitlement-grants   (userId)
 ```

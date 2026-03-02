@@ -284,6 +284,23 @@ def handle_update_properties(event: Dict[str, Any]) -> Dict[str, Any]:
             update_parts.append("maxReps = :maxReps")
             expression_values[":maxReps"] = max_reps
 
+        # Handle activeSetPlanTemplateId (nullable string - can be set or removed)
+        if "activeSetPlanTemplateId" in body:
+            active_set_plan = body.get("activeSetPlanTemplateId")
+            if active_set_plan is None:
+                remove_parts.append("activeSetPlanTemplateId")
+            elif isinstance(active_set_plan, str):
+                update_parts.append("activeSetPlanTemplateId = :activeSetPlanTemplateId")
+                expression_values[":activeSetPlanTemplateId"] = active_set_plan
+            else:
+                return create_response(
+                    status_code=400,
+                    body={
+                        "error": "Invalid field type",
+                        "message": "activeSetPlanTemplateId must be a string or null"
+                    }
+                )
+
         # Handle per-mode effort rep range fields
         for field in ["easyMinReps", "easyMaxReps", "moderateMinReps", "moderateMaxReps", "hardMinReps", "hardMaxReps"]:
             if field in body:

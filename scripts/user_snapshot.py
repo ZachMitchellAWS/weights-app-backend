@@ -38,6 +38,7 @@ TABLES = [
     ("lift-sets", "userId", "liftSetId"),
     ("estimated-1rm", "userId", "liftSetId"),
     ("sequences", "userId", "sequenceId"),
+    ("splits", "userId", "splitId"),
     ("entitlement-grants", "userId", "startUtc"),
     ("subscription-events", "userId", "eventTimestamp"),
 ]

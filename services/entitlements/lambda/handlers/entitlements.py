@@ -23,7 +23,6 @@ from utils.apple_api import (
     fetch_transaction_history,
     parse_notification,
     convert_apple_timestamp_to_iso,
-    PRODUCT_ENTITLEMENT_MAPPING,
 )
 
 # Initialize DynamoDB client
@@ -344,8 +343,7 @@ def _create_entitlement_grant(user_id: str, transaction: Dict[str, Any]) -> tupl
         product_id = transaction.get('productId', '')
         original_transaction_id = transaction.get('originalTransactionId', '')
 
-        # Get entitlement name from product ID mapping
-        entitlement_name = PRODUCT_ENTITLEMENT_MAPPING.get(product_id, 'premium')
+        entitlement_name = product_id
 
         # Convert Apple timestamps (milliseconds) to ISO 8601
         purchase_date_ms = transaction.get('purchaseDate', 0)

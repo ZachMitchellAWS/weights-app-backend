@@ -58,8 +58,8 @@ class CheckinStack(Stack):
         self.exercises_table = self._create_exercises_table()
         self.lift_sets_table = self._create_lift_sets_table()
         self.estimated_1rm_table = self._create_estimated_1rm_table()
-        self.sequences_table = self._create_sequences_table()
         self.splits_table = self._create_splits_table()
+        self.set_plan_templates_table = self._create_set_plan_templates_table()
         self.checkin_function = self._create_checkin_lambda()
         self._create_api_routes()
 
@@ -79,7 +79,7 @@ class CheckinStack(Stack):
         - exerciseItemId (String, sort key): Unique exercise item ID (UUID from frontend)
         - name (String): Exercise name
         - isCustom (Boolean): Whether exercise is custom or predefined
-        - loadType (String): Type of load (Barbell, Bodyweight + Single Load, Single Load)
+        - loadType (String): Type of load (Barbell, Single Load)
         - notes (String): Optional notes about the exercise
         - createdTimezone (String): Timezone when exercise was created
         - createdDatetime (String): ISO 8601 timestamp when created
@@ -125,8 +125,7 @@ class CheckinStack(Stack):
         - liftSetId (String, sort key): Unique lift set ID (UUID from frontend)
         - exerciseId (String): Links to exercise
         - reps (Number): Number of repetitions
-        - weight (Number): Weight used (decimal). For BW+SL exercises, total weight (bodyweight ± additional).
-        - bodyweightUsed (Number, optional): Bodyweight at time of logging (for BW+SL exercises)
+        - weight (Number): Weight used (decimal)
         - createdTimezone (String): Timezone when lift set was created
         - createdDatetime (String): ISO 8601 timestamp when created
         - lastModifiedDatetime (String): ISO 8601 timestamp when last modified
@@ -237,42 +236,6 @@ class CheckinStack(Stack):
 
         return table
 
-    def _create_sequences_table(self) -> dynamodb.Table:
-        """
-        Create DynamoDB table for workout sequences.
-
-        Table schema:
-        - userId (String, partition key): User's unique identifier
-        - sequenceId (String, sort key): Unique sequence ID (UUID from frontend)
-        - name (String): Sequence name
-        - exerciseIds (List): Ordered list of exercise IDs in this sequence
-        - createdTimezone (String): Timezone when sequence was created
-        - createdDatetime (String): ISO 8601 timestamp when created
-        - lastModifiedDatetime (String): ISO 8601 timestamp when last modified
-        - deleted (Boolean): Soft delete flag
-
-        Returns:
-            DynamoDB Table construct
-        """
-        table = dynamodb.Table(
-            self,
-            "SequencesTable",
-            table_name=f"{self.project_name}-{self.env_name}-sequences",
-            partition_key=dynamodb.Attribute(
-                name="userId",
-                type=dynamodb.AttributeType.STRING
-            ),
-            sort_key=dynamodb.Attribute(
-                name="sequenceId",
-                type=dynamodb.AttributeType.STRING
-            ),
-            billing_mode=self.config.DYNAMODB_BILLING_MODE,
-            point_in_time_recovery=self.config.DYNAMODB_POINT_IN_TIME_RECOVERY,
-            removal_policy=self.config.REMOVAL_POLICY,
-        )
-
-        return table
-
     def _create_splits_table(self) -> dynamodb.Table:
         """
         Create DynamoDB table for workout splits.
@@ -300,6 +263,44 @@ class CheckinStack(Stack):
             ),
             sort_key=dynamodb.Attribute(
                 name="splitId",
+                type=dynamodb.AttributeType.STRING
+            ),
+            billing_mode=self.config.DYNAMODB_BILLING_MODE,
+            point_in_time_recovery=self.config.DYNAMODB_POINT_IN_TIME_RECOVERY,
+            removal_policy=self.config.REMOVAL_POLICY,
+        )
+
+        return table
+
+    def _create_set_plan_templates_table(self) -> dynamodb.Table:
+        """
+        Create DynamoDB table for set plan templates.
+
+        Table schema:
+        - userId (String, partition key): User's unique identifier
+        - templateId (String, sort key): Unique template ID (UUID from frontend)
+        - name (String): Template name
+        - effortSequence (List): Ordered list of effort levels
+        - isCustom (Boolean): Whether template is user-created or built-in
+        - templateDescription (String, optional): Description of the template
+        - createdTimezone (String): Timezone when template was created
+        - createdDatetime (String): ISO 8601 timestamp when created
+        - lastModifiedDatetime (String): ISO 8601 timestamp when last modified
+        - deleted (Boolean): Soft delete flag
+
+        Returns:
+            DynamoDB Table construct
+        """
+        table = dynamodb.Table(
+            self,
+            "SetPlanTemplatesTable",
+            table_name=f"{self.project_name}-{self.env_name}-set-plan-templates",
+            partition_key=dynamodb.Attribute(
+                name="userId",
+                type=dynamodb.AttributeType.STRING
+            ),
+            sort_key=dynamodb.Attribute(
+                name="templateId",
                 type=dynamodb.AttributeType.STRING
             ),
             billing_mode=self.config.DYNAMODB_BILLING_MODE,
@@ -340,8 +341,8 @@ class CheckinStack(Stack):
                 "EXERCISES_TABLE_NAME": self.exercises_table.table_name,
                 "LIFT_SETS_TABLE_NAME": self.lift_sets_table.table_name,
                 "ESTIMATED_1RM_TABLE_NAME": self.estimated_1rm_table.table_name,
-                "SEQUENCES_TABLE_NAME": self.sequences_table.table_name,
                 "SPLITS_TABLE_NAME": self.splits_table.table_name,
+                "SET_PLAN_TEMPLATES_TABLE_NAME": self.set_plan_templates_table.table_name,
                 "ENVIRONMENT": self.config.ENVIRONMENT,
                 "LOG_LEVEL": self.config.LOG_LEVEL,
             },
@@ -352,8 +353,8 @@ class CheckinStack(Stack):
         self.exercises_table.grant_read_write_data(function)
         self.lift_sets_table.grant_read_write_data(function)
         self.estimated_1rm_table.grant_read_write_data(function)
-        self.sequences_table.grant_read_write_data(function)
         self.splits_table.grant_read_write_data(function)
+        self.set_plan_templates_table.grant_read_write_data(function)
 
         return function
 
@@ -521,6 +522,36 @@ class CheckinStack(Stack):
 
         # Add DELETE method for splits (batch soft delete)
         splits_resource.add_method(
+            "DELETE",
+            checkin_integration,
+            api_key_required=True,
+            authorizer=self.authorizer,
+            authorization_type=apigateway.AuthorizationType.CUSTOM,
+        )
+
+        # Create /checkin/set-plan-templates resource
+        set_plan_templates_resource = checkin_resource.add_resource("set-plan-templates")
+
+        # Add POST method for set-plan-templates (batch upsert)
+        set_plan_templates_resource.add_method(
+            "POST",
+            checkin_integration,
+            api_key_required=True,
+            authorizer=self.authorizer,
+            authorization_type=apigateway.AuthorizationType.CUSTOM,
+        )
+
+        # Add GET method for set-plan-templates
+        set_plan_templates_resource.add_method(
+            "GET",
+            checkin_integration,
+            api_key_required=True,
+            authorizer=self.authorizer,
+            authorization_type=apigateway.AuthorizationType.CUSTOM,
+        )
+
+        # Add DELETE method for set-plan-templates (batch soft delete)
+        set_plan_templates_resource.add_method(
             "DELETE",
             checkin_integration,
             api_key_required=True,

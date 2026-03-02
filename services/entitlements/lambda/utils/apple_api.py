@@ -28,13 +28,6 @@ ssm = boto3.client('ssm')
 _ssm_cache: Dict[str, str] = {}
 
 
-# Product ID to entitlement name mapping
-# Update this mapping with your actual Apple product IDs
-PRODUCT_ENTITLEMENT_MAPPING = {
-    "com.weightapp.premium.monthly.499": "io.liftthebull.full_access.monthly.499",
-    "com.weightapp.premium.yearly.3999": "io.liftthebull.full_access.yearly.3999",
-}
-
 
 def _get_ssm_parameter(param_name: str) -> str:
     """
