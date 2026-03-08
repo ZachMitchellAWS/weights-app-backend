@@ -301,6 +301,74 @@ def handle_update_properties(event: Dict[str, Any]) -> Dict[str, Any]:
                     }
                 )
 
+        # Handle activeSplitId (nullable string - can be set or removed)
+        if "activeSplitId" in body:
+            active_split = body.get("activeSplitId")
+            if active_split is None:
+                remove_parts.append("activeSplitId")
+            elif isinstance(active_split, str):
+                update_parts.append("activeSplitId = :activeSplitId")
+                expression_values[":activeSplitId"] = active_split
+            else:
+                return create_response(
+                    status_code=400,
+                    body={
+                        "error": "Invalid field type",
+                        "message": "activeSplitId must be a string or null"
+                    }
+                )
+
+        # Handle stepsGoal (nullable integer - can be set or removed)
+        if "stepsGoal" in body:
+            steps_goal = body.get("stepsGoal")
+            if steps_goal is None:
+                remove_parts.append("stepsGoal")
+            elif isinstance(steps_goal, int) and steps_goal > 0:
+                update_parts.append("stepsGoal = :stepsGoal")
+                expression_values[":stepsGoal"] = steps_goal
+            else:
+                return create_response(
+                    status_code=400,
+                    body={
+                        "error": "Invalid field type",
+                        "message": "stepsGoal must be a positive integer or null"
+                    }
+                )
+
+        # Handle proteinGoal (nullable integer - can be set or removed)
+        if "proteinGoal" in body:
+            protein_goal = body.get("proteinGoal")
+            if protein_goal is None:
+                remove_parts.append("proteinGoal")
+            elif isinstance(protein_goal, int) and protein_goal > 0:
+                update_parts.append("proteinGoal = :proteinGoal")
+                expression_values[":proteinGoal"] = protein_goal
+            else:
+                return create_response(
+                    status_code=400,
+                    body={
+                        "error": "Invalid field type",
+                        "message": "proteinGoal must be a positive integer or null"
+                    }
+                )
+
+        # Handle bodyweightTarget (nullable number - can be set or removed)
+        if "bodyweightTarget" in body:
+            bw_target = body.get("bodyweightTarget")
+            if bw_target is None:
+                remove_parts.append("bodyweightTarget")
+            elif isinstance(bw_target, (int, float)) and bw_target > 0:
+                update_parts.append("bodyweightTarget = :bodyweightTarget")
+                expression_values[":bodyweightTarget"] = Decimal(str(bw_target))
+            else:
+                return create_response(
+                    status_code=400,
+                    body={
+                        "error": "Invalid field type",
+                        "message": "bodyweightTarget must be a positive number or null"
+                    }
+                )
+
         # Handle per-mode effort rep range fields
         for field in ["easyMinReps", "easyMaxReps", "moderateMinReps", "moderateMaxReps", "hardMinReps", "hardMaxReps"]:
             if field in body:
@@ -355,7 +423,7 @@ def handle_update_properties(event: Dict[str, Any]) -> Dict[str, Any]:
 
         updated_properties = response.get("Attributes")
 
-        print(f"Updated properties for user: {user_id}")
+        print(f"Updated properties for user: {user_id}, update_expression: {update_expression}, values: {expression_values}")
 
         # Return updated user properties
         return create_response(

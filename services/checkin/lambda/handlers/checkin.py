@@ -26,6 +26,11 @@ Handles set plan template operations:
 - GET /checkin/set-plan-templates: Get all non-deleted set plan templates
 - DELETE /checkin/set-plan-templates: Soft delete set plan templates (batch support)
 
+Handles accessory goal checkin operations (steps, protein, bodyweight):
+- POST /checkin/accessory-goal-checkins: Create accessory goal checkins (batch support)
+- GET /checkin/accessory-goal-checkins: Get paginated accessory goal checkins (most recent first)
+- DELETE /checkin/accessory-goal-checkins: Soft delete accessory goal checkins (batch support)
+
 Security: All operations use the userId from the JWT token as the DynamoDB
 partition key, ensuring users can only access/modify their own data.
 """
@@ -71,6 +76,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # Extract user ID from authorizer context
         # The Lambda Authorizer adds this to the request context
         user_id = event.get('requestContext', {}).get('authorizer', {}).get('userId')
+        print(f"[DEBUG] Extracted user_id from authorizer: {user_id}")
 
         if not user_id:
             return create_response(
@@ -114,6 +120,13 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             return get_set_plan_templates(event, user_id)
         elif http_method == 'DELETE' and path.endswith('/checkin/set-plan-templates'):
             return delete_set_plan_templates(event, user_id)
+        # Accessory goal checkin routes
+        elif http_method == 'POST' and path.endswith('/checkin/accessory-goal-checkins'):
+            return create_accessory_goal_checkins(event, user_id)
+        elif http_method == 'GET' and path.endswith('/checkin/accessory-goal-checkins'):
+            return get_accessory_goal_checkins(event, user_id)
+        elif http_method == 'DELETE' and path.endswith('/checkin/accessory-goal-checkins'):
+            return delete_accessory_goal_checkins(event, user_id)
         else:
             return create_response(
                 status_code=404,
@@ -231,6 +244,30 @@ def upsert_exercises(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
                 if exercise['movementType'] not in valid_movement_types:
                     validation_errors.append(
                         f"Exercise at index {idx}: movementType must be one of: {', '.join(valid_movement_types)}"
+                    )
+
+            if 'weightIncrement' in exercise and exercise['weightIncrement'] is not None:
+                try:
+                    val = Decimal(str(exercise['weightIncrement']))
+                    if val <= 0:
+                        validation_errors.append(
+                            f"Exercise at index {idx}: weightIncrement must be a positive number"
+                        )
+                except Exception:
+                    validation_errors.append(
+                        f"Exercise at index {idx}: weightIncrement must be a positive number"
+                    )
+
+            if 'barbellWeight' in exercise and exercise['barbellWeight'] is not None:
+                try:
+                    val = Decimal(str(exercise['barbellWeight']))
+                    if val < 15 or val > 75:
+                        validation_errors.append(
+                            f"Exercise at index {idx}: barbellWeight must be between 15 and 75"
+                        )
+                except Exception:
+                    validation_errors.append(
+                        f"Exercise at index {idx}: barbellWeight must be a positive number"
                     )
 
             if 'setPlan' in exercise and exercise['setPlan'] is not None:
@@ -353,6 +390,22 @@ def upsert_exercises(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
                     else:
                         update_expression += ' REMOVE setPlanTemplateId'
 
+                # Handle weightIncrement - update if provided, remove if explicitly set to None
+                if 'weightIncrement' in exercise:
+                    if exercise['weightIncrement'] is not None:
+                        update_expression += ', weightIncrement = :weightIncrement'
+                        expression_attr_values[':weightIncrement'] = Decimal(str(exercise['weightIncrement']))
+                    else:
+                        update_expression += ' REMOVE weightIncrement'
+
+                # Handle barbellWeight - update if provided, remove if explicitly set to None
+                if 'barbellWeight' in exercise:
+                    if exercise['barbellWeight'] is not None:
+                        update_expression += ', barbellWeight = :barbellWeight'
+                        expression_attr_values[':barbellWeight'] = Decimal(str(exercise['barbellWeight']))
+                    else:
+                        update_expression += ' REMOVE barbellWeight'
+
                 response = table.update_item(
                     Key={
                         'userId': user_id,
@@ -399,6 +452,14 @@ def upsert_exercises(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
                 # Add optional setPlanTemplateId if provided
                 if 'setPlanTemplateId' in exercise and exercise['setPlanTemplateId']:
                     exercise_item['setPlanTemplateId'] = exercise['setPlanTemplateId']
+
+                # Add optional weightIncrement if provided
+                if 'weightIncrement' in exercise and exercise['weightIncrement'] is not None:
+                    exercise_item['weightIncrement'] = Decimal(str(exercise['weightIncrement']))
+
+                # Add optional barbellWeight if provided
+                if 'barbellWeight' in exercise and exercise['barbellWeight'] is not None:
+                    exercise_item['barbellWeight'] = Decimal(str(exercise['barbellWeight']))
 
                 table.put_item(Item=exercise_item)
                 result_exercises.append(exercise_item)
@@ -457,11 +518,18 @@ def get_exercises(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
         table = dynamodb.Table(table_name)
 
         # Query all exercises for this user
+        print(f"[DEBUG] get_exercises called for user_id={user_id}, table={table_name}")
         response = table.query(
             KeyConditionExpression=Key('userId').eq(user_id)
         )
 
         exercises = response.get('Items', [])
+        print(f"[DEBUG] DynamoDB returned {len(exercises)} total items")
+        if exercises:
+            deleted_count = sum(1 for e in exercises if e.get('deleted', False))
+            print(f"[DEBUG] {deleted_count} marked deleted, sample keys: {[e.get('exerciseItemId', '?')[:8] for e in exercises[:3]]}")
+        else:
+            print(f"[DEBUG] No items in DynamoDB for userId={user_id}")
 
         # Filter out deleted exercises
         # Only include exercises where deleted is not True
@@ -2231,6 +2299,377 @@ def delete_set_plan_templates(event: Dict[str, Any], user_id: str) -> Dict[str, 
         )
     except Exception as e:
         print(f"Error deleting set plan templates: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return create_response(
+            status_code=500,
+            body={"message": "Internal server error"}
+        )
+
+
+# =============================================================================
+# Accessory Goal Checkin Handlers
+# =============================================================================
+
+
+def create_accessory_goal_checkins(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
+    """
+    Create one or more accessory goal checkins (batch support).
+
+    Expected request body:
+    {
+        "checkins": [
+            {
+                "checkinId": "uuid-string",
+                "metricType": "steps" | "protein" | "bodyweight",
+                "value": 10000,
+                "createdTimezone": "America/Los_Angeles",
+                "createdDatetime": "2026-03-03T10:30:00.000Z"
+            },
+            ...
+        ]
+    }
+    """
+    try:
+        body = json.loads(event.get('body', '{}'))
+
+        if 'checkins' not in body:
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Missing required field",
+                    "message": "Request body must contain 'checkins' array"
+                }
+            )
+
+        checkins_input = body['checkins']
+
+        if not isinstance(checkins_input, list):
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Invalid format",
+                    "message": "'checkins' must be an array"
+                }
+            )
+
+        if len(checkins_input) == 0:
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Empty checkins array",
+                    "message": "At least one checkin is required"
+                }
+            )
+
+        # Validate each checkin
+        required_fields = ['checkinId', 'metricType', 'value', 'createdTimezone', 'createdDatetime']
+        valid_metric_types = ['steps', 'protein', 'bodyweight']
+        validation_errors = []
+
+        for idx, checkin in enumerate(checkins_input):
+            missing_fields = [field for field in required_fields if field not in checkin]
+            if missing_fields:
+                validation_errors.append(
+                    f"Checkin at index {idx}: missing fields: {', '.join(missing_fields)}"
+                )
+                continue
+
+            if checkin['metricType'] not in valid_metric_types:
+                validation_errors.append(
+                    f"Checkin at index {idx}: metricType must be one of: {', '.join(valid_metric_types)}"
+                )
+
+            if not isinstance(checkin['value'], (int, float)):
+                validation_errors.append(
+                    f"Checkin at index {idx}: value must be a number"
+                )
+
+        if validation_errors:
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Validation failed",
+                    "message": "One or more checkins have validation errors",
+                    "errors": validation_errors
+                }
+            )
+
+        table_name = os.environ.get('ACCESSORY_GOAL_CHECKINS_TABLE_NAME')
+        if not table_name:
+            raise ValueError("ACCESSORY_GOAL_CHECKINS_TABLE_NAME environment variable not set")
+
+        table = dynamodb.Table(table_name)
+        current_datetime = get_current_datetime_iso()
+
+        result_checkins = []
+
+        for checkin in checkins_input:
+            checkin_item = {
+                'userId': user_id,
+                'checkinId': checkin['checkinId'],
+                'metricType': checkin['metricType'],
+                'value': Decimal(str(checkin['value'])),
+                'createdTimezone': checkin['createdTimezone'],
+                'createdDatetime': checkin['createdDatetime'],
+                'lastModifiedDatetime': current_datetime,
+            }
+
+            table.put_item(Item=checkin_item)
+
+            response_item = {**checkin_item, 'value': float(checkin_item['value'])}
+            result_checkins.append(response_item)
+
+        print(f"Created {len(result_checkins)} accessory goal checkins for user {user_id}")
+
+        return create_response(
+            status_code=201,
+            body={
+                "checkins": result_checkins,
+                "created": len(result_checkins)
+            }
+        )
+
+    except json.JSONDecodeError:
+        return create_response(
+            status_code=400,
+            body={
+                "error": "Invalid JSON",
+                "message": "Request body must be valid JSON"
+            }
+        )
+    except Exception as e:
+        print(f"Error creating accessory goal checkins: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return create_response(
+            status_code=500,
+            body={"message": "Internal server error"}
+        )
+
+
+def get_accessory_goal_checkins(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
+    """
+    Get paginated accessory goal checkins for a user, most recent first.
+
+    Query parameters:
+    - limit: Number of items per page (default 2000, max 2000)
+    - pageToken: Base64-encoded LastEvaluatedKey for pagination
+    - metricType: Optional filter (e.g., "steps", "protein", "bodyweight")
+    """
+    try:
+        table_name = os.environ.get('ACCESSORY_GOAL_CHECKINS_TABLE_NAME')
+        if not table_name:
+            raise ValueError("ACCESSORY_GOAL_CHECKINS_TABLE_NAME environment variable not set")
+
+        table = dynamodb.Table(table_name)
+
+        query_params = event.get('queryStringParameters') or {}
+
+        try:
+            limit = int(query_params.get('limit', 2000))
+            limit = min(max(limit, 1), 2000)
+        except ValueError:
+            limit = 2000
+
+        page_token = query_params.get('pageToken')
+        exclusive_start_key = None
+
+        if page_token:
+            try:
+                decoded = base64.b64decode(page_token).decode('utf-8')
+                exclusive_start_key = json.loads(decoded)
+            except (ValueError, json.JSONDecodeError):
+                return create_response(
+                    status_code=400,
+                    body={
+                        "error": "Invalid pageToken",
+                        "message": "The provided pageToken is invalid"
+                    }
+                )
+
+        metric_type_filter = query_params.get('metricType')
+
+        # Build query parameters
+        query_kwargs = {
+            'IndexName': 'userId-createdDatetime-index',
+            'KeyConditionExpression': Key('userId').eq(user_id),
+            'ScanIndexForward': False,
+            'Limit': limit,
+        }
+
+        if exclusive_start_key:
+            query_kwargs['ExclusiveStartKey'] = exclusive_start_key
+
+        response = table.query(**query_kwargs)
+        checkins = response.get('Items', [])
+
+        # Filter out deleted checkins and optionally filter by metricType
+        non_deleted_checkins = []
+        for checkin in checkins:
+            if not checkin.get('deleted', False):
+                if metric_type_filter and checkin.get('metricType') != metric_type_filter:
+                    continue
+                if 'value' in checkin:
+                    checkin['value'] = float(checkin['value'])
+                non_deleted_checkins.append(checkin)
+
+        print(f"Retrieved {len(non_deleted_checkins)} non-deleted accessory goal checkins for user: {user_id}")
+
+        response_body = {
+            "checkins": non_deleted_checkins,
+            "count": len(non_deleted_checkins)
+        }
+
+        last_evaluated_key = response.get('LastEvaluatedKey')
+        if last_evaluated_key:
+            serializable_key = {
+                k: float(v) if isinstance(v, Decimal) else v
+                for k, v in last_evaluated_key.items()
+            }
+            encoded_key = base64.b64encode(
+                json.dumps(serializable_key).encode('utf-8')
+            ).decode('utf-8')
+            response_body['nextPageToken'] = encoded_key
+            response_body['hasMore'] = True
+        else:
+            response_body['hasMore'] = False
+
+        return create_response(
+            status_code=200,
+            body=response_body
+        )
+
+    except Exception as e:
+        print(f"Error getting accessory goal checkins: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return create_response(
+            status_code=500,
+            body={"message": "Internal server error"}
+        )
+
+
+def delete_accessory_goal_checkins(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
+    """
+    Soft delete one or more accessory goal checkins by setting deleted=True (batch support).
+
+    Expected request body:
+    {
+        "checkinIds": ["uuid-string-1", "uuid-string-2", ...]
+    }
+    """
+    try:
+        body = json.loads(event.get('body', '{}'))
+
+        if 'checkinIds' not in body:
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Missing required field",
+                    "message": "Request body must contain 'checkinIds' array"
+                }
+            )
+
+        checkin_ids = body['checkinIds']
+
+        if not isinstance(checkin_ids, list):
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Invalid format",
+                    "message": "'checkinIds' must be an array"
+                }
+            )
+
+        if len(checkin_ids) == 0:
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Empty checkinIds array",
+                    "message": "At least one checkinId is required"
+                }
+            )
+
+        table_name = os.environ.get('ACCESSORY_GOAL_CHECKINS_TABLE_NAME')
+        if not table_name:
+            raise ValueError("ACCESSORY_GOAL_CHECKINS_TABLE_NAME environment variable not set")
+
+        table = dynamodb.Table(table_name)
+
+        # Verify which items exist and belong to this user
+        existing_items = {}
+        for i in range(0, len(checkin_ids), 100):
+            batch_ids = checkin_ids[i:i + 100]
+            keys = [{'userId': user_id, 'checkinId': cid} for cid in batch_ids]
+
+            response = dynamodb.batch_get_item(
+                RequestItems={
+                    table_name: {
+                        'Keys': keys
+                    }
+                }
+            )
+
+            for item in response.get('Responses', {}).get(table_name, []):
+                existing_items[item['checkinId']] = item
+
+        not_found_ids = [cid for cid in checkin_ids if cid not in existing_items]
+
+        if not_found_ids:
+            print(f"Accessory goal checkins not found for user {user_id}: {not_found_ids}")
+
+        current_datetime = get_current_datetime_iso()
+
+        deleted_checkins = []
+
+        for checkin_id in checkin_ids:
+            if checkin_id not in existing_items:
+                continue
+
+            response = table.update_item(
+                Key={
+                    'userId': user_id,
+                    'checkinId': checkin_id
+                },
+                UpdateExpression='SET deleted = :deleted, lastModifiedDatetime = :lastModified',
+                ExpressionAttributeValues={
+                    ':deleted': True,
+                    ':lastModified': current_datetime
+                },
+                ReturnValues='ALL_NEW'
+            )
+
+            updated_item = response.get('Attributes', {})
+            if 'value' in updated_item:
+                updated_item['value'] = float(updated_item['value'])
+            deleted_checkins.append(updated_item)
+
+        print(f"Soft deleted {len(deleted_checkins)} accessory goal checkins for user {user_id}")
+
+        response_body = {
+            "message": f"Successfully deleted {len(deleted_checkins)} accessory goal checkin(s)",
+            "deletedCheckins": deleted_checkins
+        }
+
+        if not_found_ids:
+            response_body["notFoundIds"] = not_found_ids
+
+        return create_response(
+            status_code=200,
+            body=response_body
+        )
+
+    except json.JSONDecodeError:
+        return create_response(
+            status_code=400,
+            body={
+                "error": "Invalid JSON",
+                "message": "Request body must be valid JSON"
+            }
+        )
+    except Exception as e:
+        print(f"Error deleting accessory goal checkins: {str(e)}")
         import traceback
         traceback.print_exc()
         return create_response(

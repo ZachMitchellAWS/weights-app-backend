@@ -146,7 +146,7 @@ destroy-production:
 # WARNING: This deletes ALL data from staging tables
 clear-staging-db:
 	@echo "WARNING: This will delete ALL items from staging DynamoDB tables!"
-	@echo "Tables: users, user-properties, password-reset-codes, exercises, lift-sets, estimated-1rm, sequences, entitlement-grants, subscription-events"
+	@echo "Tables: users, user-properties, password-reset-codes, exercises, lift-sets, estimated-1rm, splits, set-plan-templates, accessory-goal-checkins, entitlement-grants, subscription-events"
 	@echo "Press Ctrl+C to cancel, or Enter to continue..."
 	@read confirm
 	$(PYTHON) scripts/clear_staging_db.py
@@ -155,23 +155,23 @@ clear-staging-db:
 # WARNING: This deletes ALL data from production tables
 clear-production-db:
 	@echo "WARNING: This will delete ALL items from PRODUCTION DynamoDB tables!"
-	@echo "Tables: users, user-properties, password-reset-codes, exercises, lift-sets, estimated-1rm, sequences, entitlement-grants, subscription-events"
+	@echo "Tables: users, user-properties, password-reset-codes, exercises, lift-sets, estimated-1rm, splits, set-plan-templates, accessory-goal-checkins, entitlement-grants, subscription-events"
 	@echo "This action cannot be undone. Press Ctrl+C to cancel, or Enter to continue..."
 	@read confirm
 	$(PYTHON) scripts/clear_production_db.py
 
 
 # Save test user data from staging DynamoDB to snapshot file
-# User ID is hardcoded in the script (18dee8ea-ac11-4b02-ae52-670cb830e44a)
+# Optionally pass USER_ID: make save-user-staging USER_ID=1702dad4-...
 save-user-staging:
 	@echo "Saving test user data from staging DynamoDB tables..."
-	$(PYTHON) scripts/user_snapshot.py save
+	$(PYTHON) scripts/user_snapshot.py save $(if $(USER_ID),--user-id $(USER_ID))
 
 # Load test user data from snapshot file back into staging DynamoDB
-# User ID is hardcoded in the script (18dee8ea-ac11-4b02-ae52-670cb830e44a)
+# Optionally pass USER_ID: make load-user-staging USER_ID=1702dad4-...
 load-user-staging:
 	@echo "Loading test user data into staging DynamoDB tables..."
-	$(PYTHON) scripts/user_snapshot.py load
+	$(PYTHON) scripts/user_snapshot.py load $(if $(USER_ID),--user-id $(USER_ID))
 
 # Generate and load power user data (large dataset) into staging DynamoDB
 # MONTHS defaults to 12 but can be overridden: make load-power-user-staging MONTHS=6

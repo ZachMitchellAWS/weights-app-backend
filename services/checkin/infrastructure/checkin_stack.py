@@ -60,6 +60,7 @@ class CheckinStack(Stack):
         self.estimated_1rm_table = self._create_estimated_1rm_table()
         self.splits_table = self._create_splits_table()
         self.set_plan_templates_table = self._create_set_plan_templates_table()
+        self.accessory_goal_checkins_table = self._create_accessory_goal_checkins_table()
         self.checkin_function = self._create_checkin_lambda()
         self._create_api_routes()
 
@@ -310,6 +311,61 @@ class CheckinStack(Stack):
 
         return table
 
+    def _create_accessory_goal_checkins_table(self) -> dynamodb.Table:
+        """
+        Create DynamoDB table for accessory goal checkins (steps, protein, bodyweight).
+
+        Table schema:
+        - userId (String, partition key): User's unique identifier
+        - checkinId (String, sort key): Unique checkin ID (UUID from frontend)
+        - metricType (String): "steps", "protein", or "bodyweight"
+        - value (Number): The metric value (decimal)
+        - createdTimezone (String): Timezone when checkin was created
+        - createdDatetime (String): ISO 8601 timestamp when created
+        - lastModifiedDatetime (String): ISO 8601 timestamp when last modified
+        - deleted (Boolean): Soft delete flag
+
+        GSI (userId-createdDatetime-index):
+        - Partition key: userId
+        - Sort key: createdDatetime
+        - Enables querying with ScanIndexForward=False for most recent first
+
+        Returns:
+            DynamoDB Table construct
+        """
+        table = dynamodb.Table(
+            self,
+            "AccessoryGoalCheckinsTable",
+            table_name=f"{self.project_name}-{self.env_name}-accessory-goal-checkins",
+            partition_key=dynamodb.Attribute(
+                name="userId",
+                type=dynamodb.AttributeType.STRING
+            ),
+            sort_key=dynamodb.Attribute(
+                name="checkinId",
+                type=dynamodb.AttributeType.STRING
+            ),
+            billing_mode=self.config.DYNAMODB_BILLING_MODE,
+            point_in_time_recovery=self.config.DYNAMODB_POINT_IN_TIME_RECOVERY,
+            removal_policy=self.config.REMOVAL_POLICY,
+        )
+
+        # Add GSI for efficient "most recent first" pagination
+        table.add_global_secondary_index(
+            index_name="userId-createdDatetime-index",
+            partition_key=dynamodb.Attribute(
+                name="userId",
+                type=dynamodb.AttributeType.STRING
+            ),
+            sort_key=dynamodb.Attribute(
+                name="createdDatetime",
+                type=dynamodb.AttributeType.STRING
+            ),
+            projection_type=dynamodb.ProjectionType.ALL,
+        )
+
+        return table
+
     def _create_checkin_lambda(self) -> lambda_.Function:
         """
         Create Lambda function for checkin service operations.
@@ -343,6 +399,7 @@ class CheckinStack(Stack):
                 "ESTIMATED_1RM_TABLE_NAME": self.estimated_1rm_table.table_name,
                 "SPLITS_TABLE_NAME": self.splits_table.table_name,
                 "SET_PLAN_TEMPLATES_TABLE_NAME": self.set_plan_templates_table.table_name,
+                "ACCESSORY_GOAL_CHECKINS_TABLE_NAME": self.accessory_goal_checkins_table.table_name,
                 "ENVIRONMENT": self.config.ENVIRONMENT,
                 "LOG_LEVEL": self.config.LOG_LEVEL,
             },
@@ -355,6 +412,7 @@ class CheckinStack(Stack):
         self.estimated_1rm_table.grant_read_write_data(function)
         self.splits_table.grant_read_write_data(function)
         self.set_plan_templates_table.grant_read_write_data(function)
+        self.accessory_goal_checkins_table.grant_read_write_data(function)
 
         return function
 
@@ -552,6 +610,36 @@ class CheckinStack(Stack):
 
         # Add DELETE method for set-plan-templates (batch soft delete)
         set_plan_templates_resource.add_method(
+            "DELETE",
+            checkin_integration,
+            api_key_required=True,
+            authorizer=self.authorizer,
+            authorization_type=apigateway.AuthorizationType.CUSTOM,
+        )
+
+        # Create /checkin/accessory-goal-checkins resource
+        accessory_goal_checkins_resource = checkin_resource.add_resource("accessory-goal-checkins")
+
+        # Add POST method for accessory-goal-checkins (batch create)
+        accessory_goal_checkins_resource.add_method(
+            "POST",
+            checkin_integration,
+            api_key_required=True,
+            authorizer=self.authorizer,
+            authorization_type=apigateway.AuthorizationType.CUSTOM,
+        )
+
+        # Add GET method for accessory-goal-checkins (paginated, most recent first)
+        accessory_goal_checkins_resource.add_method(
+            "GET",
+            checkin_integration,
+            api_key_required=True,
+            authorizer=self.authorizer,
+            authorization_type=apigateway.AuthorizationType.CUSTOM,
+        )
+
+        # Add DELETE method for accessory-goal-checkins (batch soft delete)
+        accessory_goal_checkins_resource.add_method(
             "DELETE",
             checkin_integration,
             api_key_required=True,

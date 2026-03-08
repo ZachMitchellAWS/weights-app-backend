@@ -4,29 +4,35 @@
 This script allows saving all data for a specific user across all DynamoDB tables
 to a JSON file, and loading it back. Useful for preserving test user state.
 
+On load, missing fields are filled with schema defaults (migration), so snapshots
+taken before a schema change will load correctly.
+
 Usage:
     python scripts/user_snapshot.py save
     python scripts/user_snapshot.py load
+    python scripts/user_snapshot.py save --user-id 1702dad4-e9af-42db-9bfa-7204cd69d54a
+    python scripts/user_snapshot.py load --user-id 1702dad4-e9af-42db-9bfa-7204cd69d54a
 """
 
 import argparse
 import json
 import sys
+from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 
 import boto3
 from boto3.dynamodb.conditions import Key
+from botocore.exceptions import ClientError
 
 # Configuration
-USER_ID = "18dee8ea-ac11-4b02-ae52-670cb830e44a"
+DEFAULT_USER_ID = "18dee8ea-ac11-4b02-ae52-670cb830e44a"
 REGION = "us-west-1"
 ENV = "staging"
 PROJECT = "liftthebull"
 
 # Output file location
 SNAPSHOT_DIR = Path(__file__).parent.parent / "snapshots"
-SNAPSHOT_FILE = SNAPSHOT_DIR / f"user_{USER_ID[:8]}.json"
 
 # Tables and their key schemas
 # Format: (table_name_suffix, partition_key, sort_key or None)
@@ -37,11 +43,47 @@ TABLES = [
     ("exercises", "userId", "exerciseItemId"),
     ("lift-sets", "userId", "liftSetId"),
     ("estimated-1rm", "userId", "liftSetId"),
-    ("sequences", "userId", "sequenceId"),
     ("splits", "userId", "splitId"),
     ("entitlement-grants", "userId", "startUtc"),
     ("subscription-events", "userId", "eventTimestamp"),
+    ("set-plan-templates", "userId", "templateId"),
+    ("accessory-goal-checkins", "userId", "checkinId"),
 ]
+
+# Schema defaults for migration on load.
+# Only tables/fields that need defaults are listed here.
+# Fields not listed are left as-is (schema-agnostic passthrough).
+_NOW_SENTINEL = "<<use_existing_or_now>>"
+
+TABLE_SCHEMAS = {
+    "user-properties": {
+        "availableChangePlates": [],
+        "createdDatetime": _NOW_SENTINEL,
+        "lastModifiedDatetime": _NOW_SENTINEL,
+    },
+    "exercises": {
+        "isCustom": False,
+        "loadType": "Barbell",
+        "lastModifiedDatetime": _NOW_SENTINEL,
+    },
+    "lift-sets": {
+        "lastModifiedDatetime": _NOW_SENTINEL,
+    },
+    "estimated-1rm": {
+        "lastModifiedDatetime": _NOW_SENTINEL,
+    },
+    "splits": {
+        "lastModifiedDatetime": _NOW_SENTINEL,
+    },
+    "set-plan-templates": {
+        "isCustom": False,
+        "effortSequence": [],
+        "lastModifiedDatetime": _NOW_SENTINEL,
+    },
+    "accessory-goal-checkins": {
+        "lastModifiedDatetime": _NOW_SENTINEL,
+    },
+}
 
 
 class DecimalEncoder(json.JSONEncoder):
@@ -71,12 +113,38 @@ def get_table_name(suffix: str) -> str:
     return f"{PROJECT}-{ENV}-{suffix}"
 
 
-def save_user_data():
+def get_snapshot_file(user_id: str) -> Path:
+    """Get snapshot file path for a given user ID."""
+    return SNAPSHOT_DIR / f"user_{user_id[:8]}.json"
+
+
+def apply_schema_defaults(table_suffix, item):
+    """Add missing fields with defaults. Mutates item in place.
+
+    Returns set of field names that were added, or empty set.
+    """
+    schema = TABLE_SCHEMAS.get(table_suffix)
+    if not schema:
+        return set()
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+    added = set()
+    for field, default in schema.items():
+        if field not in item:
+            if default == _NOW_SENTINEL:
+                item[field] = now
+            else:
+                item[field] = default
+            added.add(field)
+    return added
+
+
+def save_user_data(user_id: str):
     """Save all user data from staging tables to a JSON file."""
     dynamodb = boto3.resource("dynamodb", region_name=REGION)
+    snapshot_file = get_snapshot_file(user_id)
 
     snapshot = {
-        "user_id": USER_ID,
+        "user_id": user_id,
         "tables": {}
     }
 
@@ -88,20 +156,26 @@ def save_user_data():
 
         print(f"Querying {table_name}...")
 
-        # Query for all items with this user ID
-        response = table.query(
-            KeyConditionExpression=Key(pk_name).eq(USER_ID)
-        )
-
-        items = response.get("Items", [])
-
-        # Handle pagination if needed
-        while "LastEvaluatedKey" in response:
+        try:
+            # Query for all items with this user ID
             response = table.query(
-                KeyConditionExpression=Key(pk_name).eq(USER_ID),
-                ExclusiveStartKey=response["LastEvaluatedKey"]
+                KeyConditionExpression=Key(pk_name).eq(user_id)
             )
-            items.extend(response.get("Items", []))
+
+            items = response.get("Items", [])
+
+            # Handle pagination if needed
+            while "LastEvaluatedKey" in response:
+                response = table.query(
+                    KeyConditionExpression=Key(pk_name).eq(user_id),
+                    ExclusiveStartKey=response["LastEvaluatedKey"]
+                )
+                items.extend(response.get("Items", []))
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "ResourceNotFoundException":
+                print(f"  (table does not exist, skipping)")
+                continue
+            raise
 
         snapshot["tables"][table_suffix] = items
         total_items += len(items)
@@ -111,28 +185,30 @@ def save_user_data():
     SNAPSHOT_DIR.mkdir(exist_ok=True)
 
     # Write to file
-    with open(SNAPSHOT_FILE, "w") as f:
+    with open(snapshot_file, "w") as f:
         json.dump(snapshot, f, indent=2, cls=DecimalEncoder)
 
-    print(f"\nSaved {total_items} total items to {SNAPSHOT_FILE}")
+    print(f"\nSaved {total_items} total items to {snapshot_file}")
 
 
-def load_user_data():
+def load_user_data(user_id: str):
     """Load user data from JSON file back into staging tables."""
-    if not SNAPSHOT_FILE.exists():
-        print(f"Error: Snapshot file not found: {SNAPSHOT_FILE}")
+    snapshot_file = get_snapshot_file(user_id)
+
+    if not snapshot_file.exists():
+        print(f"Error: Snapshot file not found: {snapshot_file}")
         print("Run 'make save-user-staging' first to create a snapshot.")
         sys.exit(1)
 
     dynamodb = boto3.resource("dynamodb", region_name=REGION)
 
     # Read snapshot file
-    with open(SNAPSHOT_FILE, "r") as f:
+    with open(snapshot_file, "r") as f:
         snapshot = json.load(f)
 
-    if snapshot.get("user_id") != USER_ID:
+    if snapshot.get("user_id") != user_id:
         print(f"Error: Snapshot user ID mismatch")
-        print(f"  Expected: {USER_ID}")
+        print(f"  Expected: {user_id}")
         print(f"  Found: {snapshot.get('user_id')}")
         sys.exit(1)
 
@@ -149,6 +225,19 @@ def load_user_data():
 
         print(f"Loading {len(items)} item(s) into {table_name}...")
 
+        # Apply schema migration and track what was added
+        migrated_count = 0
+        all_added_fields = set()
+
+        for item in items:
+            added = apply_schema_defaults(table_suffix, item)
+            if added:
+                migrated_count += 1
+                all_added_fields.update(added)
+
+        if migrated_count > 0:
+            print(f"  Migrated {migrated_count} item(s): added [{', '.join(sorted(all_added_fields))}]")
+
         # Use batch writer for efficiency
         with table.batch_writer() as batch:
             for item in items:
@@ -158,7 +247,7 @@ def load_user_data():
 
         total_items += len(items)
 
-    print(f"\nLoaded {total_items} total items from {SNAPSHOT_FILE}")
+    print(f"\nLoaded {total_items} total items from {snapshot_file}")
 
 
 def main():
@@ -170,13 +259,18 @@ def main():
         choices=["save", "load"],
         help="Action to perform: 'save' exports data, 'load' imports data"
     )
+    parser.add_argument(
+        "--user-id",
+        default=DEFAULT_USER_ID,
+        help=f"User ID to save/load (default: {DEFAULT_USER_ID})"
+    )
 
     args = parser.parse_args()
 
     if args.action == "save":
-        save_user_data()
+        save_user_data(args.user_id)
     elif args.action == "load":
-        load_user_data()
+        load_user_data(args.user_id)
 
 
 if __name__ == "__main__":
