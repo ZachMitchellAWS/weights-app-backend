@@ -12,8 +12,8 @@
     ],
     "user-properties": [
       {
-        "activeSetPlanTemplateId": "00000000-0000-0000-0000-000000000105",
-        "activeSplitId": "00000000-0000-0000-0002-000000000004",
+        "activeSetPlanTemplateId": "00000000-0000-0000-0000-000000000101",
+        "activeSplitId": "00000000-0000-0000-0002-000000000001",
         "availableChangePlates": [
           0.25,
           0.5,
@@ -28,7 +28,7 @@
         "easyMinReps": 9,
         "hardMaxReps": 6,
         "hardMinReps": 3,
-        "lastModifiedDatetime": "2026-03-10T14:12:29.236",
+        "lastModifiedDatetime": "2026-03-09T14:45:05.921",
         "maxReps": 12,
         "minReps": 5,
         "moderateMaxReps": 10,
@@ -53,41 +53,41 @@
         "exerciseItemId": "00000000-0000-0000-0001-000000000001"
       },
       {
-        "createdTimezone": "America/Los_Angeles",
-        "movementType": "Squat",
-        "icon": "SquatIcon",
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "loadType": "Barbell",
         "createdDatetime": "2026-03-02T20:18:28Z",
-        "lastModifiedDatetime": "2026-03-02T20:18:28.322987+00:00",
+        "createdTimezone": "America/Los_Angeles",
+        "icon": "SquatIcon",
         "isCustom": false,
+        "lastModifiedDatetime": "2026-03-02T20:18:28.322987+00:00",
+        "loadType": "Barbell",
+        "movementType": "Squat",
         "name": "Squats",
+        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "exerciseItemId": "00000000-0000-0000-0001-000000000002"
       },
       {
-        "createdTimezone": "America/Los_Angeles",
-        "movementType": "Push",
-        "icon": "BenchPressIcon",
-        "weightIncrement": 5,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "loadType": "Barbell",
         "createdDatetime": "2026-03-02T20:18:28Z",
-        "lastModifiedDatetime": "2026-03-09T15:55:39.726782+00:00",
+        "createdTimezone": "America/Los_Angeles",
+        "icon": "BenchPressIcon",
         "isCustom": false,
+        "lastModifiedDatetime": "2026-03-09T15:55:39.726782+00:00",
+        "loadType": "Barbell",
+        "movementType": "Push",
         "name": "Bench Press",
+        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "weightIncrement": 5,
         "exerciseItemId": "00000000-0000-0000-0001-000000000003"
       },
       {
-        "createdTimezone": "America/Los_Angeles",
-        "movementType": "Push",
-        "icon": "OverheadPressIcon",
-        "weightIncrement": 5,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "loadType": "Barbell",
         "createdDatetime": "2026-03-02T20:18:28Z",
-        "lastModifiedDatetime": "2026-03-09T17:56:02.243160+00:00",
+        "createdTimezone": "America/Los_Angeles",
+        "icon": "OverheadPressIcon",
         "isCustom": false,
+        "lastModifiedDatetime": "2026-03-09T17:56:02.243160+00:00",
+        "loadType": "Barbell",
+        "movementType": "Push",
         "name": "Overhead Press",
+        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "weightIncrement": 5,
         "exerciseItemId": "00000000-0000-0000-0001-000000000004"
       },
       {
@@ -117,16 +117,16 @@
         "exerciseItemId": "00000000-0000-0000-0001-000000000006"
       },
       {
-        "createdTimezone": "America/Los_Angeles",
-        "movementType": "Push",
-        "icon": "DipsIcon",
-        "weightIncrement": 0.5,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "loadType": "Single Load",
         "createdDatetime": "2026-03-02T20:18:28Z",
-        "lastModifiedDatetime": "2026-03-09T19:39:29.478670+00:00",
+        "createdTimezone": "America/Los_Angeles",
+        "icon": "DipsIcon",
         "isCustom": false,
+        "lastModifiedDatetime": "2026-03-09T19:39:29.478670+00:00",
+        "loadType": "Single Load",
+        "movementType": "Push",
         "name": "Dips",
+        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "weightIncrement": 0.5,
         "exerciseItemId": "00000000-0000-0000-0001-000000000007"
       },
       {
@@ -416,74 +416,17 @@
         "isCustom": false,
         "name": "Seated EZ-Bar Tricep Extensions",
         "exerciseItemId": "00000000-0000-0000-0001-000000000031"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
-        "movementType": "Push",
-        "icon": "LateralRaisesIcon",
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "loadType": "Single Load",
-        "createdDatetime": "2026-03-09T00:00:00Z",
-        "lastModifiedDatetime": "2026-03-09T00:00:00.000000+00:00",
-        "isCustom": false,
-        "name": "Lateral Raises",
-        "exerciseItemId": "00000000-0000-0000-0001-000000000032"
-      },
-      {
-        "createdDatetime": "2026-03-09T00:00:00Z",
-        "createdTimezone": "America/Los_Angeles",
-        "icon": "FlyesIcon",
-        "isCustom": false,
-        "lastModifiedDatetime": "2026-03-09T22:06:27.681642+00:00",
-        "loadType": "Single Load",
-        "movementType": "Push",
-        "name": "Flys",
-        "notes": "- Set to 8 height\n- Weight is total",
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseItemId": "00000000-0000-0000-0001-000000000033"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
-        "movementType": "Push",
-        "icon": "SideRaisesIcon",
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "loadType": "Single Load",
-        "createdDatetime": "2026-03-09T00:00:00Z",
-        "lastModifiedDatetime": "2026-03-09T00:00:00.000000+00:00",
-        "isCustom": false,
-        "name": "Side Raises",
-        "exerciseItemId": "00000000-0000-0000-0001-000000000034"
       }
     ],
     "lift-sets": [
       {
-        "createdTimezone": "America/Los_Angeles",
-        "reps": 8,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000032",
-        "createdDatetime": "2026-03-09T21:30:20Z",
-        "lastModifiedDatetime": "2026-03-09T21:30:20.516530+00:00",
-        "weight": 20,
-        "liftSetId": "009F029A-CECC-4ABE-B672-B419E34728B3"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
-        "reps": 12,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000023",
-        "createdDatetime": "2026-03-09T21:35:41Z",
-        "lastModifiedDatetime": "2026-03-09T21:35:41.380840+00:00",
-        "weight": 20,
-        "liftSetId": "0241369B-E2C4-4DB4-B1BB-F2F5A39096D5"
-      },
-      {
+        "createdDatetime": "2026-03-07T23:52:50Z",
         "createdTimezone": "America/Los_Angeles",
         "deleted": true,
+        "exerciseId": "00000000-0000-0000-0001-000000000003",
+        "lastModifiedDatetime": "2026-03-08T16:46:41.468701+00:00",
         "reps": 10,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000003",
-        "createdDatetime": "2026-03-07T23:52:50Z",
-        "lastModifiedDatetime": "2026-03-08T16:46:41.468701+00:00",
         "weight": 115,
         "liftSetId": "0325FE04-87BB-43B7-9892-D54453C66124"
       },
@@ -497,17 +440,6 @@
         "lastModifiedDatetime": "2026-03-03T15:47:19.459348+00:00",
         "weight": 0,
         "liftSetId": "06B18EBA-0D1D-4F6E-B223-3FEFC09B6DE7"
-      },
-      {
-        "isBaselineSet": true,
-        "createdTimezone": "America/Los_Angeles",
-        "reps": 12,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000023",
-        "createdDatetime": "2026-03-09T21:34:21Z",
-        "lastModifiedDatetime": "2026-03-09T21:34:21.639574+00:00",
-        "weight": 20,
-        "liftSetId": "07516BFE-4653-4BB8-9720-EA077110C43E"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -550,13 +482,13 @@
         "liftSetId": "0B45C567-3404-46CA-BB75-7AF7D79601FF"
       },
       {
+        "createdDatetime": "2026-03-07T23:53:02Z",
         "createdTimezone": "America/Los_Angeles",
         "deleted": true,
+        "exerciseId": "00000000-0000-0000-0001-000000000003",
+        "lastModifiedDatetime": "2026-03-08T16:46:41.298533+00:00",
         "reps": 6,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000003",
-        "createdDatetime": "2026-03-07T23:53:02Z",
-        "lastModifiedDatetime": "2026-03-08T16:46:41.298533+00:00",
         "weight": 155,
         "liftSetId": "0C4B0C77-F626-4FFE-B1CB-F24CDFC91488"
       },
@@ -635,16 +567,6 @@
         "liftSetId": "17109224-0230-497D-B40E-C7163CCF9C17"
       },
       {
-        "createdTimezone": "America/Los_Angeles",
-        "reps": 8,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000032",
-        "createdDatetime": "2026-03-09T21:25:27Z",
-        "lastModifiedDatetime": "2026-03-09T21:25:28.912730+00:00",
-        "weight": 15,
-        "liftSetId": "18712537-AB03-4CD2-AAC3-1B271297C283"
-      },
-      {
         "isBaselineSet": true,
         "createdTimezone": "America/Los_Angeles",
         "deleted": true,
@@ -721,13 +643,13 @@
         "liftSetId": "205FE02E-E3F8-4945-87C2-DEF2ACB36564"
       },
       {
+        "createdDatetime": "2026-03-07T23:52:46Z",
         "createdTimezone": "America/Los_Angeles",
         "deleted": true,
+        "exerciseId": "00000000-0000-0000-0001-000000000003",
+        "lastModifiedDatetime": "2026-03-08T16:46:41.559736+00:00",
         "reps": 10,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000003",
-        "createdDatetime": "2026-03-07T23:52:46Z",
-        "lastModifiedDatetime": "2026-03-08T16:46:41.559736+00:00",
         "weight": 95,
         "liftSetId": "2075B946-7463-4527-A106-3A961B355AE1"
       },
@@ -753,16 +675,6 @@
         "lastModifiedDatetime": "2026-03-03T15:47:19.707045+00:00",
         "weight": 0,
         "liftSetId": "244B3391-7B3D-4763-904D-80F740108131"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
-        "reps": 10,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000034",
-        "createdDatetime": "2026-03-09T23:49:03Z",
-        "lastModifiedDatetime": "2026-03-09T23:49:03.549773+00:00",
-        "weight": 12.5,
-        "liftSetId": "252DADD2-2EFD-455D-A322-575EB0D6AA06"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -810,13 +722,13 @@
         "liftSetId": "2877D2A0-54BE-4CE5-BB48-9DF68C910F69"
       },
       {
+        "createdDatetime": "2026-03-07T15:49:59Z",
         "createdTimezone": "America/Los_Angeles",
         "deleted": true,
+        "exerciseId": "00000000-0000-0000-0001-000000000001",
+        "lastModifiedDatetime": "2026-03-08T15:32:08.874274+00:00",
         "reps": 2,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000001",
-        "createdDatetime": "2026-03-07T15:49:59Z",
-        "lastModifiedDatetime": "2026-03-08T15:32:08.874274+00:00",
         "weight": 280,
         "liftSetId": "290BBB55-779D-44F8-BABF-60A099555D01"
       },
@@ -830,16 +742,6 @@
         "lastModifiedDatetime": "2026-03-04T22:37:50.014362+00:00",
         "weight": 165,
         "liftSetId": "2AD365D6-D7C8-46AC-88D5-5C7355EBD7AA"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
-        "reps": 6,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000023",
-        "createdDatetime": "2026-03-09T21:51:49Z",
-        "lastModifiedDatetime": "2026-03-09T21:51:51.071820+00:00",
-        "weight": 40,
-        "liftSetId": "2D4D7197-9E47-4407-AE48-3D5B4C3C829B"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -993,16 +895,6 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "reps": 8,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000034",
-        "createdDatetime": "2026-03-09T23:44:19Z",
-        "lastModifiedDatetime": "2026-03-09T23:44:20.281791+00:00",
-        "weight": 10,
-        "liftSetId": "4224B2BB-E00C-4603-A796-FE26FB58ECDA"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
         "reps": 12,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "exerciseId": "00000000-0000-0000-0001-000000000002",
@@ -1010,16 +902,6 @@
         "lastModifiedDatetime": "2026-03-06T21:39:39.814037+00:00",
         "weight": 95,
         "liftSetId": "43AC711A-4337-4454-87D9-E52521E44ED4"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
-        "reps": 10,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000023",
-        "createdDatetime": "2026-03-09T21:40:34Z",
-        "lastModifiedDatetime": "2026-03-09T21:40:35.094391+00:00",
-        "weight": 25,
-        "liftSetId": "4481A91C-C130-4867-8D60-F9124E79D4AF"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -1118,25 +1000,15 @@
         "liftSetId": "50DEA614-77DC-4891-B849-306A1FEE5A8A"
       },
       {
+        "createdDatetime": "2026-03-07T23:52:55Z",
         "createdTimezone": "America/Los_Angeles",
         "deleted": true,
+        "exerciseId": "00000000-0000-0000-0001-000000000003",
+        "lastModifiedDatetime": "2026-03-08T16:46:41.387097+00:00",
         "reps": 10,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000003",
-        "createdDatetime": "2026-03-07T23:52:55Z",
-        "lastModifiedDatetime": "2026-03-08T16:46:41.387097+00:00",
         "weight": 115,
         "liftSetId": "525FD3B8-C22D-4B64-B299-6A89EB1309E5"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
-        "reps": 6,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000023",
-        "createdDatetime": "2026-03-09T21:45:58Z",
-        "lastModifiedDatetime": "2026-03-09T21:46:00.274311+00:00",
-        "weight": 35,
-        "liftSetId": "52DBC152-0D45-4DDB-9754-3CB7F1404DC6"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -1157,16 +1029,6 @@
         "lastModifiedDatetime": "2026-03-06T22:20:10.894133+00:00",
         "weight": 125,
         "liftSetId": "53DC0EA8-04A5-4400-913D-43A9FFFB15D0"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
-        "reps": 6,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000034",
-        "createdDatetime": "2026-03-09T23:53:06Z",
-        "lastModifiedDatetime": "2026-03-09T23:53:07.576446+00:00",
-        "weight": 15,
-        "liftSetId": "55FCF1AD-50CF-4D77-BB4B-AFF37150F93F"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -1254,16 +1116,6 @@
         "lastModifiedDatetime": "2026-03-03T05:18:14.048132+00:00",
         "weight": 0,
         "liftSetId": "5D944C00-A062-4DE3-A4E6-32D5B42AABEA"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
-        "reps": 12,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000032",
-        "createdDatetime": "2026-03-09T20:23:05Z",
-        "lastModifiedDatetime": "2026-03-09T20:23:05.218814+00:00",
-        "weight": 10,
-        "liftSetId": "5DFDC386-DB66-41A3-99A2-B09C3B7A2F8D"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -1355,16 +1207,6 @@
         "liftSetId": "683AB96C-19A5-419A-8049-6F6B73BD895D"
       },
       {
-        "createdTimezone": "America/Los_Angeles",
-        "reps": 6,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000033",
-        "createdDatetime": "2026-03-09T22:34:58Z",
-        "lastModifiedDatetime": "2026-03-09T22:34:58.597727+00:00",
-        "weight": 40,
-        "liftSetId": "684981EF-4B16-4576-979E-09F3526C5A4C"
-      },
-      {
         "isBaselineSet": true,
         "createdTimezone": "America/Los_Angeles",
         "deleted": true,
@@ -1411,17 +1253,6 @@
       {
         "isBaselineSet": true,
         "createdTimezone": "America/Los_Angeles",
-        "reps": 12,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000032",
-        "createdDatetime": "2026-03-09T20:22:59Z",
-        "lastModifiedDatetime": "2026-03-09T20:22:59.690863+00:00",
-        "weight": 10,
-        "liftSetId": "6FCF9B2C-3AF8-4B66-8FD1-3E33155A8695"
-      },
-      {
-        "isBaselineSet": true,
-        "createdTimezone": "America/Los_Angeles",
         "deleted": true,
         "reps": 5,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
@@ -1434,17 +1265,6 @@
       {
         "createdTimezone": "America/Los_Angeles",
         "deleted": true,
-        "reps": 12,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000032",
-        "createdDatetime": "2026-03-09T20:20:53Z",
-        "lastModifiedDatetime": "2026-03-09T20:22:51.566498+00:00",
-        "weight": 20,
-        "liftSetId": "717FA480-62EB-4378-917B-75A97309350F"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
-        "deleted": true,
         "reps": 7,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "exerciseId": "00000000-0000-0000-0001-000000000001",
@@ -1452,17 +1272,6 @@
         "lastModifiedDatetime": "2026-03-04T22:37:49.463210+00:00",
         "weight": 70,
         "liftSetId": "71F11D0C-BDAD-40B9-A052-72FBE56C54FA"
-      },
-      {
-        "isBaselineSet": true,
-        "createdTimezone": "America/Los_Angeles",
-        "reps": 12,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000033",
-        "createdDatetime": "2026-03-09T22:06:45Z",
-        "lastModifiedDatetime": "2026-03-09T22:06:45.438749+00:00",
-        "weight": 20,
-        "liftSetId": "7265467C-F05B-4277-8851-63A378665A15"
       },
       {
         "isBaselineSet": true,
@@ -1487,13 +1296,13 @@
         "liftSetId": "754575D6-11DE-451E-B9AE-DB9147808BF3"
       },
       {
+        "createdDatetime": "2026-03-07T23:54:23Z",
         "createdTimezone": "America/Los_Angeles",
         "deleted": true,
+        "exerciseId": "00000000-0000-0000-0001-000000000003",
+        "lastModifiedDatetime": "2026-03-08T16:46:39.694426+00:00",
         "reps": 7,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000003",
-        "createdDatetime": "2026-03-07T23:54:23Z",
-        "lastModifiedDatetime": "2026-03-08T16:46:39.694426+00:00",
         "weight": 185,
         "liftSetId": "75FCAE51-5C13-4578-B8AF-ED7AF78352F4"
       },
@@ -1559,17 +1368,6 @@
         "liftSetId": "7B6A5F54-2303-4244-A21D-866FDC347867"
       },
       {
-        "createdTimezone": "America/Los_Angeles",
-        "deleted": true,
-        "reps": 10,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000032",
-        "createdDatetime": "2026-03-09T21:21:18Z",
-        "lastModifiedDatetime": "2026-03-09T21:21:23.163101+00:00",
-        "weight": 15,
-        "liftSetId": "7BEBBE0B-8C43-4C38-B17B-57D58CAE24F7"
-      },
-      {
         "isBaselineSet": true,
         "createdTimezone": "America/Los_Angeles",
         "deleted": true,
@@ -1580,18 +1378,6 @@
         "lastModifiedDatetime": "2026-03-04T19:47:05.526174+00:00",
         "weight": 0.01,
         "liftSetId": "7C6EC29A-8656-4CF4-9000-4DF218C6E9F5"
-      },
-      {
-        "isBaselineSet": true,
-        "createdTimezone": "America/Los_Angeles",
-        "deleted": true,
-        "reps": 12,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000032",
-        "createdDatetime": "2026-03-09T20:18:51Z",
-        "lastModifiedDatetime": "2026-03-09T20:22:53.270653+00:00",
-        "weight": 20,
-        "liftSetId": "81E1A34C-CACE-4539-BC8D-CD8627D303D6"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -1669,13 +1455,13 @@
         "liftSetId": "8AD267D3-DE56-4914-B200-8AD46F3B8915"
       },
       {
+        "createdDatetime": "2026-03-07T23:54:08Z",
         "createdTimezone": "America/Los_Angeles",
         "deleted": true,
+        "exerciseId": "00000000-0000-0000-0001-000000000003",
+        "lastModifiedDatetime": "2026-03-08T16:46:19.690406+00:00",
         "reps": 6,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000003",
-        "createdDatetime": "2026-03-07T23:54:08Z",
-        "lastModifiedDatetime": "2026-03-08T16:46:19.690406+00:00",
         "weight": 185,
         "liftSetId": "90247A65-D599-4BE7-8F1A-A1EEBED6F972"
       },
@@ -1747,16 +1533,6 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "reps": 12,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000033",
-        "createdDatetime": "2026-03-09T22:12:05Z",
-        "lastModifiedDatetime": "2026-03-09T22:12:06.002198+00:00",
-        "weight": 20,
-        "liftSetId": "9F5E933E-1D9B-42BB-BAFC-0DD6C47BA17C"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
         "deleted": true,
         "reps": 4,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
@@ -1820,13 +1596,13 @@
         "liftSetId": "B3163527-775D-4B5C-9612-D45871946268"
       },
       {
+        "createdDatetime": "2026-03-07T23:52:41Z",
         "createdTimezone": "America/Los_Angeles",
         "deleted": true,
+        "exerciseId": "00000000-0000-0000-0001-000000000003",
+        "lastModifiedDatetime": "2026-03-08T16:46:41.642295+00:00",
         "reps": 10,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000003",
-        "createdDatetime": "2026-03-07T23:52:41Z",
-        "lastModifiedDatetime": "2026-03-08T16:46:41.642295+00:00",
         "weight": 95,
         "liftSetId": "B32D90FE-009F-4FF5-B973-D88BB2AC9F8D"
       },
@@ -1853,13 +1629,13 @@
         "liftSetId": "BB2987FA-5E80-4378-B391-B116B86E0197"
       },
       {
+        "createdDatetime": "2026-03-07T15:49:22Z",
         "createdTimezone": "America/Los_Angeles",
         "deleted": true,
+        "exerciseId": "00000000-0000-0000-0001-000000000001",
+        "lastModifiedDatetime": "2026-03-08T15:32:08.787627+00:00",
         "reps": 5,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000001",
-        "createdDatetime": "2026-03-07T15:49:22Z",
-        "lastModifiedDatetime": "2026-03-08T15:32:08.787627+00:00",
         "weight": 280,
         "liftSetId": "BBA6825E-B654-4E2F-A04F-744F96076C64"
       },
@@ -1916,16 +1692,6 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "reps": 10,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000034",
-        "createdDatetime": "2026-03-09T23:55:45Z",
-        "lastModifiedDatetime": "2026-03-09T23:55:45.579543+00:00",
-        "weight": 16,
-        "liftSetId": "C2FE5725-55F0-4D6E-B7B8-B995B2C8CA36"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
         "reps": 6,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "exerciseId": "00000000-0000-0000-0001-000000000001",
@@ -1967,16 +1733,6 @@
         "liftSetId": "C81D3834-E5C4-436A-83E8-8F98832BFCF0"
       },
       {
-        "createdTimezone": "America/Los_Angeles",
-        "reps": 10,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000023",
-        "createdDatetime": "2026-03-09T21:37:10Z",
-        "lastModifiedDatetime": "2026-03-09T21:37:10.561766+00:00",
-        "weight": 25,
-        "liftSetId": "C82C1BE7-A5E2-408E-88C8-456CB096EA50"
-      },
-      {
         "isBaselineSet": true,
         "createdTimezone": "America/Los_Angeles",
         "deleted": true,
@@ -2011,16 +1767,6 @@
         "liftSetId": "D285613B-B820-4707-A654-98ED14300F69"
       },
       {
-        "createdTimezone": "America/Los_Angeles",
-        "reps": 6,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000033",
-        "createdDatetime": "2026-03-09T22:31:58Z",
-        "lastModifiedDatetime": "2026-03-09T22:31:58.846528+00:00",
-        "weight": 35,
-        "liftSetId": "D30408A6-6BA8-48AA-999B-DC9EFFE7D9FE"
-      },
-      {
         "isBaselineSet": true,
         "createdTimezone": "America/Los_Angeles",
         "deleted": true,
@@ -2031,16 +1777,6 @@
         "lastModifiedDatetime": "2026-03-04T19:47:04.103933+00:00",
         "weight": 10,
         "liftSetId": "D5E4CED7-9FF7-4473-9C2A-E4EBAF7E831C"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
-        "reps": 8,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000032",
-        "createdDatetime": "2026-03-09T21:21:33Z",
-        "lastModifiedDatetime": "2026-03-09T21:21:33.692088+00:00",
-        "weight": 15,
-        "liftSetId": "D685E4DA-993D-4E08-98D2-3A5E72CDF64B"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -2055,17 +1791,6 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "deleted": true,
-        "reps": 9,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000032",
-        "createdDatetime": "2026-03-09T21:21:26Z",
-        "lastModifiedDatetime": "2026-03-09T21:21:30.888426+00:00",
-        "weight": 15,
-        "liftSetId": "D7A1C78B-5D9B-4FB3-AF94-CD5BBA8A1B04"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
         "reps": 8,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "exerciseId": "00000000-0000-0000-0001-000000000007",
@@ -2075,26 +1800,15 @@
         "liftSetId": "D8011FA9-6D68-4BA2-89DC-55A9648719E0"
       },
       {
+        "createdDatetime": "2026-03-07T15:49:02Z",
         "createdTimezone": "America/Los_Angeles",
         "deleted": true,
+        "exerciseId": "00000000-0000-0000-0001-000000000001",
+        "lastModifiedDatetime": "2026-03-08T15:32:08.686329+00:00",
         "reps": 5,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000001",
-        "createdDatetime": "2026-03-07T15:49:02Z",
-        "lastModifiedDatetime": "2026-03-08T15:32:08.686329+00:00",
         "weight": 300,
         "liftSetId": "D947C549-9FBF-4A77-962C-E0F59E82D77B"
-      },
-      {
-        "isBaselineSet": true,
-        "createdTimezone": "America/Los_Angeles",
-        "reps": 8,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000034",
-        "createdDatetime": "2026-03-09T23:42:07Z",
-        "lastModifiedDatetime": "2026-03-09T23:42:08.741514+00:00",
-        "weight": 10,
-        "liftSetId": "DB7D684E-3811-4C78-8CEC-6B5684D2E554"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -2105,16 +1819,6 @@
         "lastModifiedDatetime": "2026-03-04T19:35:39.990369+00:00",
         "weight": 12.5,
         "liftSetId": "DE85FD51-4BF2-465F-B6D2-209BAC3199F8"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
-        "reps": 8,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000034",
-        "createdDatetime": "2026-03-09T23:46:25Z",
-        "lastModifiedDatetime": "2026-03-09T23:46:25.175295+00:00",
-        "weight": 12.5,
-        "liftSetId": "DF160511-E3E6-4D0A-9C37-B623D62C4B5C"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -2172,16 +1876,6 @@
         "createdTimezone": "America/Los_Angeles",
         "reps": 6,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000032",
-        "createdDatetime": "2026-03-09T21:27:58Z",
-        "lastModifiedDatetime": "2026-03-09T21:27:58.779853+00:00",
-        "weight": 17.5,
-        "liftSetId": "EAF453C1-C03A-4399-8252-EDA240680E53"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
-        "reps": 6,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "exerciseId": "00000000-0000-0000-0001-000000000001",
         "createdDatetime": "2026-03-04T22:53:02Z",
         "lastModifiedDatetime": "2026-03-04T22:53:03.711356+00:00",
@@ -2229,16 +1923,6 @@
         "lastModifiedDatetime": "2026-03-04T19:54:27.861598+00:00",
         "weight": 15.5,
         "liftSetId": "F017D99A-5A64-4E6F-ADCD-493FB2C4B4A5"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
-        "reps": 10,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000033",
-        "createdDatetime": "2026-03-09T22:25:08Z",
-        "lastModifiedDatetime": "2026-03-09T22:25:09.751190+00:00",
-        "weight": 25,
-        "liftSetId": "F0FA969B-88CF-4F8B-882F-728566032797"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -2295,13 +1979,13 @@
         "liftSetId": "F4BF120C-67F2-42D7-B816-4C46B6E9772B"
       },
       {
+        "createdDatetime": "2026-03-07T15:48:39Z",
         "createdTimezone": "America/Los_Angeles",
         "deleted": true,
+        "exerciseId": "00000000-0000-0000-0001-000000000001",
+        "lastModifiedDatetime": "2026-03-08T15:32:08.597055+00:00",
         "reps": 5,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000001",
-        "createdDatetime": "2026-03-07T15:48:39Z",
-        "lastModifiedDatetime": "2026-03-08T15:32:08.597055+00:00",
         "weight": 350,
         "liftSetId": "F600E6A7-3F33-4091-845E-DF4B1B112C7B"
       },
@@ -2339,16 +2023,6 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "reps": 10,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000033",
-        "createdDatetime": "2026-03-09T22:28:32Z",
-        "lastModifiedDatetime": "2026-03-09T22:28:32.430794+00:00",
-        "weight": 25,
-        "liftSetId": "FF25AAB0-3812-4E35-9015-2AB8C8085ED3"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
         "reps": 8,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "exerciseId": "00000000-0000-0000-0001-000000000007",
@@ -2360,34 +2034,14 @@
     ],
     "estimated-1rm": [
       {
-        "createdTimezone": "America/Los_Angeles",
-        "value": 25.333333333333332,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000032",
-        "createdDatetime": "2026-03-09T21:30:20Z",
-        "lastModifiedDatetime": "2026-03-09T21:30:20.678415+00:00",
-        "estimated1RMId": "9032B4E2-F619-4763-BC0C-312C4852469A",
-        "liftSetId": "009F029A-CECC-4ABE-B672-B419E34728B3"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
-        "value": 46.66666666666667,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000023",
-        "createdDatetime": "2026-03-09T21:35:41Z",
-        "lastModifiedDatetime": "2026-03-09T21:35:41.477319+00:00",
-        "estimated1RMId": "C1840540-EDF4-46A2-8287-C150418E7408",
-        "liftSetId": "0241369B-E2C4-4DB4-B1BB-F2F5A39096D5"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
-        "value": 215.83333333333334,
-        "deleted": true,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000003",
         "createdDatetime": "2026-03-07T23:52:50Z",
-        "lastModifiedDatetime": "2026-03-08T16:46:42.108405+00:00",
+        "createdTimezone": "America/Los_Angeles",
+        "deleted": true,
         "estimated1RMId": "69075BB8-37FB-4AE0-B278-2FCE933B3032",
+        "exerciseId": "00000000-0000-0000-0001-000000000003",
+        "lastModifiedDatetime": "2026-03-08T16:46:42.108405+00:00",
+        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "value": 215.83333333333334,
         "liftSetId": "0325FE04-87BB-43B7-9892-D54453C66124"
       },
       {
@@ -2400,16 +2054,6 @@
         "lastModifiedDatetime": "2026-03-03T15:47:20.526657+00:00",
         "estimated1RMId": "3AD0933D-9466-436D-B34C-9A7B378877CE",
         "liftSetId": "06B18EBA-0D1D-4F6E-B223-3FEFC09B6DE7"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
-        "value": 46.66666666666667,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000023",
-        "createdDatetime": "2026-03-09T21:34:21Z",
-        "lastModifiedDatetime": "2026-03-09T21:34:23.688954+00:00",
-        "estimated1RMId": "EDF8C76B-39C3-45BA-8682-63C0837B782D",
-        "liftSetId": "07516BFE-4653-4BB8-9720-EA077110C43E"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -2452,14 +2096,14 @@
         "liftSetId": "0B45C567-3404-46CA-BB75-7AF7D79601FF"
       },
       {
-        "createdTimezone": "America/Los_Angeles",
-        "value": 215.83333333333334,
-        "deleted": true,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000003",
         "createdDatetime": "2026-03-07T23:53:02Z",
-        "lastModifiedDatetime": "2026-03-08T16:46:41.939967+00:00",
+        "createdTimezone": "America/Los_Angeles",
+        "deleted": true,
         "estimated1RMId": "5CE9AA2B-1DA1-48D9-A214-5445AACBAFAF",
+        "exerciseId": "00000000-0000-0000-0001-000000000003",
+        "lastModifiedDatetime": "2026-03-08T16:46:41.939967+00:00",
+        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "value": 215.83333333333334,
         "liftSetId": "0C4B0C77-F626-4FFE-B1CB-F24CDFC91488"
       },
       {
@@ -2537,16 +2181,6 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "value": 23.333333333333336,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000032",
-        "createdDatetime": "2026-03-09T21:25:27Z",
-        "lastModifiedDatetime": "2026-03-09T21:25:29.104324+00:00",
-        "estimated1RMId": "D2822DA5-3C7C-498D-BB97-A11E351A938E",
-        "liftSetId": "18712537-AB03-4CD2-AAC3-1B271297C283"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
         "value": 6.704980842911878,
         "deleted": true,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
@@ -2620,14 +2254,14 @@
         "liftSetId": "205FE02E-E3F8-4945-87C2-DEF2ACB36564"
       },
       {
-        "createdTimezone": "America/Los_Angeles",
-        "value": 215.83333333333334,
-        "deleted": true,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000003",
         "createdDatetime": "2026-03-07T23:52:46Z",
-        "lastModifiedDatetime": "2026-03-08T16:46:42.194954+00:00",
+        "createdTimezone": "America/Los_Angeles",
+        "deleted": true,
         "estimated1RMId": "5499D471-9D2F-4C32-AC15-0C403CA35A2F",
+        "exerciseId": "00000000-0000-0000-0001-000000000003",
+        "lastModifiedDatetime": "2026-03-08T16:46:42.194954+00:00",
+        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "value": 215.83333333333334,
         "liftSetId": "2075B946-7463-4527-A106-3A961B355AE1"
       },
       {
@@ -2651,16 +2285,6 @@
         "lastModifiedDatetime": "2026-03-03T15:47:20.741923+00:00",
         "estimated1RMId": "20BA7220-ABEB-4676-90C6-D6920A71046A",
         "liftSetId": "244B3391-7B3D-4763-904D-80F740108131"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
-        "value": 21.11111111111111,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000034",
-        "createdDatetime": "2026-03-09T23:49:03Z",
-        "lastModifiedDatetime": "2026-03-09T23:49:03.722866+00:00",
-        "estimated1RMId": "1A8D9CE0-A70B-4B12-881C-5F51E873B78A",
-        "liftSetId": "252DADD2-2EFD-455D-A322-575EB0D6AA06"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -2707,14 +2331,14 @@
         "liftSetId": "2877D2A0-54BE-4CE5-BB48-9DF68C910F69"
       },
       {
-        "createdTimezone": "America/Los_Angeles",
-        "value": 298.6666666666667,
-        "deleted": true,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000001",
         "createdDatetime": "2026-03-07T15:49:59Z",
-        "lastModifiedDatetime": "2026-03-08T15:32:09.912583+00:00",
+        "createdTimezone": "America/Los_Angeles",
+        "deleted": true,
         "estimated1RMId": "7675061F-927D-47EF-AB52-2EFBAED19479",
+        "exerciseId": "00000000-0000-0000-0001-000000000001",
+        "lastModifiedDatetime": "2026-03-08T15:32:09.912583+00:00",
+        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "value": 298.6666666666667,
         "liftSetId": "290BBB55-779D-44F8-BABF-60A099555D01"
       },
       {
@@ -2727,16 +2351,6 @@
         "lastModifiedDatetime": "2026-03-04T22:37:51.747451+00:00",
         "estimated1RMId": "CECF4F51-9E6B-40C2-A1E3-CD985D38CA26",
         "liftSetId": "2AD365D6-D7C8-46AC-88D5-5C7355EBD7AA"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
-        "value": 48,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000023",
-        "createdDatetime": "2026-03-09T21:51:49Z",
-        "lastModifiedDatetime": "2026-03-09T21:51:51.231682+00:00",
-        "estimated1RMId": "039A87CC-5876-40FB-8610-6601F128E658",
-        "liftSetId": "2D4D7197-9E47-4407-AE48-3D5B4C3C829B"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -2887,16 +2501,6 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "value": 21.11111111111111,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000034",
-        "createdDatetime": "2026-03-09T23:44:19Z",
-        "lastModifiedDatetime": "2026-03-09T23:44:20.600539+00:00",
-        "estimated1RMId": "CB6EAD5F-BEA6-492E-A4C0-7DE7BC2D0FBD",
-        "liftSetId": "4224B2BB-E00C-4603-A796-FE26FB58ECDA"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
         "value": 221.66666666666669,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "exerciseId": "00000000-0000-0000-0001-000000000002",
@@ -2904,16 +2508,6 @@
         "lastModifiedDatetime": "2026-03-06T21:39:39.893718+00:00",
         "estimated1RMId": "3B23647E-D460-4A9E-A17B-362D96DEC314",
         "liftSetId": "43AC711A-4337-4454-87D9-E52521E44ED4"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
-        "value": 46.66666666666667,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000023",
-        "createdDatetime": "2026-03-09T21:40:34Z",
-        "lastModifiedDatetime": "2026-03-09T21:40:35.264170+00:00",
-        "estimated1RMId": "943D1582-4247-45E0-A61C-3FF59E35B425",
-        "liftSetId": "4481A91C-C130-4867-8D60-F9124E79D4AF"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -3010,25 +2604,15 @@
         "liftSetId": "50DEA614-77DC-4891-B849-306A1FEE5A8A"
       },
       {
-        "createdTimezone": "America/Los_Angeles",
-        "value": 215.83333333333334,
-        "deleted": true,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000003",
         "createdDatetime": "2026-03-07T23:52:55Z",
-        "lastModifiedDatetime": "2026-03-08T16:46:42.021365+00:00",
-        "estimated1RMId": "B76D7BC4-A0B2-43F2-B011-D4293699F74E",
-        "liftSetId": "525FD3B8-C22D-4B64-B299-6A89EB1309E5"
-      },
-      {
         "createdTimezone": "America/Los_Angeles",
-        "value": 46.66666666666667,
+        "deleted": true,
+        "estimated1RMId": "B76D7BC4-A0B2-43F2-B011-D4293699F74E",
+        "exerciseId": "00000000-0000-0000-0001-000000000003",
+        "lastModifiedDatetime": "2026-03-08T16:46:42.021365+00:00",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000023",
-        "createdDatetime": "2026-03-09T21:45:58Z",
-        "lastModifiedDatetime": "2026-03-09T21:46:00.453342+00:00",
-        "estimated1RMId": "BE3217F5-BAFF-4CC0-8491-DD2BE1538290",
-        "liftSetId": "52DBC152-0D45-4DDB-9754-3CB7F1404DC6"
+        "value": 215.83333333333334,
+        "liftSetId": "525FD3B8-C22D-4B64-B299-6A89EB1309E5"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -3049,16 +2633,6 @@
         "lastModifiedDatetime": "2026-03-06T22:20:11.125598+00:00",
         "estimated1RMId": "CE78B813-10B8-4719-BDE1-37C47B5D075C",
         "liftSetId": "53DC0EA8-04A5-4400-913D-43A9FFFB15D0"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
-        "value": 21.11111111111111,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000034",
-        "createdDatetime": "2026-03-09T23:53:06Z",
-        "lastModifiedDatetime": "2026-03-09T23:53:07.758441+00:00",
-        "estimated1RMId": "1FFBCFED-75A6-40F7-BC38-C30093EDD772",
-        "liftSetId": "55FCF1AD-50CF-4D77-BB4B-AFF37150F93F"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -3143,16 +2717,6 @@
         "lastModifiedDatetime": "2026-03-03T05:18:15.915502+00:00",
         "estimated1RMId": "D4CB9FA8-A0DB-4B1A-A866-426803E4C968",
         "liftSetId": "5D944C00-A062-4DE3-A4E6-32D5B42AABEA"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
-        "value": 23.333333333333336,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000032",
-        "createdDatetime": "2026-03-09T20:23:05Z",
-        "lastModifiedDatetime": "2026-03-09T20:23:05.296602+00:00",
-        "estimated1RMId": "0D3918E6-B3EA-4865-8269-A10C1826C6DB",
-        "liftSetId": "5DFDC386-DB66-41A3-99A2-B09C3B7A2F8D"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -3242,16 +2806,6 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "value": 48,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000033",
-        "createdDatetime": "2026-03-09T22:34:58Z",
-        "lastModifiedDatetime": "2026-03-09T22:34:59.089769+00:00",
-        "estimated1RMId": "0F1C87BE-1185-407E-B4E8-3B60BFB6E130",
-        "liftSetId": "684981EF-4B16-4576-979E-09F3526C5A4C"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
         "value": 190,
         "deleted": true,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
@@ -3294,16 +2848,6 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "value": 23.333333333333336,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000032",
-        "createdDatetime": "2026-03-09T20:22:59Z",
-        "lastModifiedDatetime": "2026-03-09T20:23:01.979048+00:00",
-        "estimated1RMId": "8DC69340-9B85-450B-B8E1-222EC1075C7D",
-        "liftSetId": "6FCF9B2C-3AF8-4B66-8FD1-3E33155A8695"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
         "value": 3.038194444444445,
         "deleted": true,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
@@ -3315,17 +2859,6 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "value": 46.66666666666667,
-        "deleted": true,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000032",
-        "createdDatetime": "2026-03-09T20:20:53Z",
-        "lastModifiedDatetime": "2026-03-09T20:22:51.701865+00:00",
-        "estimated1RMId": "1BB7BA6F-F87F-441B-A65B-DAF860E37692",
-        "liftSetId": "717FA480-62EB-4378-917B-75A97309350F"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
         "value": 109.64912280701753,
         "deleted": true,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
@@ -3334,16 +2867,6 @@
         "lastModifiedDatetime": "2026-03-04T22:37:51.297652+00:00",
         "estimated1RMId": "756AB2B2-6900-4E1F-8B21-FC028783A9D4",
         "liftSetId": "71F11D0C-BDAD-40B9-A052-72FBE56C54FA"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
-        "value": 46.66666666666667,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000033",
-        "createdDatetime": "2026-03-09T22:06:45Z",
-        "lastModifiedDatetime": "2026-03-09T22:06:47.468086+00:00",
-        "estimated1RMId": "24609258-9DA1-493C-B990-2E92B60C20FE",
-        "liftSetId": "7265467C-F05B-4277-8851-63A378665A15"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -3367,14 +2890,14 @@
         "liftSetId": "754575D6-11DE-451E-B9AE-DB9147808BF3"
       },
       {
-        "createdTimezone": "America/Los_Angeles",
-        "value": 228.16666666666669,
-        "deleted": true,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000003",
         "createdDatetime": "2026-03-07T23:54:23Z",
-        "lastModifiedDatetime": "2026-03-08T16:46:41.854820+00:00",
+        "createdTimezone": "America/Los_Angeles",
+        "deleted": true,
         "estimated1RMId": "D4F672DA-3722-41F8-B5F6-1428954B6883",
+        "exerciseId": "00000000-0000-0000-0001-000000000003",
+        "lastModifiedDatetime": "2026-03-08T16:46:41.854820+00:00",
+        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "value": 228.16666666666669,
         "liftSetId": "75FCAE51-5C13-4578-B8AF-ED7AF78352F4"
       },
       {
@@ -3440,17 +2963,6 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "value": 23.333333333333336,
-        "deleted": true,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000032",
-        "createdDatetime": "2026-03-09T21:21:18Z",
-        "lastModifiedDatetime": "2026-03-09T21:21:23.304117+00:00",
-        "estimated1RMId": "D3A5153C-0335-4995-9797-8D72D922DF33",
-        "liftSetId": "7BEBBE0B-8C43-4C38-B17B-57D58CAE24F7"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
         "value": 0.010416666666666668,
         "deleted": true,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
@@ -3459,17 +2971,6 @@
         "lastModifiedDatetime": "2026-03-04T19:47:10.766986+00:00",
         "estimated1RMId": "13221D4E-2589-4B13-A7AE-2588D51371E5",
         "liftSetId": "7C6EC29A-8656-4CF4-9000-4DF218C6E9F5"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
-        "value": 46.66666666666667,
-        "deleted": true,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000032",
-        "createdDatetime": "2026-03-09T20:18:51Z",
-        "lastModifiedDatetime": "2026-03-09T20:22:53.400460+00:00",
-        "estimated1RMId": "4B218203-E539-48C7-BC48-154F1F0B4621",
-        "liftSetId": "81E1A34C-CACE-4539-BC8D-CD8627D303D6"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -3545,14 +3046,14 @@
         "liftSetId": "8AD267D3-DE56-4914-B200-8AD46F3B8915"
       },
       {
-        "createdTimezone": "America/Los_Angeles",
-        "value": 222,
-        "deleted": true,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000003",
         "createdDatetime": "2026-03-07T23:54:08Z",
-        "lastModifiedDatetime": "2026-03-08T16:46:41.746760+00:00",
+        "createdTimezone": "America/Los_Angeles",
+        "deleted": true,
         "estimated1RMId": "20852836-BCB4-438D-BAA5-6E6993BD4B1F",
+        "exerciseId": "00000000-0000-0000-0001-000000000003",
+        "lastModifiedDatetime": "2026-03-08T16:46:41.746760+00:00",
+        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "value": 222,
         "liftSetId": "90247A65-D599-4BE7-8F1A-A1EEBED6F972"
       },
       {
@@ -3620,16 +3121,6 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "value": 46.66666666666667,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000033",
-        "createdDatetime": "2026-03-09T22:12:05Z",
-        "lastModifiedDatetime": "2026-03-09T22:12:06.253064+00:00",
-        "estimated1RMId": "7A0BC63A-EC0E-4527-92B8-112EFD837F91",
-        "liftSetId": "9F5E933E-1D9B-42BB-BAFC-0DD6C47BA17C"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
         "value": 14.912280701754383,
         "deleted": true,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
@@ -3692,14 +3183,14 @@
         "liftSetId": "B3163527-775D-4B5C-9612-D45871946268"
       },
       {
-        "createdTimezone": "America/Los_Angeles",
-        "value": 215.83333333333334,
-        "deleted": true,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000003",
         "createdDatetime": "2026-03-07T23:52:41Z",
-        "lastModifiedDatetime": "2026-03-08T16:46:42.282816+00:00",
+        "createdTimezone": "America/Los_Angeles",
+        "deleted": true,
         "estimated1RMId": "D22BCDF8-FF79-4F69-ABA9-540A35128046",
+        "exerciseId": "00000000-0000-0000-0001-000000000003",
+        "lastModifiedDatetime": "2026-03-08T16:46:42.282816+00:00",
+        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "value": 215.83333333333334,
         "liftSetId": "B32D90FE-009F-4FF5-B973-D88BB2AC9F8D"
       },
       {
@@ -3724,14 +3215,14 @@
         "liftSetId": "BB2987FA-5E80-4378-B391-B116B86E0197"
       },
       {
-        "createdTimezone": "America/Los_Angeles",
-        "value": 326.6666666666667,
-        "deleted": true,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000001",
         "createdDatetime": "2026-03-07T15:49:22Z",
-        "lastModifiedDatetime": "2026-03-08T15:32:09.799604+00:00",
+        "createdTimezone": "America/Los_Angeles",
+        "deleted": true,
         "estimated1RMId": "CA1A502D-3D79-41F5-86A3-1663FEA2FAFF",
+        "exerciseId": "00000000-0000-0000-0001-000000000001",
+        "lastModifiedDatetime": "2026-03-08T15:32:09.799604+00:00",
+        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "value": 326.6666666666667,
         "liftSetId": "BBA6825E-B654-4E2F-A04F-744F96076C64"
       },
       {
@@ -3786,16 +3277,6 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "value": 21.333333333333332,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000034",
-        "createdDatetime": "2026-03-09T23:55:45Z",
-        "lastModifiedDatetime": "2026-03-09T23:55:45.797153+00:00",
-        "estimated1RMId": "F6AA1EB1-8A1D-45DF-A7A4-97A887DCABEA",
-        "liftSetId": "C2FE5725-55F0-4D6E-B7B8-B995B2C8CA36"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
         "value": 221.66666666666669,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "exerciseId": "00000000-0000-0000-0001-000000000001",
@@ -3838,16 +3319,6 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "value": 46.66666666666667,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000023",
-        "createdDatetime": "2026-03-09T21:37:10Z",
-        "lastModifiedDatetime": "2026-03-09T21:37:10.655765+00:00",
-        "estimated1RMId": "0A95923D-6507-4E4A-942C-DC4E00FCB193",
-        "liftSetId": "C82C1BE7-A5E2-408E-88C8-456CB096EA50"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
         "value": 7.894736842105263,
         "deleted": true,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
@@ -3880,16 +3351,6 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "value": 46.66666666666667,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000033",
-        "createdDatetime": "2026-03-09T22:31:58Z",
-        "lastModifiedDatetime": "2026-03-09T22:31:58.984599+00:00",
-        "estimated1RMId": "64AFEDC4-58C6-4D56-BAB8-771D23895ECE",
-        "liftSetId": "D30408A6-6BA8-48AA-999B-DC9EFFE7D9FE"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
         "value": 14.912280701754383,
         "deleted": true,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
@@ -3898,16 +3359,6 @@
         "lastModifiedDatetime": "2026-03-04T19:47:09.603730+00:00",
         "estimated1RMId": "0B80D6F8-0F98-4839-8269-D23640239670",
         "liftSetId": "D5E4CED7-9FF7-4473-9C2A-E4EBAF7E831C"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
-        "value": 23.333333333333336,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000032",
-        "createdDatetime": "2026-03-09T21:21:33Z",
-        "lastModifiedDatetime": "2026-03-09T21:21:33.794969+00:00",
-        "estimated1RMId": "5E97E012-0D23-4449-A4FD-F39F0E96E257",
-        "liftSetId": "D685E4DA-993D-4E08-98D2-3A5E72CDF64B"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -3922,17 +3373,6 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "value": 23.333333333333336,
-        "deleted": true,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000032",
-        "createdDatetime": "2026-03-09T21:21:26Z",
-        "lastModifiedDatetime": "2026-03-09T21:21:31.033397+00:00",
-        "estimated1RMId": "B4E7F29B-7B16-4E11-B0C7-0646C83C68B0",
-        "liftSetId": "D7A1C78B-5D9B-4FB3-AF94-CD5BBA8A1B04"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
         "value": 25.333333333333332,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "exerciseId": "00000000-0000-0000-0001-000000000007",
@@ -3942,25 +3382,15 @@
         "liftSetId": "D8011FA9-6D68-4BA2-89DC-55A9648719E0"
       },
       {
-        "createdTimezone": "America/Los_Angeles",
-        "value": 350,
-        "deleted": true,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000001",
         "createdDatetime": "2026-03-07T15:49:02Z",
-        "lastModifiedDatetime": "2026-03-08T15:32:09.699117+00:00",
-        "estimated1RMId": "82C08F5B-1400-41B2-9B9C-8158B2550480",
-        "liftSetId": "D947C549-9FBF-4A77-962C-E0F59E82D77B"
-      },
-      {
         "createdTimezone": "America/Los_Angeles",
-        "value": 21.11111111111111,
+        "deleted": true,
+        "estimated1RMId": "82C08F5B-1400-41B2-9B9C-8158B2550480",
+        "exerciseId": "00000000-0000-0000-0001-000000000001",
+        "lastModifiedDatetime": "2026-03-08T15:32:09.699117+00:00",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000034",
-        "createdDatetime": "2026-03-09T23:42:07Z",
-        "lastModifiedDatetime": "2026-03-09T23:42:09.393301+00:00",
-        "estimated1RMId": "FFF0A022-AD64-4842-B5F1-9DFF5E429BFA",
-        "liftSetId": "DB7D684E-3811-4C78-8CEC-6B5684D2E554"
+        "value": 350,
+        "liftSetId": "D947C549-9FBF-4A77-962C-E0F59E82D77B"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -3971,16 +3401,6 @@
         "lastModifiedDatetime": "2026-03-04T19:35:40.192075+00:00",
         "estimated1RMId": "8524A5DB-7170-4C72-9637-695563441F20",
         "liftSetId": "DE85FD51-4BF2-465F-B6D2-209BAC3199F8"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
-        "value": 21.11111111111111,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000034",
-        "createdDatetime": "2026-03-09T23:46:25Z",
-        "lastModifiedDatetime": "2026-03-09T23:46:25.547099+00:00",
-        "estimated1RMId": "3216D3B9-6B22-44E2-8772-2901AE2718BE",
-        "liftSetId": "DF160511-E3E6-4D0A-9C37-B623D62C4B5C"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -4036,16 +3456,6 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "value": 23.333333333333336,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000032",
-        "createdDatetime": "2026-03-09T21:27:58Z",
-        "lastModifiedDatetime": "2026-03-09T21:27:58.937063+00:00",
-        "estimated1RMId": "8279A191-81EC-4D5D-95B6-5FCDF2640962",
-        "liftSetId": "EAF453C1-C03A-4399-8252-EDA240680E53"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
         "value": 222,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "exerciseId": "00000000-0000-0000-0001-000000000001",
@@ -4095,16 +3505,6 @@
         "lastModifiedDatetime": "2026-03-04T19:54:28.172730+00:00",
         "estimated1RMId": "57F30617-2897-4066-A979-707B5CBEF532",
         "liftSetId": "F017D99A-5A64-4E6F-ADCD-493FB2C4B4A5"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
-        "value": 46.66666666666667,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000033",
-        "createdDatetime": "2026-03-09T22:25:08Z",
-        "lastModifiedDatetime": "2026-03-09T22:25:09.948854+00:00",
-        "estimated1RMId": "C9BFFA21-437F-4397-9159-BC969B54A1F2",
-        "liftSetId": "F0FA969B-88CF-4F8B-882F-728566032797"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -4159,14 +3559,14 @@
         "liftSetId": "F4BF120C-67F2-42D7-B816-4C46B6E9772B"
       },
       {
-        "createdTimezone": "America/Los_Angeles",
-        "value": 408.33333333333337,
-        "deleted": true,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000001",
         "createdDatetime": "2026-03-07T15:48:39Z",
-        "lastModifiedDatetime": "2026-03-08T15:32:09.606482+00:00",
+        "createdTimezone": "America/Los_Angeles",
+        "deleted": true,
         "estimated1RMId": "107BAFD1-59D9-42EF-AC85-50944894BEA6",
+        "exerciseId": "00000000-0000-0000-0001-000000000001",
+        "lastModifiedDatetime": "2026-03-08T15:32:09.606482+00:00",
+        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "value": 408.33333333333337,
         "liftSetId": "F600E6A7-3F33-4091-845E-DF4B1B112C7B"
       },
       {
@@ -4199,16 +3599,6 @@
         "lastModifiedDatetime": "2026-03-04T22:28:28.430586+00:00",
         "estimated1RMId": "E2FF9C6D-B5A5-4ECB-B119-6D2F0B2241E9",
         "liftSetId": "F925E102-1285-4B23-9099-41A0741E5138"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
-        "value": 46.66666666666667,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "exerciseId": "00000000-0000-0000-0001-000000000033",
-        "createdDatetime": "2026-03-09T22:28:32Z",
-        "lastModifiedDatetime": "2026-03-09T22:28:32.603485+00:00",
-        "estimated1RMId": "5B14A0EF-E5F1-4C51-8E36-6D9CB368BE4F",
-        "liftSetId": "FF25AAB0-3812-4E35-9015-2AB8C8085ED3"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -4256,7 +3646,7 @@
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "createdDatetime": "2026-03-04T23:33:30Z",
         "lastModifiedDatetime": "2026-03-05T00:42:12.526176+00:00",
-        "name": "Push / Pull / Legs Basic",
+        "name": "Push / Pull / Legs",
         "splitId": "00000000-0000-0000-0002-000000000001"
       },
       {
@@ -4311,47 +3701,6 @@
         "lastModifiedDatetime": "2026-03-04T23:33:45.465068+00:00",
         "name": "Full Body",
         "splitId": "00000000-0000-0000-0002-000000000003"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
-        "days": [
-          {
-            "dayId": "00000000-0000-0000-0002-000000000041",
-            "name": "Push",
-            "exerciseIds": [
-              "00000000-0000-0000-0001-000000000003",
-              "00000000-0000-0000-0001-000000000004",
-              "00000000-0000-0000-0001-000000000007",
-              "00000000-0000-0000-0001-000000000032",
-              "00000000-0000-0000-0001-000000000023",
-              "00000000-0000-0000-0001-000000000033",
-              "00000000-0000-0000-0001-000000000034"
-            ]
-          },
-          {
-            "dayId": "00000000-0000-0000-0002-000000000042",
-            "name": "Pull",
-            "exerciseIds": [
-              "00000000-0000-0000-0001-000000000001",
-              "00000000-0000-0000-0001-000000000005",
-              "00000000-0000-0000-0001-000000000006",
-              "00000000-0000-0000-0001-000000000008"
-            ]
-          },
-          {
-            "dayId": "00000000-0000-0000-0002-000000000043",
-            "name": "Leg",
-            "exerciseIds": [
-              "00000000-0000-0000-0001-000000000002",
-              "00000000-0000-0000-0001-000000000009"
-            ]
-          }
-        ],
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "createdDatetime": "2026-03-09T00:00:00Z",
-        "lastModifiedDatetime": "2026-03-09T00:00:00.000000+00:00",
-        "name": "Push / Pull / Legs Complete",
-        "splitId": "00000000-0000-0000-0002-000000000004"
       }
     ],
     "entitlement-grants": [
@@ -4616,24 +3965,6 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "value": 2100,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "createdDatetime": "2026-03-09T23:32:35Z",
-        "lastModifiedDatetime": "2026-03-10T14:07:03.395663+00:00",
-        "metricType": "steps",
-        "checkinId": "08320377-4E88-40B1-BA85-D3C68F9DFD5E"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
-        "value": 140,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "createdDatetime": "2026-03-10T03:53:45Z",
-        "lastModifiedDatetime": "2026-03-10T03:53:49.967801+00:00",
-        "metricType": "protein",
-        "checkinId": "1042E076-652E-42A6-A870-A4496196F9C8"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
         "value": 180,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "createdDatetime": "2026-03-07T01:00:00Z",
@@ -4667,15 +3998,6 @@
         "lastModifiedDatetime": "2026-03-03T22:52:02.308190+00:00",
         "metricType": "steps",
         "checkinId": "1D372C19-55F4-4C8C-AF69-2FD9D391978B"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
-        "value": 100,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "createdDatetime": "2026-03-09T21:13:53Z",
-        "lastModifiedDatetime": "2026-03-09T21:13:57.785529+00:00",
-        "metricType": "protein",
-        "checkinId": "257128D8-3B91-46E9-876F-D473287D2E82"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -4814,15 +4136,6 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "value": 246,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "createdDatetime": "2026-03-09T23:04:52Z",
-        "lastModifiedDatetime": "2026-03-09T23:04:56.826736+00:00",
-        "metricType": "bodyweight",
-        "checkinId": "8F733195-5B9B-489D-ADEB-62BBF3FF65A5"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
         "value": 60,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "createdDatetime": "2026-03-06T04:52:00Z",
@@ -4895,30 +4208,12 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "value": 1200,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "createdDatetime": "2026-03-09T22:55:01Z",
-        "lastModifiedDatetime": "2026-03-09T22:55:05.779554+00:00",
-        "metricType": "steps",
-        "checkinId": "DAF0B11B-AA55-4483-AA87-3CF194DD0F72"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
         "value": 1150,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "createdDatetime": "2026-03-03T23:15:27Z",
         "lastModifiedDatetime": "2026-03-03T23:15:30.608247+00:00",
         "metricType": "steps",
         "checkinId": "DCACBD6E-61A0-4EEB-A457-974EA5167819"
-      },
-      {
-        "createdTimezone": "America/Los_Angeles",
-        "value": 1700,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "createdDatetime": "2026-03-10T00:12:09Z",
-        "lastModifiedDatetime": "2026-03-10T00:12:18.257386+00:00",
-        "metricType": "steps",
-        "checkinId": "E671406A-3B44-43F9-9656-0E34539C1AAB"
       },
       {
         "createdTimezone": "America/Los_Angeles",
