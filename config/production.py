@@ -11,6 +11,10 @@ ENVIRONMENT = "production"
 # Custom Domain
 API_SUBDOMAIN = "api"
 
+# Website
+WEBSITE_SUBDOMAIN = ""  # apex domain
+CLOUDFRONT_CERT_ARN = ""  # Set after first cert stack deploy
+
 # Removal Policy - RETAIN for production protects data
 REMOVAL_POLICY = RemovalPolicy.RETAIN
 

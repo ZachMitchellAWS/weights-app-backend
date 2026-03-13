@@ -21,6 +21,7 @@ Usage:
 
 import aws_cdk as cdk
 from aws_cdk import Tags
+from aws_cdk import aws_iam as iam
 
 # Import configuration modules
 from config import base, staging, production
@@ -31,6 +32,9 @@ from services.user.infrastructure.user_stack import UserStack
 from services.email.infrastructure.email_stack import EmailStack
 from services.checkin.infrastructure.checkin_stack import CheckinStack
 from services.entitlements.infrastructure.entitlements_stack import EntitlementsStack
+from services.insights.infrastructure.insights_stack import InsightsStack
+from services.website.infrastructure.website_cert_stack import WebsiteCertStack
+from services.website.infrastructure.website_stack import WebsiteStack
 
 
 def main():
@@ -181,6 +185,7 @@ def main():
 
     # Create Entitlements service stack
     # This stack manages subscription entitlements via Apple App Store Server API
+    # Must be created before Insights (insights needs entitlement_grants_table)
     entitlements_stack = EntitlementsStack(
         app,
         f"{project_name}-{env_name}-entitlements",
@@ -200,6 +205,88 @@ def main():
 
     # Add service-specific tag
     Tags.of(entitlements_stack).add("Service", "entitlements")
+
+    # Create Insights service stack
+    # This stack reads from checkin tables, user-properties, and entitlement-grants
+    # to generate GPT-powered training insights
+    insights_stack = InsightsStack(
+        app,
+        f"{project_name}-{env_name}-insights",
+        project_name=project_name,
+        env_name=env_name,
+        config=config,
+        api=auth_stack.api,
+        authorizer=auth_stack.authorizer,
+        lift_sets_table=checkin_stack.lift_sets_table,
+        exercises_table=checkin_stack.exercises_table,
+        accessory_goal_checkins_table=checkin_stack.accessory_goal_checkins_table,
+        estimated_1rm_table=checkin_stack.estimated_1rm_table,
+        splits_table=checkin_stack.splits_table,
+        set_plan_templates_table=checkin_stack.set_plan_templates_table,
+        user_properties_table=user_stack.user_properties_table,
+        entitlement_grants_table=entitlements_stack.entitlement_grants_table,
+        env=env,
+        description=f"Insights service stack for {env_name} environment",
+    )
+
+    # Apply global tags to insights stack
+    for key, value in config.TAGS.items():
+        Tags.of(insights_stack).add(key, value)
+
+    # Add service-specific tag
+    Tags.of(insights_stack).add("Service", "insights")
+
+    # Wire checkin Lambda to insights Lambda for async task scheduling.
+    # Use constructed ARN string (not cross-stack reference) to avoid circular dependency:
+    # insights stack already depends on checkin tables.
+    insights_function_name = f"{project_name}-{env_name}-insights"
+    insights_lambda_arn = f"arn:aws:lambda:{config.REGION}:{config.ACCOUNT_ID}:function:{insights_function_name}"
+
+    checkin_stack.checkin_function.add_environment(
+        "INSIGHTS_LAMBDA_ARN",
+        insights_lambda_arn,
+    )
+
+    checkin_stack.checkin_function.add_to_role_policy(
+        iam.PolicyStatement(
+            actions=["lambda:InvokeFunction"],
+            resources=[insights_lambda_arn],
+        )
+    )
+
+    # Website certificate stack (us-east-1 required for CloudFront)
+    website_cert_stack = WebsiteCertStack(
+        app,
+        f"{project_name}-{env_name}-website-cert",
+        project_name=project_name,
+        env_name=env_name,
+        config=config,
+        cross_region_references=True,
+        env=cdk.Environment(account=config.ACCOUNT_ID, region="us-east-1"),
+        description=f"Website ACM certificate stack for {env_name} environment",
+    )
+
+    for key, value in config.TAGS.items():
+        Tags.of(website_cert_stack).add(key, value)
+    Tags.of(website_cert_stack).add("Service", "website")
+
+    # Website stack (S3, CloudFront, Route53, DynamoDB, Lambda, API route)
+    website_stack = WebsiteStack(
+        app,
+        f"{project_name}-{env_name}-website",
+        project_name=project_name,
+        env_name=env_name,
+        config=config,
+        api=auth_stack.api,
+        web_acl_arn=website_cert_stack.web_acl_arn,
+        cross_region_references=True,
+        env=env,
+        description=f"Website service stack for {env_name} environment",
+    )
+
+    for key, value in config.TAGS.items():
+        Tags.of(website_stack).add(key, value)
+    Tags.of(website_stack).add("Service", "website")
 
     # Synthesize CloudFormation templates
     # This generates the templates that will be deployed to AWS

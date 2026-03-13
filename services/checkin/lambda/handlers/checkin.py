@@ -213,7 +213,7 @@ def upsert_exercises(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
 
         # Validate each exercise
         required_fields = ['exerciseItemId', 'name', 'isCustom', 'loadType', 'createdTimezone', 'createdDatetime']
-        valid_load_types = ['Barbell', 'Single Load']
+        valid_load_types = ['Barbell', 'Single Load', 'Bodyweight + Single Load']
         valid_movement_types = ['Push', 'Pull', 'Hinge', 'Squat', 'Core', 'Other']
         validation_errors = []
 
@@ -707,6 +707,45 @@ def delete_exercises(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
 
 
 # =============================================================================
+# Insights Task Scheduling
+# =============================================================================
+
+def _schedule_insights_task(user_id: str, first_lift_set: dict) -> None:
+    """
+    Fire-and-forget async invoke of the insights Lambda to schedule an insight task.
+
+    Uses InvocationType='Event' so this returns immediately without waiting for
+    the insights Lambda to complete. Failures are silently logged — they should
+    never affect the lift set creation response.
+
+    Args:
+        user_id: The authenticated user's ID
+        first_lift_set: The first lift set from the request (used for timezone/datetime)
+    """
+    insights_lambda_arn = os.environ.get('INSIGHTS_LAMBDA_ARN')
+    if not insights_lambda_arn:
+        return
+
+    try:
+        lambda_client = boto3.client('lambda')
+        payload = json.dumps({
+            'invocationType': 'SCHEDULE_TASK',
+            'userId': user_id,
+            'createdTimezone': first_lift_set.get('createdTimezone', 'UTC'),
+            'createdDatetime': first_lift_set.get('createdDatetime', ''),
+        })
+        lambda_client.invoke(
+            FunctionName=insights_lambda_arn,
+            InvocationType='Event',
+            Payload=payload,
+        )
+        print(f"Async-invoked insights Lambda for user {user_id}")
+    except Exception as e:
+        # Never let insights scheduling failure affect lift set creation
+        print(f"Warning: Failed to invoke insights Lambda: {e}")
+
+
+# =============================================================================
 # Lift Set Operations
 # =============================================================================
 
@@ -858,6 +897,13 @@ def create_lift_sets(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
             result_lift_sets.append(response_item)
 
         print(f"Created {len(result_lift_sets)} lift sets for user {user_id}")
+
+        # Async-invoke insights Lambda if client indicates premium status.
+        # This is an optimization: the client-side premium flag avoids unnecessary
+        # Lambda invocations for free users. The insights Lambda does the authoritative
+        # entitlement check before creating a task.
+        if body.get('isPremiumOnClient') and result_lift_sets:
+            _schedule_insights_task(user_id, lift_sets_input[0])
 
         return create_response(
             status_code=201,

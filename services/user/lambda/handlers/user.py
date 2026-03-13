@@ -4,6 +4,7 @@ import json
 import os
 from decimal import Decimal
 from typing import Dict, Any
+from zoneinfo import ZoneInfo
 import traceback
 import boto3
 
@@ -204,11 +205,13 @@ def handle_update_properties(event: Dict[str, Any]) -> Dict[str, Any]:
 
         # Parse request body
         body = json.loads(event.get("body", "{}"))
+        print(f"Parsed body keys: {list(body.keys())}")
 
         # Build update expression dynamically based on provided fields
         update_parts = []
         remove_parts = []
         expression_values = {}
+        expression_names = {}  # For DynamoDB reserved keywords
 
         # Handle bodyweight (nullable - can be set or removed)
         if "bodyweight" in body:
@@ -369,6 +372,52 @@ def handle_update_properties(event: Dict[str, Any]) -> Dict[str, Any]:
                     }
                 )
 
+        # Handle timezone (nullable string - can be set or removed)
+        if "timezone" in body:
+            tz_val = body.get("timezone")
+            if tz_val is None:
+                expression_names["#tz"] = "timezone"
+                remove_parts.append("#tz")
+            elif isinstance(tz_val, str):
+                try:
+                    ZoneInfo(tz_val)
+                except (KeyError, ValueError):
+                    return create_response(
+                        status_code=400,
+                        body={
+                            "error": "Invalid field value",
+                            "message": f"timezone must be a valid IANA timezone identifier, got '{tz_val}'"
+                        }
+                    )
+                expression_names["#tz"] = "timezone"
+                update_parts.append("#tz = :timezone")
+                expression_values[":timezone"] = tz_val
+            else:
+                return create_response(
+                    status_code=400,
+                    body={
+                        "error": "Invalid field type",
+                        "message": "timezone must be a string or null"
+                    }
+                )
+
+        # Handle biologicalSex (nullable string - "male" or "female")
+        if "biologicalSex" in body:
+            bio_sex = body.get("biologicalSex")
+            if bio_sex is None:
+                remove_parts.append("biologicalSex")
+            elif isinstance(bio_sex, str) and bio_sex in ("male", "female"):
+                update_parts.append("biologicalSex = :biologicalSex")
+                expression_values[":biologicalSex"] = bio_sex
+            else:
+                return create_response(
+                    status_code=400,
+                    body={
+                        "error": "Invalid field value",
+                        "message": "biologicalSex must be 'male', 'female', or null"
+                    }
+                )
+
         # Handle per-mode effort rep range fields
         for field in ["easyMinReps", "easyMaxReps", "moderateMinReps", "moderateMaxReps", "hardMinReps", "hardMaxReps"]:
             if field in body:
@@ -414,12 +463,15 @@ def handle_update_properties(event: Dict[str, Any]) -> Dict[str, Any]:
             update_expression += " REMOVE " + ", ".join(remove_parts)
 
         # Update user properties in DynamoDB
-        response = table.update_item(
-            Key={"userId": user_id},
-            UpdateExpression=update_expression,
-            ExpressionAttributeValues=expression_values,
-            ReturnValues="ALL_NEW"
-        )
+        update_kwargs = {
+            "Key": {"userId": user_id},
+            "UpdateExpression": update_expression,
+            "ExpressionAttributeValues": expression_values,
+            "ReturnValues": "ALL_NEW",
+        }
+        if expression_names:
+            update_kwargs["ExpressionAttributeNames"] = expression_names
+        response = table.update_item(**update_kwargs)
 
         updated_properties = response.get("Attributes")
 

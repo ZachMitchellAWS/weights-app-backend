@@ -11,6 +11,10 @@ ENVIRONMENT = "staging"
 # Custom Domain
 API_SUBDOMAIN = "api-staging"
 
+# Website
+WEBSITE_SUBDOMAIN = "staging"
+CLOUDFRONT_CERT_ARN = "arn:aws:acm:us-east-1:569134947863:certificate/04f56f59-62aa-46ae-b1ee-ffb9a2cf6331"
+
 # Removal Policy - DESTROY for staging allows easy cleanup
 REMOVAL_POLICY = RemovalPolicy.DESTROY
 

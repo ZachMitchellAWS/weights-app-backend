@@ -16,7 +16,7 @@
 #   5. make deploy-staging
 #   6. make test
 
-.PHONY: help venv install install-dev build-layer upload-email-templates-staging upload-email-templates-production bootstrap-staging bootstrap-production synth-staging synth-production diff-staging diff-production deploy-staging deploy-production destroy-staging destroy-production clear-staging-db clear-production-db save-user-staging load-user-staging load-power-user-staging test lint format clean
+.PHONY: help venv install install-dev build-layer upload-email-templates-staging upload-email-templates-production bootstrap-staging bootstrap-production bootstrap-us-east-1 synth-staging synth-production diff-staging diff-production deploy-staging deploy-production destroy-staging destroy-production clear-staging-db clear-production-db save-user-staging load-user-staging load-power-user-staging deploy-website-cert-staging deploy-website-cert-production deploy-website-infra-staging deploy-website-infra-production deploy-website-staging deploy-website-production whitelist-ip-staging test lint format clean
 
 # Python command - use python3 for macOS/Linux compatibility
 PYTHON := python3
@@ -45,6 +45,14 @@ help:
 	@echo "  make clear-production-db  - Delete all items from production DynamoDB tables"
 	@echo "  make save-user-staging    - Save test user data to snapshot file"
 	@echo "  make load-user-staging    - Load test user data from snapshot file"
+	@echo "  make bootstrap-us-east-1              - Bootstrap CDK for us-east-1 (website cert, first time)"
+	@echo "  make deploy-website-cert-staging       - Deploy website cert stack (us-east-1, first time)"
+	@echo "  make deploy-website-cert-production    - Deploy website cert stack (us-east-1, first time)"
+	@echo "  make deploy-website-infra-staging      - Deploy website infra (S3, CloudFront, Lambda, etc.)"
+	@echo "  make deploy-website-infra-production   - Deploy website infra to production"
+	@echo "  make deploy-website-staging            - Build React + sync to S3 + invalidate CloudFront"
+	@echo "  make deploy-website-production         - Build React + sync to S3 + invalidate (production)"
+	@echo "  make whitelist-ip-staging              - Whitelist your current IP on staging WAF"
 	@echo "  make test                 - Run unit tests"
 	@echo "  make lint                 - Run linting (flake8, mypy)"
 	@echo "  make format               - Format code with black"
@@ -70,13 +78,18 @@ install-dev:
 build-layer:
 	@echo "Building Lambda layer for auth service..."
 	cd services/auth && rm -rf layer/python && mkdir -p layer/python
-	cd services/auth && pip3 install -r requirements.txt -t layer/python/ --upgrade --platform manylinux2014_x86_64 --only-binary=:all:
+	cd services/auth && pip3 install -r requirements.txt -t layer/python/ --upgrade --platform manylinux2014_x86_64 --python-version 3.12 --only-binary=:all:
 	@echo "Lambda layer built successfully at services/auth/layer/"
 	@echo ""
 	@echo "Building Lambda layer for entitlements service..."
 	cd services/entitlements && rm -rf layer/python && mkdir -p layer/python
-	cd services/entitlements && pip3 install -r requirements.txt -t layer/python/ --upgrade --platform manylinux2014_x86_64 --only-binary=:all:
+	cd services/entitlements && pip3 install -r requirements.txt -t layer/python/ --upgrade --platform manylinux2014_x86_64 --python-version 3.12 --only-binary=:all:
 	@echo "Lambda layer built successfully at services/entitlements/layer/"
+	@echo ""
+	@echo "Building Lambda layer for insights service..."
+	cd services/insights && rm -rf layer/python && mkdir -p layer/python
+	cd services/insights && pip3 install -r requirements.txt -t layer/python/ --upgrade --platform manylinux2014_x86_64 --python-version 3.12 --only-binary=:all:
+	@echo "Lambda layer built successfully at services/insights/layer/"
 
 # Upload email templates to staging S3 bucket
 upload-email-templates-staging:
@@ -103,6 +116,10 @@ bootstrap-staging:
 # Bootstrap CDK for production environment
 bootstrap-production:
 	cdk bootstrap aws://569134947863/us-west-1 -c env=production
+
+# Bootstrap CDK for us-east-1 (required for website cert stack, first time only)
+bootstrap-us-east-1:
+	cdk bootstrap aws://569134947863/us-east-1
 
 # Synthesize staging CloudFormation templates
 synth-staging:
@@ -178,6 +195,91 @@ load-user-staging:
 load-power-user-staging:
 	@echo "Loading power user data into staging DynamoDB ($(or $(MONTHS),12) months)..."
 	$(PYTHON) scripts/generate_power_user.py --months $(or $(MONTHS),12)
+
+# Deploy website ACM certificate stack to staging (us-east-1, first time only)
+# After deploy, copy the cert ARN to config/staging.py CLOUDFRONT_CERT_ARN
+deploy-website-cert-staging:
+	cdk deploy liftthebull-staging-website-cert -c env=staging --require-approval never
+
+# Deploy website ACM certificate stack to production (us-east-1, first time only)
+# After deploy, copy the cert ARN to config/production.py CLOUDFRONT_CERT_ARN
+deploy-website-cert-production:
+	@echo "WARNING: Deploying website cert to PRODUCTION (us-east-1)!"
+	@echo "Press Ctrl+C to cancel, or Enter to continue..."
+	@read confirm
+	cdk deploy liftthebull-production-website-cert -c env=production
+
+# Deploy website infrastructure stack to staging (S3, CloudFront, DynamoDB, Lambda, API route)
+deploy-website-infra-staging:
+	cdk deploy liftthebull-staging-website -c env=staging --require-approval never
+
+# Deploy website infrastructure stack to production
+deploy-website-infra-production:
+	@echo "WARNING: Deploying website infra to PRODUCTION!"
+	@echo "Press Ctrl+C to cancel, or Enter to continue..."
+	@read confirm
+	cdk deploy liftthebull-production-website -c env=production
+
+# Build and deploy website to staging
+# Builds React app, syncs to S3, invalidates CloudFront cache
+deploy-website-staging:
+	@echo "Building website for staging..."
+	cd ../website && npm run build -- --mode staging
+	@echo "Syncing to S3..."
+	aws s3 sync ../website/dist/ s3://liftthebull-staging-website/ --delete --region us-west-1
+	@echo "Invalidating CloudFront cache..."
+	aws cloudfront create-invalidation \
+		--distribution-id $$(aws cloudformation describe-stacks \
+			--stack-name liftthebull-staging-website \
+			--region us-west-1 \
+			--query "Stacks[0].Outputs[?OutputKey=='DistributionId'].OutputValue" \
+			--output text) \
+		--paths "/*"
+	@echo "Website deployed to staging!"
+
+# Build and deploy website to production
+deploy-website-production:
+	@echo "WARNING: Deploying website to PRODUCTION!"
+	@echo "Press Ctrl+C to cancel, or Enter to continue..."
+	@read confirm
+	@echo "Building website for production..."
+	cd ../website && npm run build -- --mode production
+	@echo "Syncing to S3..."
+	aws s3 sync ../website/dist/ s3://liftthebull-production-website/ --delete --region us-west-1
+	@echo "Invalidating CloudFront cache..."
+	aws cloudfront create-invalidation \
+		--distribution-id $$(aws cloudformation describe-stacks \
+			--stack-name liftthebull-production-website \
+			--region us-west-1 \
+			--query "Stacks[0].Outputs[?OutputKey=='DistributionId'].OutputValue" \
+			--output text) \
+		--paths "/*"
+	@echo "Website deployed to production!"
+
+# Whitelist your current public IP on the staging WAF
+# Only replaces the IP set — no CDK deploy needed
+whitelist-ip-staging:
+	$(eval MY_IP := $(shell curl -s https://checkip.amazonaws.com))
+	@echo "Whitelisting IP: $(MY_IP)/32"
+	$(eval IP_SET_ID := $(shell aws cloudformation describe-stacks \
+		--stack-name liftthebull-staging-website-cert \
+		--region us-east-1 \
+		--query "Stacks[0].Outputs[?OutputKey=='WafIpSetId'].OutputValue" \
+		--output text))
+	$(eval LOCK_TOKEN := $(shell aws wafv2 get-ip-set \
+		--name liftthebull-staging-website-whitelist \
+		--scope CLOUDFRONT \
+		--id $(IP_SET_ID) \
+		--region us-east-1 \
+		--query "LockToken" --output text))
+	aws wafv2 update-ip-set \
+		--name liftthebull-staging-website-whitelist \
+		--scope CLOUDFRONT \
+		--id $(IP_SET_ID) \
+		--lock-token $(LOCK_TOKEN) \
+		--addresses "$(MY_IP)/32" \
+		--region us-east-1
+	@echo "Done! $(MY_IP) is now whitelisted on staging."
 
 # Run unit tests
 test:
