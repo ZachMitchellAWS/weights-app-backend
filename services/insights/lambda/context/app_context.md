@@ -45,20 +45,19 @@ Daily tracking for non-lifting metrics.
 | value | Number | The recorded value |
 | date | String (YYYY-MM-DD) | Calendar date of the checkin |
 
-## Splits — Guidelines, Not Constraints
+### RecoveryCheckin
 
-Splits organize exercises into named training days (e.g., "Push Day", "Pull Day", "Legs"). However, splits are **suggestions, not rules**:
+Daily subjective readiness self-report. Users rate how they feel each morning.
 
-- Users can log any exercise on any day regardless of which split day it belongs to
-- There is no explicit linkage between a logged set and a split day
-- To determine what "day type" a session was, look at the exercises actually performed and match them against known split definitions
-- Users may switch splits mid-week with no record of the change
+| Field | Type | Description |
+|-------|------|-------------|
+| checkinDate | String (YYYY-MM-DD) | The day the response is for |
+| primaryResponse | String | One of: `ready` (best), `good`, `slightly_fatigued`, `very_fatigued`, `sick` (worst) |
+| severityLevel | String (optional) | For `sick` only: `mild`, `moderate`, `severe` |
+| planningToTrain | Boolean (optional) | For `very_fatigued`/`sick`: whether the user intends to train that day |
 
-**Built-in splits:**
-- **PPL Basic** — Push / Pull / Legs (3 days)
-- **PPL Complete** — Push / Pull / Legs (6 exercises per day)
-- **Upper/Lower** — Upper Body / Lower Body (2-day rotation)
-- **Full Body** — All movement types in one session
+**Numeric scale:** ready=5, good=4, slightly_fatigued=3, very_fatigued=2, sick=1
+
 
 ## Set Plans — Templates, Not Records
 
@@ -118,7 +117,6 @@ When generating weekly insights, consider these dimensions:
 - Note stalled exercises (no e1RM improvement over multiple weeks)
 
 ### Program Adherence
-- Compare actual training days/exercises against the user's configured split
 - Note any deviations (extra exercises, skipped muscle groups, rearranged days)
 - Compare actual weight progressions against the user's active set plan template
 
@@ -128,15 +126,17 @@ When generating weekly insights, consider these dimensions:
 - Bodyweight trend direction (gaining, losing, maintaining)
 
 ### Recovery Signals
+- **Recovery check-in data:** Use self-reported readiness levels to contextualize training performance. Fatigue reports on training days are especially meaningful.
 - Deload weeks (entire week of reduced volume/intensity)
 - Volume drops compared to previous week
 - Missed training days
 - Excessive redline/PR attempts suggesting possible fatigue
+- Correlation between reported fatigue (`very_fatigued`/`sick`) and training volume or intensity that day
 
 ## Caveats
 
-- **Always prioritize logged data over configured preferences.** The split and set plan are guidelines — actual behavior is the ground truth.
-- **Users may switch plans or splits mid-week** with no record of the change. Don't assume consistency within a week.
+- **Always prioritize logged data over configured preferences.** The set plan is a guideline — actual behavior is the ground truth.
+- **Users may switch plans mid-week** with no record of the change. Don't assume consistency within a week.
 - **Filter out `deleted: true` records** — these should not appear in analysis.
 - **Baseline sets (`isBaselineSet: true`)** are included in volume counts. They are the user's first set of a new exercise and count toward total work performed.
 - **Group by calendar day in the user's timezone** using the `createdTimezone` field, not UTC.
@@ -148,9 +148,9 @@ Generate exactly 5 sections with these titles (in order):
 
 1. **Training Volume** — Summarize total sets, sessions, and movement type distribution. Compare to prior weeks when data is available.
 2. **Strength Highlights** — Call out PRs, notable e1RM improvements, and top performances. Cite specific weights, reps, and e1RM values.
-3. **Areas to Watch** — Flag potential concerns: volume imbalances, overreliance on heavy sets, skipped movement types, or signs of fatigue.
+3. **Areas to Watch** — Flag potential concerns: volume imbalances, overreliance on heavy sets, skipped movement types, or signs of fatigue. If recovery check-in data shows fatigue patterns (e.g., multiple `very_fatigued` or `sick` days), mention it here and correlate with training data.
 4. **Accessory Goals** — Summarize protein, steps, and bodyweight trends if data is available. If no accessory data was logged, say so briefly and move on.
-5. **Next Week** — Provide 1-2 actionable suggestions based on the week's patterns.
+5. **Next Week** — Provide 1-2 actionable suggestions based on the week's patterns. Factor in recovery trends — if the user reported fatigue or illness, suggest appropriate modifications.
 
 ### Style Guidelines
 
@@ -161,5 +161,6 @@ Generate exactly 5 sections with these titles (in order):
 - Keep each section to 2-4 sentences. Strength Highlights may be 3-5 sentences if there are multiple PRs.
 - If this is the user's first week of data, use "establishing baselines" framing: treat all e1RM values as initial references rather than comparing to nonexistent history. Be encouraging about getting started.
 - If accessory goal data is missing, keep the Accessory Goals section to one sentence acknowledging no data was logged.
-- Do NOT state the obvious about the user's program structure. If the user's training matches their configured split (provided in User Context), just talk about the work — don't point out that it "aligns with" or "matches" their split. They already know what program they're running. Only mention split adherence if there's a meaningful deviation worth calling out.
+- If recovery check-in data is present, weave it naturally into Areas to Watch and Next Week. Don't create a separate recovery section — integrate it with the training analysis. If no recovery data was logged, don't mention it.
+- Do NOT state the obvious about the user's program structure. Just talk about the work — the user already knows what program they're running.
 - Avoid being robotic, clinical, or generic. Never sound like a template. Vary your sentence structure and react to the specific data like a real person would.

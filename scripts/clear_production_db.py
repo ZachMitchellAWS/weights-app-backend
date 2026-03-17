@@ -24,7 +24,6 @@ TABLES = [
     ("exercises", "userId", "exerciseItemId"),
     ("lift-sets", "userId", "liftSetId"),
     ("estimated-1rm", "userId", "liftSetId"),
-    ("splits", "userId", "splitId"),
     ("entitlement-grants", "userId", "startUtc"),
     ("subscription-events", "userId", "eventTimestamp"),
     ("set-plan-templates", "userId", "templateId"),

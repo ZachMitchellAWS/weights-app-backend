@@ -509,3 +509,56 @@ class AuthStack(Stack):
             value=f"https://{domain_name}",
             description=f"Custom domain URL for {self.env_name} API",
         )
+
+    def consolidate_auth_permissions(self, all_stacks: list) -> None:
+        """
+        Replace per-route AWS::Lambda::Permission resources with a single broad
+        permission that covers both API route invocations and authorizer invocations.
+
+        Without this, CDK creates an individual Lambda::Permission for every
+        add_method() call, which exceeds the 20KB resource policy size limit.
+
+        Args:
+            all_stacks: All stacks that use the auth Lambda (via authorizer or
+                        direct integration). Their auto-generated permissions
+                        will be suppressed.
+        """
+        import aws_cdk as cdk
+
+        # Single broad permission: arn:.../{api-id}/* matches both route
+        # invocations (/{stage}/{method}/{path}) and authorizer invocations
+        # (/authorizers/{id}). arn_for_execute_api() produces /*/*/*  which
+        # only matches routes, so we construct the ARN manually.
+        lambda_.CfnPermission(
+            self,
+            "AuthFnBroadApiGwPermission",
+            action="lambda:InvokeFunction",
+            function_name=self.auth_function.function_arn,
+            principal="apigateway.amazonaws.com",
+            source_arn=cdk.Stack.of(self).format_arn(
+                service="execute-api",
+                resource=self.api.rest_api_id,
+                resource_name="*",
+                arn_format=cdk.ArnFormat.SLASH_RESOURCE_NAME,
+            ),
+        )
+
+        # Suppress all auto-generated per-route CfnPermission resources
+        # across all stacks that reference the auth Lambda
+        auth_fn_arn = self.auth_function.function_arn
+
+        for stack in all_stacks:
+            never = cdk.CfnCondition(
+                stack, "NeverAuthPermCondition",
+                expression=cdk.Fn.condition_equals("true", "false"),
+            )
+            for construct in stack.node.find_all():
+                if isinstance(construct, lambda_.CfnPermission):
+                    # Skip our broad permission
+                    if construct.node.id == "AuthFnBroadApiGwPermission":
+                        continue
+                    # Only suppress permissions targeting the auth function
+                    fn = getattr(construct, 'function_name', None)
+                    if fn and (fn == auth_fn_arn or str(fn) == str(auth_fn_arn)):
+                        construct.cfn_options.condition = never
+

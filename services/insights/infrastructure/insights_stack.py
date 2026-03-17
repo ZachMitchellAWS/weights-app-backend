@@ -25,7 +25,7 @@ class InsightsStack(Stack):
     - API Gateway route for weekly insights endpoint
 
     This stack reads from checkin tables (lift-sets, exercises, estimated-1rm,
-    splits, set-plan-templates, accessory-goal-checkins), user-properties,
+    set-plan-templates, accessory-goal-checkins), user-properties,
     and entitlement-grants to analyze training data and generate insights.
     """
 
@@ -42,7 +42,6 @@ class InsightsStack(Stack):
         exercises_table: dynamodb.Table,
         accessory_goal_checkins_table: dynamodb.Table,
         estimated_1rm_table: dynamodb.Table,
-        splits_table: dynamodb.Table,
         set_plan_templates_table: dynamodb.Table,
         user_properties_table: dynamodb.Table,
         entitlement_grants_table: dynamodb.Table,
@@ -66,7 +65,6 @@ class InsightsStack(Stack):
             exercises_table,
             accessory_goal_checkins_table,
             estimated_1rm_table,
-            splits_table,
             set_plan_templates_table,
             user_properties_table,
             entitlement_grants_table,
@@ -186,7 +184,6 @@ class InsightsStack(Stack):
         exercises_table: dynamodb.Table,
         accessory_goal_checkins_table: dynamodb.Table,
         estimated_1rm_table: dynamodb.Table,
-        splits_table: dynamodb.Table,
         set_plan_templates_table: dynamodb.Table,
         user_properties_table: dynamodb.Table,
         entitlement_grants_table: dynamodb.Table,
@@ -209,7 +206,6 @@ class InsightsStack(Stack):
                 "EXERCISES_TABLE_NAME": exercises_table.table_name,
                 "ACCESSORY_GOAL_CHECKINS_TABLE_NAME": accessory_goal_checkins_table.table_name,
                 "ESTIMATED_1RM_TABLE_NAME": estimated_1rm_table.table_name,
-                "SPLITS_TABLE_NAME": splits_table.table_name,
                 "SET_PLAN_TEMPLATES_TABLE_NAME": set_plan_templates_table.table_name,
                 "USER_PROPERTIES_TABLE_NAME": user_properties_table.table_name,
                 "ENTITLEMENT_GRANTS_TABLE_NAME": entitlement_grants_table.table_name,
@@ -228,7 +224,6 @@ class InsightsStack(Stack):
         exercises_table.grant_read_data(function)
         accessory_goal_checkins_table.grant_read_data(function)
         estimated_1rm_table.grant_read_data(function)
-        splits_table.grant_read_data(function)
         set_plan_templates_table.grant_read_data(function)
         user_properties_table.grant_read_data(function)
         entitlement_grants_table.grant_read_data(function)

@@ -1,7 +1,7 @@
 """
 Data curation for weekly insights generation.
 
-Queries 7 DynamoDB tables concurrently, then pre-computes all numeric summaries
+Queries 6 DynamoDB tables concurrently, then pre-computes all numeric summaries
 in Python so GPT only writes narratives.
 """
 
@@ -55,7 +55,6 @@ def curate_training_data(
         e1rm_future = executor.submit(_query_estimated_1rm, user_id, window_start_iso, window_end_iso)
         accessory_future = executor.submit(_query_accessory_checkins, user_id, focus_start_iso, window_end_iso)
         user_props_future = executor.submit(_query_user_properties, user_id)
-        splits_future = executor.submit(_query_splits, user_id)
         templates_future = executor.submit(_query_set_plan_templates, user_id)
 
     lift_sets = lift_sets_future.result()
@@ -63,7 +62,6 @@ def curate_training_data(
     e1rm_records = e1rm_future.result()
     accessory_checkins = accessory_future.result()
     user_properties = user_props_future.result()
-    splits = splits_future.result()
     templates = templates_future.result()
 
     # Resolve timezone from user properties (falls back to UTC)
@@ -95,7 +93,7 @@ def curate_training_data(
     accessory_summary = _format_accessory_goals(accessory_checkins)
 
     # Format user context
-    user_context = _format_user_context(user_properties, splits, templates, focus_start, prior_weeks_sets)
+    user_context = _format_user_context(user_properties, templates, focus_start, prior_weeks_sets)
 
     # Assemble the prompt
     parts = [
@@ -217,25 +215,6 @@ def _query_user_properties(user_id: str) -> dict | None:
     table = dynamodb.Table(table_name)
     response = table.get_item(Key={'userId': user_id})
     return response.get('Item')
-
-
-def _query_splits(user_id: str) -> list[dict]:
-    """Query all non-deleted splits for a user."""
-    table_name = os.environ.get('SPLITS_TABLE_NAME')
-    table = dynamodb.Table(table_name)
-
-    items = []
-    kwargs = {'KeyConditionExpression': Key('userId').eq(user_id)}
-    while True:
-        response = table.query(**kwargs)
-        for item in response.get('Items', []):
-            if not item.get('deleted'):
-                items.append(item)
-        if 'LastEvaluatedKey' not in response:
-            break
-        kwargs['ExclusiveStartKey'] = response['LastEvaluatedKey']
-
-    return items
 
 
 def _query_set_plan_templates(user_id: str) -> list[dict]:
@@ -516,7 +495,6 @@ def _format_accessory_goals(checkins: list[dict]) -> str:
 
 def _format_user_context(
     user_properties: dict | None,
-    splits: list[dict],
     templates: list[dict],
     focus_start: date,
     prior_sets: list[dict],
@@ -533,11 +511,6 @@ def _format_user_context(
         max_reps = user_properties.get('maxReps')
         if min_reps or max_reps:
             lines.append(f"- Rep range preference: {min_reps}-{max_reps}")
-
-    # Active splits
-    if splits:
-        split_names = [s.get('name', 'Unnamed') for s in splits]
-        lines.append(f"- Active splits: {', '.join(split_names)}")
 
     # Active templates
     if templates:

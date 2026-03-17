@@ -221,7 +221,6 @@ def main():
         exercises_table=checkin_stack.exercises_table,
         accessory_goal_checkins_table=checkin_stack.accessory_goal_checkins_table,
         estimated_1rm_table=checkin_stack.estimated_1rm_table,
-        splits_table=checkin_stack.splits_table,
         set_plan_templates_table=checkin_stack.set_plan_templates_table,
         user_properties_table=user_stack.user_properties_table,
         entitlement_grants_table=entitlements_stack.entitlement_grants_table,
@@ -288,8 +287,12 @@ def main():
         Tags.of(website_stack).add(key, value)
     Tags.of(website_stack).add("Service", "website")
 
+    # Consolidate auth Lambda permissions to avoid 20KB resource policy limit.
+    auth_stack.consolidate_auth_permissions(all_stacks=[
+        auth_stack, user_stack, checkin_stack, entitlements_stack, insights_stack,
+    ])
+
     # Synthesize CloudFormation templates
-    # This generates the templates that will be deployed to AWS
     app.synth()
 
 

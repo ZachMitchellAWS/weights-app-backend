@@ -10,8 +10,8 @@
 | Checkin | exercises | userId | exerciseItemId | - | - | Yes |
 | Checkin | lift-sets | userId | liftSetId | userId-createdDatetime-index | - | Yes |
 | Checkin | estimated-1rm | userId | liftSetId | userId-createdDatetime-index | - | Yes |
-| Checkin | splits | userId | splitId | - | - | Yes |
 | Checkin | set-plan-templates | userId | templateId | - | - | Yes |
+| Checkin | recovery-checkins | userId | recoveryCheckinId | userId-checkinDate-index | - | Yes |
 | Entitlements | entitlement-grants | userId | startUtc | userId-endUtc-index | - | No |
 
 ---
@@ -118,19 +118,6 @@ Auto-created when a user registers.
 
 **GSI:** `userId-createdDatetime-index` -- enables "most recent first" pagination.
 
-### splits
-
-| Field | Type | Required | Notes |
-|-------|------|----------|-------|
-| userId | String | Yes | Partition key |
-| splitId | String | Yes | Sort key (UUID) |
-| name | String | Yes | Split name |
-| dayIds | List\<String\> | Yes | Ordered list of sequence (day) IDs |
-| createdTimezone | String | Yes | e.g. "America/Los_Angeles" |
-| createdDatetime | String | Yes | ISO 8601 |
-| lastModifiedDatetime | String | Yes | ISO 8601 |
-| deleted | Boolean | No | Only present when true |
-
 ### set-plan-templates
 
 | Field | Type | Required | Notes |
@@ -145,6 +132,23 @@ Auto-created when a user registers.
 | createdDatetime | String | Yes | ISO 8601 |
 | lastModifiedDatetime | String | Yes | ISO 8601 |
 | deleted | Boolean | No | Only present when true |
+
+### recovery-checkins
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| userId | String | Yes | Partition key |
+| recoveryCheckinId | String | Yes | Sort key (UUID) |
+| checkinDate | String | Yes | "YYYY-MM-DD" — the day the response is for |
+| primaryResponse | String | Yes | ready, good, slightly_fatigued, very_fatigued, sick |
+| severityLevel | String | No | For sick: mild, moderate, severe |
+| planningToTrain | Boolean | No | For very_fatigued/sick |
+| createdTimezone | String | Yes | e.g. "America/Los_Angeles" |
+| createdDatetime | String | Yes | ISO 8601 |
+| lastModifiedDatetime | String | Yes | ISO 8601 |
+| deleted | Boolean | No | Only present when true |
+
+**GSI:** `userId-checkinDate-index` — enables date-range queries for recovery trend data.
 
 ---
 
@@ -182,9 +186,9 @@ users ──── user-properties     (userId)
   │         │
   │         └── estimated-1rm  (exerciseId → exerciseItemId)
   │
-  ├────── splits               (userId)
-  │
   ├────── set-plan-templates   (userId, activeSetPlanTemplateId in user-properties)
+  │
+  ├────── recovery-checkins    (userId)
   │
   └────── entitlement-grants   (userId)
 ```

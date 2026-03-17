@@ -304,23 +304,6 @@ def handle_update_properties(event: Dict[str, Any]) -> Dict[str, Any]:
                     }
                 )
 
-        # Handle activeSplitId (nullable string - can be set or removed)
-        if "activeSplitId" in body:
-            active_split = body.get("activeSplitId")
-            if active_split is None:
-                remove_parts.append("activeSplitId")
-            elif isinstance(active_split, str):
-                update_parts.append("activeSplitId = :activeSplitId")
-                expression_values[":activeSplitId"] = active_split
-            else:
-                return create_response(
-                    status_code=400,
-                    body={
-                        "error": "Invalid field type",
-                        "message": "activeSplitId must be a string or null"
-                    }
-                )
-
         # Handle stepsGoal (nullable integer - can be set or removed)
         if "stepsGoal" in body:
             steps_goal = body.get("stepsGoal")

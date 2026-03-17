@@ -58,7 +58,6 @@ class CheckinStack(Stack):
         self.exercises_table = self._create_exercises_table()
         self.lift_sets_table = self._create_lift_sets_table()
         self.estimated_1rm_table = self._create_estimated_1rm_table()
-        self.splits_table = self._create_splits_table()
         self.set_plan_templates_table = self._create_set_plan_templates_table()
         self.accessory_goal_checkins_table = self._create_accessory_goal_checkins_table()
         self.checkin_function = self._create_checkin_lambda()
@@ -237,42 +236,6 @@ class CheckinStack(Stack):
 
         return table
 
-    def _create_splits_table(self) -> dynamodb.Table:
-        """
-        Create DynamoDB table for workout splits.
-
-        Table schema:
-        - userId (String, partition key): User's unique identifier
-        - splitId (String, sort key): Unique split ID (UUID from frontend)
-        - name (String): Split name
-        - dayIds (List): Ordered list of day (sequence) IDs in this split
-        - createdTimezone (String): Timezone when split was created
-        - createdDatetime (String): ISO 8601 timestamp when created
-        - lastModifiedDatetime (String): ISO 8601 timestamp when last modified
-        - deleted (Boolean): Soft delete flag
-
-        Returns:
-            DynamoDB Table construct
-        """
-        table = dynamodb.Table(
-            self,
-            "SplitsTable",
-            table_name=f"{self.project_name}-{self.env_name}-splits",
-            partition_key=dynamodb.Attribute(
-                name="userId",
-                type=dynamodb.AttributeType.STRING
-            ),
-            sort_key=dynamodb.Attribute(
-                name="splitId",
-                type=dynamodb.AttributeType.STRING
-            ),
-            billing_mode=self.config.DYNAMODB_BILLING_MODE,
-            point_in_time_recovery=self.config.DYNAMODB_POINT_IN_TIME_RECOVERY,
-            removal_policy=self.config.REMOVAL_POLICY,
-        )
-
-        return table
-
     def _create_set_plan_templates_table(self) -> dynamodb.Table:
         """
         Create DynamoDB table for set plan templates.
@@ -397,7 +360,6 @@ class CheckinStack(Stack):
                 "EXERCISES_TABLE_NAME": self.exercises_table.table_name,
                 "LIFT_SETS_TABLE_NAME": self.lift_sets_table.table_name,
                 "ESTIMATED_1RM_TABLE_NAME": self.estimated_1rm_table.table_name,
-                "SPLITS_TABLE_NAME": self.splits_table.table_name,
                 "SET_PLAN_TEMPLATES_TABLE_NAME": self.set_plan_templates_table.table_name,
                 "ACCESSORY_GOAL_CHECKINS_TABLE_NAME": self.accessory_goal_checkins_table.table_name,
                 "ENVIRONMENT": self.config.ENVIRONMENT,
@@ -410,7 +372,6 @@ class CheckinStack(Stack):
         self.exercises_table.grant_read_write_data(function)
         self.lift_sets_table.grant_read_write_data(function)
         self.estimated_1rm_table.grant_read_write_data(function)
-        self.splits_table.grant_read_write_data(function)
         self.set_plan_templates_table.grant_read_write_data(function)
         self.accessory_goal_checkins_table.grant_read_write_data(function)
 
@@ -557,36 +518,6 @@ class CheckinStack(Stack):
             authorization_type=apigateway.AuthorizationType.CUSTOM,
         )
 
-        # Create /checkin/splits resource
-        splits_resource = checkin_resource.add_resource("splits")
-
-        # Add POST method for splits (batch upsert)
-        splits_resource.add_method(
-            "POST",
-            checkin_integration,
-            api_key_required=True,
-            authorizer=self.authorizer,
-            authorization_type=apigateway.AuthorizationType.CUSTOM,
-        )
-
-        # Add GET method for splits
-        splits_resource.add_method(
-            "GET",
-            checkin_integration,
-            api_key_required=True,
-            authorizer=self.authorizer,
-            authorization_type=apigateway.AuthorizationType.CUSTOM,
-        )
-
-        # Add DELETE method for splits (batch soft delete)
-        splits_resource.add_method(
-            "DELETE",
-            checkin_integration,
-            api_key_required=True,
-            authorizer=self.authorizer,
-            authorization_type=apigateway.AuthorizationType.CUSTOM,
-        )
-
         # Create /checkin/set-plan-templates resource
         set_plan_templates_resource = checkin_resource.add_resource("set-plan-templates")
 
@@ -646,3 +577,4 @@ class CheckinStack(Stack):
             authorizer=self.authorizer,
             authorization_type=apigateway.AuthorizationType.CUSTOM,
         )
+
