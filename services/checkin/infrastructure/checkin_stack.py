@@ -60,6 +60,7 @@ class CheckinStack(Stack):
         self.estimated_1rm_table = self._create_estimated_1rm_table()
         self.set_plan_templates_table = self._create_set_plan_templates_table()
         self.accessory_goal_checkins_table = self._create_accessory_goal_checkins_table()
+        self.groups_table = self._create_groups_table()
         self.checkin_function = self._create_checkin_lambda()
         self._create_api_routes()
 
@@ -329,6 +330,44 @@ class CheckinStack(Stack):
 
         return table
 
+    def _create_groups_table(self) -> dynamodb.Table:
+        """
+        Create DynamoDB table for exercise groups.
+
+        Table schema:
+        - userId (String, partition key): User's unique identifier
+        - groupId (String, sort key): Unique group ID (UUID from frontend)
+        - name (String): Group name
+        - exerciseIds (List<String>): Ordered list of exercise UUIDs
+        - isCustom (Boolean): Whether group is user-created or built-in
+        - sortOrder (Number): Display order
+        - createdTimezone (String): Timezone when group was created
+        - createdDatetime (String): ISO 8601 timestamp when created
+        - lastModifiedDatetime (String): ISO 8601 timestamp when last modified
+        - deleted (Boolean): Soft delete flag
+
+        Returns:
+            DynamoDB Table construct
+        """
+        table = dynamodb.Table(
+            self,
+            "GroupsTable",
+            table_name=f"{self.project_name}-{self.env_name}-groups",
+            partition_key=dynamodb.Attribute(
+                name="userId",
+                type=dynamodb.AttributeType.STRING
+            ),
+            sort_key=dynamodb.Attribute(
+                name="groupId",
+                type=dynamodb.AttributeType.STRING
+            ),
+            billing_mode=self.config.DYNAMODB_BILLING_MODE,
+            point_in_time_recovery=self.config.DYNAMODB_POINT_IN_TIME_RECOVERY,
+            removal_policy=self.config.REMOVAL_POLICY,
+        )
+
+        return table
+
     def _create_checkin_lambda(self) -> lambda_.Function:
         """
         Create Lambda function for checkin service operations.
@@ -362,6 +401,7 @@ class CheckinStack(Stack):
                 "ESTIMATED_1RM_TABLE_NAME": self.estimated_1rm_table.table_name,
                 "SET_PLAN_TEMPLATES_TABLE_NAME": self.set_plan_templates_table.table_name,
                 "ACCESSORY_GOAL_CHECKINS_TABLE_NAME": self.accessory_goal_checkins_table.table_name,
+                "GROUPS_TABLE_NAME": self.groups_table.table_name,
                 "ENVIRONMENT": self.config.ENVIRONMENT,
                 "LOG_LEVEL": self.config.LOG_LEVEL,
             },
@@ -374,6 +414,7 @@ class CheckinStack(Stack):
         self.estimated_1rm_table.grant_read_write_data(function)
         self.set_plan_templates_table.grant_read_write_data(function)
         self.accessory_goal_checkins_table.grant_read_write_data(function)
+        self.groups_table.grant_read_write_data(function)
 
         return function
 
@@ -571,6 +612,36 @@ class CheckinStack(Stack):
 
         # Add DELETE method for accessory-goal-checkins (batch soft delete)
         accessory_goal_checkins_resource.add_method(
+            "DELETE",
+            checkin_integration,
+            api_key_required=True,
+            authorizer=self.authorizer,
+            authorization_type=apigateway.AuthorizationType.CUSTOM,
+        )
+
+        # Create /checkin/groups resource
+        groups_resource = checkin_resource.add_resource("groups")
+
+        # Add POST method for groups (batch upsert)
+        groups_resource.add_method(
+            "POST",
+            checkin_integration,
+            api_key_required=True,
+            authorizer=self.authorizer,
+            authorization_type=apigateway.AuthorizationType.CUSTOM,
+        )
+
+        # Add GET method for groups
+        groups_resource.add_method(
+            "GET",
+            checkin_integration,
+            api_key_required=True,
+            authorizer=self.authorizer,
+            authorization_type=apigateway.AuthorizationType.CUSTOM,
+        )
+
+        # Add DELETE method for groups (batch soft delete)
+        groups_resource.add_method(
             "DELETE",
             checkin_integration,
             api_key_required=True,

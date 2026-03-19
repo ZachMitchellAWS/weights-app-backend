@@ -47,6 +47,7 @@ TABLES = [
     ("subscription-events", "userId", "eventTimestamp"),
     ("set-plan-templates", "userId", "templateId"),
     ("accessory-goal-checkins", "userId", "checkinId"),
+    ("groups", "userId", "groupId"),
 ]
 
 # Schema defaults for migration on load.
@@ -77,6 +78,12 @@ TABLE_SCHEMAS = {
         "lastModifiedDatetime": _NOW_SENTINEL,
     },
     "accessory-goal-checkins": {
+        "lastModifiedDatetime": _NOW_SENTINEL,
+    },
+    "groups": {
+        "isCustom": False,
+        "exerciseIds": [],
+        "sortOrder": 0,
         "lastModifiedDatetime": _NOW_SENTINEL,
     },
 }

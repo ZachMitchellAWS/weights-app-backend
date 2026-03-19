@@ -3,6 +3,7 @@
 from aws_cdk import (
     Stack,
     Duration,
+    RemovalPolicy,
     aws_dynamodb as dynamodb,
     aws_lambda as lambda_,
     aws_apigateway as apigateway,
@@ -10,6 +11,7 @@ from aws_cdk import (
     aws_iam as iam,
     aws_events as events,
     aws_events_targets as targets,
+    aws_s3 as s3,
 )
 from constructs import Construct
 from pathlib import Path
@@ -45,6 +47,7 @@ class InsightsStack(Stack):
         set_plan_templates_table: dynamodb.Table,
         user_properties_table: dynamodb.Table,
         entitlement_grants_table: dynamodb.Table,
+        groups_table: dynamodb.Table,
         **kwargs
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
@@ -58,6 +61,7 @@ class InsightsStack(Stack):
         # Create resources
         self.insight_tasks_table = self._create_insight_tasks_table()
         self.insights_cache_table = self._create_insights_cache_table()
+        self.audio_bucket = self._create_audio_bucket()
         self._create_ssm_parameters()
         self.dependencies_layer = self._create_dependencies_layer()
         self.insights_function = self._create_insights_lambda(
@@ -68,6 +72,7 @@ class InsightsStack(Stack):
             set_plan_templates_table,
             user_properties_table,
             entitlement_grants_table,
+            groups_table,
         )
         self._create_eventbridge_rule()
         self._create_api_routes()
@@ -141,6 +146,26 @@ class InsightsStack(Stack):
 
         return table
 
+    def _create_audio_bucket(self) -> s3.Bucket:
+        """
+        Create S3 bucket for storing TTS audio files of insight narratives.
+
+        Objects auto-expire after 90 days to match the DynamoDB cache TTL.
+        """
+        bucket = s3.Bucket(
+            self,
+            "InsightsAudioBucket",
+            bucket_name=f"{self.project_name}-{self.env_name}-insights-audio",
+            block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
+            removal_policy=self.config.REMOVAL_POLICY,
+            lifecycle_rules=[
+                s3.LifecycleRule(
+                    expiration=Duration.days(90),
+                ),
+            ],
+        )
+        return bucket
+
     def _create_ssm_parameters(self) -> None:
         """
         Create SSM Parameter Store parameter for OpenAI API key.
@@ -187,6 +212,7 @@ class InsightsStack(Stack):
         set_plan_templates_table: dynamodb.Table,
         user_properties_table: dynamodb.Table,
         entitlement_grants_table: dynamodb.Table,
+        groups_table: dynamodb.Table,
     ) -> lambda_.Function:
         """Create Lambda function for insights service."""
         lambda_code_path = Path(__file__).parent.parent / "lambda"
@@ -209,10 +235,13 @@ class InsightsStack(Stack):
                 "SET_PLAN_TEMPLATES_TABLE_NAME": set_plan_templates_table.table_name,
                 "USER_PROPERTIES_TABLE_NAME": user_properties_table.table_name,
                 "ENTITLEMENT_GRANTS_TABLE_NAME": entitlement_grants_table.table_name,
+                "GROUPS_TABLE_NAME": groups_table.table_name,
                 "INSIGHT_TASKS_TABLE_NAME": self.insight_tasks_table.table_name,
                 "INSIGHTS_CACHE_TABLE_NAME": self.insights_cache_table.table_name,
                 "OPENAI_API_KEY_PARAM": f"/{self.project_name}/{self.env_name}/insights/openai-api-key",
                 "OPENAI_MODEL": "gpt-5.4",
+                "INSIGHTS_AUDIO_BUCKET": self.audio_bucket.bucket_name,
+                "INSIGHTS_FUNCTION_NAME": f"{self.project_name}-{self.env_name}-insights",
                 "ENVIRONMENT": self.config.ENVIRONMENT,
                 "LOG_LEVEL": self.config.LOG_LEVEL,
             },
@@ -227,10 +256,24 @@ class InsightsStack(Stack):
         set_plan_templates_table.grant_read_data(function)
         user_properties_table.grant_read_data(function)
         entitlement_grants_table.grant_read_data(function)
+        groups_table.grant_read_data(function)
 
         # Grant read/write to insights-owned tables
         self.insight_tasks_table.grant_read_write_data(function)
         self.insights_cache_table.grant_read_write_data(function)
+
+        # Grant S3 access for TTS audio files
+        self.audio_bucket.grant_read_write(function)
+
+        # Grant self-invoke for async TTS generation
+        function.add_to_role_policy(
+            statement=iam.PolicyStatement(
+                actions=["lambda:InvokeFunction"],
+                resources=[
+                    f"arn:aws:lambda:{self.region}:{self.account}:function:{self.project_name}-{self.env_name}-insights"
+                ]
+            )
+        )
 
         # Grant SSM GetParameter permission for OpenAI API key
         function.add_to_role_policy(

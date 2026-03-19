@@ -45,7 +45,18 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         print(f"Handling request: {http_method} {path}")
 
         # Route to appropriate handler based on path and method
-        if path.endswith("/user/properties"):
+        if path.endswith("/user/delete-account"):
+            if http_method == "POST":
+                return handle_delete_account_request(event)
+            else:
+                return create_response(
+                    status_code=405,
+                    body={
+                        "error": "Method not allowed",
+                        "message": f"Method {http_method} not supported for {path}"
+                    }
+                )
+        elif path.endswith("/user/properties"):
             if http_method == "GET":
                 return handle_get_properties(event)
             elif http_method == "POST":
@@ -401,6 +412,40 @@ def handle_update_properties(event: Dict[str, Any]) -> Dict[str, Any]:
                     }
                 )
 
+        # Handle activeGroupId (nullable string - can be set or removed)
+        if "activeGroupId" in body:
+            active_group = body.get("activeGroupId")
+            if active_group is None:
+                remove_parts.append("activeGroupId")
+            elif isinstance(active_group, str):
+                update_parts.append("activeGroupId = :activeGroupId")
+                expression_values[":activeGroupId"] = active_group
+            else:
+                return create_response(
+                    status_code=400,
+                    body={
+                        "error": "Invalid field type",
+                        "message": "activeGroupId must be a string or null"
+                    }
+                )
+
+        # Handle apnsDeviceToken (nullable string - can be set or removed)
+        if "apnsDeviceToken" in body:
+            apns_token = body.get("apnsDeviceToken")
+            if apns_token is None:
+                remove_parts.append("apnsDeviceToken")
+            elif isinstance(apns_token, str) and len(apns_token) <= 200:
+                update_parts.append("apnsDeviceToken = :apnsDeviceToken")
+                expression_values[":apnsDeviceToken"] = apns_token
+            else:
+                return create_response(
+                    status_code=400,
+                    body={
+                        "error": "Invalid field type",
+                        "message": "apnsDeviceToken must be a string (max 200 chars) or null"
+                    }
+                )
+
         # Handle per-mode effort rep range fields
         for field in ["easyMinReps", "easyMaxReps", "moderateMinReps", "moderateMaxReps", "hardMinReps", "hardMaxReps"]:
             if field in body:
@@ -483,5 +528,58 @@ def handle_update_properties(event: Dict[str, Any]) -> Dict[str, Any]:
             body={
                 "error": "Internal server error",
                 "message": "Failed to update user properties"
+            }
+        )
+
+
+def handle_delete_account_request(event: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Handle POST /user/delete-account requests.
+
+    Records an account deletion request for the authenticated user.
+    No actual data deletion is performed — requests are stored for manual processing.
+    """
+    try:
+        request_context = event.get("requestContext", {})
+        authorizer = request_context.get("authorizer", {})
+        user_id = authorizer.get("userId")
+
+        if not user_id:
+            return create_response(
+                status_code=401,
+                body={
+                    "error": "Unauthorized",
+                    "message": "User ID not found in authorization context"
+                }
+            )
+
+        table_name = os.environ.get("DELETION_REQUESTS_TABLE_NAME")
+        if not table_name:
+            raise ValueError("DELETION_REQUESTS_TABLE_NAME environment variable not set")
+
+        table = dynamodb.Table(table_name)
+
+        table.put_item(Item={
+            "userId": user_id,
+            "requestedDatetime": get_current_datetime_iso(),
+            "status": "pending",
+        })
+
+        print(f"Account deletion request recorded for user: {user_id}")
+
+        return create_response(
+            status_code=200,
+            body={"message": "Account deletion request received"}
+        )
+
+    except Exception as e:
+        print(f"Error in handle_delete_account_request: {str(e)}")
+        print(traceback.format_exc())
+
+        return create_response(
+            status_code=500,
+            body={
+                "error": "Internal server error",
+                "message": "Failed to process account deletion request"
             }
         )

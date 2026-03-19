@@ -65,3 +65,22 @@ def put_cached_insights(
         }
     )
     logger.info(f"Cached insights for user {user_id}, week {week_start_date}")
+
+
+def update_audio_keys(
+    user_id: str,
+    week_start_date: str,
+    audio_keys: list[str],
+) -> None:
+    """
+    Add audio keys to an existing cache item.
+
+    Uses UpdateItem so it doesn't overwrite the full item.
+    """
+    table = _get_cache_table()
+    table.update_item(
+        Key={'userId': user_id, 'insightWeek': week_start_date},
+        UpdateExpression='SET audioKeys = :ak',
+        ExpressionAttributeValues={':ak': audio_keys},
+    )
+    logger.info(f"Updated audio keys for user {user_id}, week {week_start_date}")

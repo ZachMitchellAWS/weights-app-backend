@@ -1,17 +1,21 @@
 """
 Insights service Lambda handler.
 
-Three invocation pathways:
+Four invocation pathways:
 1. SCHEDULE_TASK — async from checkin Lambda after lift set creation
 2. PROCESS_TASKS — EventBridge cron every 15 min, processes ripe tasks
 3. GET_INSIGHTS — API Gateway GET /insights/weekly
+4. GENERATE_AUDIO — async self-invoke to generate TTS audio after insights are cached
 """
 
+import json
 import os
 import logging
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict
+
+import boto3
 
 from utils.response import create_response
 from utils.entitlement_check import check_premium
@@ -25,7 +29,7 @@ from utils.task_manager import (
     get_insight_week,
     STALE_THRESHOLD_SECONDS,
 )
-from utils.cache import get_cached_insights, put_cached_insights
+from utils.cache import get_cached_insights, put_cached_insights, update_audio_keys
 from utils.data_curator import curate_training_data, has_sets_in_week
 
 logger = logging.getLogger()
@@ -33,6 +37,34 @@ logger.setLevel(logging.INFO)
 
 # Module-level cache for the system prompt
 _system_prompt = None
+
+_s3_client = None
+
+
+def _get_s3_client():
+    """Get S3 client with module-level cache."""
+    global _s3_client
+    if _s3_client is None:
+        _s3_client = boto3.client('s3')
+    return _s3_client
+
+
+def _attach_audio_urls(sections: list[dict], audio_keys: list[str]) -> None:
+    """Attach presigned S3 URLs to section dicts (mutates in place)."""
+    bucket = os.environ.get('INSIGHTS_AUDIO_BUCKET')
+    if not bucket:
+        return
+    s3 = _get_s3_client()
+    for section, key in zip(sections, audio_keys):
+        try:
+            url = s3.generate_presigned_url(
+                'get_object',
+                Params={'Bucket': bucket, 'Key': key},
+                ExpiresIn=3600,
+            )
+            section['audioUrl'] = url
+        except Exception as e:
+            logger.warning(f"Failed to generate presigned URL for {key}: {e}")
 
 
 def _get_system_prompt() -> str:
@@ -73,7 +105,7 @@ def _get_previous_completed_week() -> tuple[str, str]:
 
 def _generate_and_cache(user_id: str, week_start: str, week_end: str) -> dict:
     """
-    Generate insights via OpenAI and write to cache.
+    Generate insights via OpenAI and write to cache, then kick off async TTS.
 
     Args:
         user_id: The user's unique identifier
@@ -81,7 +113,7 @@ def _generate_and_cache(user_id: str, week_start: str, week_end: str) -> dict:
         week_end: Sunday date "YYYY-MM-DD"
 
     Returns:
-        Dict with sections, weekStartDate, weekEndDate, generatedAt
+        Dict with sections, weekStartDate, weekEndDate, generatedAt (no audio URLs)
     """
     # Lazy import to avoid loading openai on non-generation paths
     from utils.openai_client import generate_insights
@@ -94,6 +126,9 @@ def _generate_and_cache(user_id: str, week_start: str, week_end: str) -> dict:
 
     put_cached_insights(user_id, week_start, sections, model)
 
+    # Fire-and-forget: kick off TTS generation asynchronously
+    _invoke_generate_audio(user_id, week_start)
+
     now_utc = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
     return {
         "weekStartDate": week_start,
@@ -101,6 +136,30 @@ def _generate_and_cache(user_id: str, week_start: str, week_end: str) -> dict:
         "generatedAt": now_utc,
         "sections": sections,
     }
+
+
+def _invoke_generate_audio(user_id: str, week_start: str) -> None:
+    """Async self-invoke to generate TTS audio for cached insights."""
+    function_name = os.environ.get('INSIGHTS_FUNCTION_NAME')
+    if not function_name:
+        logger.warning("INSIGHTS_FUNCTION_NAME not set, skipping TTS generation")
+        return
+
+    try:
+        lambda_client = boto3.client('lambda')
+        payload = json.dumps({
+            'invocationType': 'GENERATE_AUDIO',
+            'userId': user_id,
+            'weekStart': week_start,
+        })
+        lambda_client.invoke(
+            FunctionName=function_name,
+            InvocationType='Event',
+            Payload=payload,
+        )
+        logger.info(f"Async-invoked TTS generation for user {user_id}, week {week_start}")
+    except Exception as e:
+        logger.warning(f"Failed to invoke TTS generation: {e}")
 
 
 # ===========================================================================
@@ -173,7 +232,42 @@ def process_ripe_tasks() -> dict:
 
 
 # ===========================================================================
-# Pathway 3: GET_INSIGHTS (API Gateway)
+# Pathway 3: GENERATE_AUDIO (async self-invoke)
+# ===========================================================================
+
+def generate_audio(user_id: str, week_start: str) -> dict:
+    """
+    Generate TTS audio for cached insights and update the cache item.
+
+    Called asynchronously after insights are generated and cached.
+    """
+    from utils.tts import generate_section_audio
+
+    cached = get_cached_insights(user_id, week_start)
+    if not cached:
+        logger.warning(f"No cached insights for user {user_id}, week {week_start} — skipping TTS")
+        return {"status": "skipped", "reason": "no_cache"}
+
+    if cached.get('audioKeys'):
+        logger.info(f"Audio already exists for user {user_id}, week {week_start} — skipping")
+        return {"status": "skipped", "reason": "already_exists"}
+
+    sections = cached.get('sections', [])
+    if not sections:
+        return {"status": "skipped", "reason": "no_sections"}
+
+    try:
+        audio_keys = generate_section_audio(sections, user_id, week_start)
+        update_audio_keys(user_id, week_start, audio_keys)
+        logger.info(f"TTS audio generated and cached for user {user_id}, week {week_start}")
+        return {"status": "completed", "audioKeys": audio_keys}
+    except Exception as e:
+        logger.error(f"TTS generation failed for user {user_id}, week {week_start}: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+# ===========================================================================
+# Pathway 4: GET_INSIGHTS (API Gateway)
 # ===========================================================================
 
 def get_weekly_insights(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
@@ -192,11 +286,15 @@ def get_weekly_insights(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     # Fast path: check cache
     cached = get_cached_insights(user_id, week_start)
     if cached:
+        sections = cached.get('sections', [])
+        audio_keys = cached.get('audioKeys')
+        if audio_keys:
+            _attach_audio_urls(sections, audio_keys)
         return create_response(200, {
             "weekStartDate": week_start,
             "weekEndDate": week_end,
             "generatedAt": cached.get('generatedAt'),
-            "sections": cached.get('sections', []),
+            "sections": sections,
         })
 
     # Check task table
@@ -287,17 +385,28 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
     Routes based on invocation type:
     - EventBridge cron → PROCESS_TASKS
+    - Async self-invoke → GENERATE_AUDIO
     - Async invoke from checkin → SCHEDULE_TASK
     - API Gateway → GET /insights/weekly
     """
     invocation_type = event.get("invocationType")
 
-    # Pathway 1: EventBridge cron
+    # EventBridge cron
     if invocation_type == "PROCESS_TASKS":
         logger.info("Processing ripe insight tasks (EventBridge cron)")
         return process_ripe_tasks()
 
-    # Pathway 2: Async invoke from checkin Lambda
+    # Async self-invoke to generate TTS audio
+    if invocation_type == "GENERATE_AUDIO":
+        user_id = event.get("userId")
+        week_start = event.get("weekStart")
+        if not user_id or not week_start:
+            logger.error(f"GENERATE_AUDIO missing required fields: {event}")
+            return {"error": "Missing userId or weekStart"}
+        logger.info(f"Generating TTS audio for user {user_id}, week {week_start}")
+        return generate_audio(user_id, week_start)
+
+    # Async invoke from checkin Lambda
     if invocation_type == "SCHEDULE_TASK":
         user_id = event.get("userId")
         tz = event.get("createdTimezone")
@@ -308,7 +417,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         logger.info(f"Scheduling insight task for user {user_id}")
         return schedule_insight_task(user_id, tz, created_dt)
 
-    # Pathway 3: API Gateway (GET /insights/weekly)
+    # API Gateway (GET /insights/weekly)
     http_method = event.get("httpMethod")
     path = event.get("path", "")
 

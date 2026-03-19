@@ -12,6 +12,7 @@
 | Checkin | estimated-1rm | userId | liftSetId | userId-createdDatetime-index | - | Yes |
 | Checkin | set-plan-templates | userId | templateId | - | - | Yes |
 | Checkin | recovery-checkins | userId | recoveryCheckinId | userId-checkinDate-index | - | Yes |
+| Checkin | groups | userId | groupId | - | - | Yes |
 | Entitlements | entitlement-grants | userId | startUtc | userId-endUtc-index | - | No |
 
 ---
@@ -58,6 +59,7 @@
 | hardMinReps | Number | No | Hard effort min reps |
 | hardMaxReps | Number | No | Hard effort max reps |
 | activeSetPlanTemplateId | String | No | Nullable -- UUID of active set plan template |
+| activeGroupId | String | No | Nullable -- UUID of active exercise group |
 | createdDatetime | String | Yes | ISO 8601 |
 | lastModifiedDatetime | String | Yes | ISO 8601 |
 
@@ -150,6 +152,21 @@ Auto-created when a user registers.
 
 **GSI:** `userId-checkinDate-index` — enables date-range queries for recovery trend data.
 
+### groups
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| userId | String | Yes | Partition key |
+| groupId | String | Yes | Sort key (UUID) |
+| name | String | Yes | Group name |
+| exerciseIds | List\<String\> | Yes | Ordered list of exercise UUIDs |
+| isCustom | Boolean | Yes | Whether group is user-created or built-in |
+| sortOrder | Number | Yes | Display order (integer) |
+| createdTimezone | String | Yes | e.g. "America/Los_Angeles" |
+| createdDatetime | String | Yes | ISO 8601 |
+| lastModifiedDatetime | String | Yes | ISO 8601 |
+| deleted | Boolean | No | Only present when true |
+
 ---
 
 ## Entitlements Service
@@ -187,6 +204,8 @@ users ──── user-properties     (userId)
   │         └── estimated-1rm  (exerciseId → exerciseItemId)
   │
   ├────── set-plan-templates   (userId, activeSetPlanTemplateId in user-properties)
+  │
+  ├────── groups               (userId, activeGroupId in user-properties)
   │
   ├────── recovery-checkins    (userId)
   │

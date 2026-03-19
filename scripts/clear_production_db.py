@@ -28,6 +28,7 @@ TABLES = [
     ("subscription-events", "userId", "eventTimestamp"),
     ("set-plan-templates", "userId", "templateId"),
     ("accessory-goal-checkins", "userId", "checkinId"),
+    ("groups", "userId", "groupId"),
 ]
 
 

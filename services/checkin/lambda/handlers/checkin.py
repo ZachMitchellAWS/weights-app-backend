@@ -115,6 +115,13 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             return get_accessory_goal_checkins(event, user_id)
         elif http_method == 'DELETE' and path.endswith('/checkin/accessory-goal-checkins'):
             return delete_accessory_goal_checkins(event, user_id)
+        # Group routes
+        elif http_method == 'POST' and path.endswith('/checkin/groups'):
+            return upsert_groups(event, user_id)
+        elif http_method == 'GET' and path.endswith('/checkin/groups'):
+            return get_groups(event, user_id)
+        elif http_method == 'DELETE' and path.endswith('/checkin/groups'):
+            return delete_groups(event, user_id)
         else:
             return create_response(
                 status_code=404,
@@ -2321,6 +2328,355 @@ def delete_accessory_goal_checkins(event: Dict[str, Any], user_id: str) -> Dict[
         )
     except Exception as e:
         print(f"Error deleting accessory goal checkins: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return create_response(
+            status_code=500,
+            body={"message": "Internal server error"}
+        )
+
+
+# ---------------------------------------------------------------------------
+# Groups
+# ---------------------------------------------------------------------------
+
+
+def upsert_groups(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
+    """Create or update groups (upsert with batch support)."""
+    try:
+        body = json.loads(event.get('body', '{}'))
+
+        if 'groups' not in body:
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Missing required field",
+                    "message": "Request body must contain 'groups' array"
+                }
+            )
+
+        groups_input = body['groups']
+
+        if not isinstance(groups_input, list):
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Invalid format",
+                    "message": "'groups' must be an array"
+                }
+            )
+
+        if len(groups_input) == 0:
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Empty groups array",
+                    "message": "At least one group is required"
+                }
+            )
+
+        # Validate
+        required_fields = ['groupId', 'name', 'exerciseIds', 'isCustom', 'sortOrder', 'createdTimezone', 'createdDatetime']
+        validation_errors = []
+
+        for idx, group in enumerate(groups_input):
+            missing_fields = [field for field in required_fields if field not in group]
+            if missing_fields:
+                validation_errors.append(
+                    f"Group at index {idx}: missing fields: {', '.join(missing_fields)}"
+                )
+                continue
+
+            if not isinstance(group['name'], str) or not group['name'].strip():
+                validation_errors.append(
+                    f"Group at index {idx}: name must be a non-empty string"
+                )
+
+            if not isinstance(group['exerciseIds'], list):
+                validation_errors.append(
+                    f"Group at index {idx}: exerciseIds must be an array"
+                )
+
+            if not isinstance(group['isCustom'], bool):
+                validation_errors.append(
+                    f"Group at index {idx}: isCustom must be a boolean"
+                )
+
+            if not isinstance(group['sortOrder'], int):
+                validation_errors.append(
+                    f"Group at index {idx}: sortOrder must be an integer"
+                )
+
+        if validation_errors:
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Validation failed",
+                    "message": "One or more groups have validation errors",
+                    "errors": validation_errors
+                }
+            )
+
+        table_name = os.environ.get('GROUPS_TABLE_NAME')
+        if not table_name:
+            raise ValueError("GROUPS_TABLE_NAME environment variable not set")
+
+        table = dynamodb.Table(table_name)
+        current_datetime = get_current_datetime_iso()
+
+        # Batch get existing items
+        group_ids = [g['groupId'] for g in groups_input]
+        existing_items = {}
+        for i in range(0, len(group_ids), 100):
+            batch_ids = group_ids[i:i + 100]
+            keys = [{'userId': user_id, 'groupId': gid} for gid in batch_ids]
+
+            response = dynamodb.batch_get_item(
+                RequestItems={
+                    table_name: {
+                        'Keys': keys
+                    }
+                }
+            )
+
+            for item in response.get('Responses', {}).get(table_name, []):
+                existing_items[item['groupId']] = item
+
+        result_groups = []
+        created_count = 0
+        updated_count = 0
+
+        for group in groups_input:
+            group_id = group['groupId']
+            existing = existing_items.get(group_id)
+
+            if existing:
+                update_expression = 'SET #name = :name, exerciseIds = :exerciseIds, isCustom = :isCustom, sortOrder = :sortOrder, lastModifiedDatetime = :lastModified'
+                expression_attr_names = {'#name': 'name'}
+                expression_attr_values = {
+                    ':name': group['name'],
+                    ':exerciseIds': group['exerciseIds'],
+                    ':isCustom': group['isCustom'],
+                    ':sortOrder': group['sortOrder'],
+                    ':lastModified': current_datetime
+                }
+
+                if 'deleted' in group:
+                    update_expression += ', deleted = :deleted'
+                    expression_attr_values[':deleted'] = group['deleted']
+
+                response = table.update_item(
+                    Key={
+                        'userId': user_id,
+                        'groupId': group_id
+                    },
+                    UpdateExpression=update_expression,
+                    ExpressionAttributeNames=expression_attr_names,
+                    ExpressionAttributeValues=expression_attr_values,
+                    ReturnValues='ALL_NEW'
+                )
+
+                result_groups.append(response.get('Attributes', {}))
+                updated_count += 1
+            else:
+                group_item = {
+                    'userId': user_id,
+                    'groupId': group_id,
+                    'name': group['name'],
+                    'exerciseIds': group['exerciseIds'],
+                    'isCustom': group['isCustom'],
+                    'sortOrder': group['sortOrder'],
+                    'createdTimezone': group['createdTimezone'],
+                    'createdDatetime': group['createdDatetime'],
+                    'lastModifiedDatetime': current_datetime,
+                }
+
+                if group.get('deleted'):
+                    group_item['deleted'] = True
+
+                table.put_item(Item=group_item)
+                result_groups.append(group_item)
+                created_count += 1
+
+        print(f"Upserted groups for user {user_id}: {created_count} created, {updated_count} updated")
+
+        return create_response(
+            status_code=200 if updated_count > 0 else 201,
+            body={
+                "groups": result_groups,
+                "created": created_count,
+                "updated": updated_count
+            }
+        )
+
+    except json.JSONDecodeError:
+        return create_response(
+            status_code=400,
+            body={
+                "error": "Invalid JSON",
+                "message": "Request body must be valid JSON"
+            }
+        )
+    except Exception as e:
+        print(f"Error upserting groups: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return create_response(
+            status_code=500,
+            body={"message": "Internal server error"}
+        )
+
+
+def get_groups(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
+    """Get all non-deleted groups for a user."""
+    try:
+        table_name = os.environ.get('GROUPS_TABLE_NAME')
+        if not table_name:
+            raise ValueError("GROUPS_TABLE_NAME environment variable not set")
+
+        table = dynamodb.Table(table_name)
+
+        response = table.query(
+            KeyConditionExpression=Key('userId').eq(user_id)
+        )
+
+        groups = response.get('Items', [])
+
+        non_deleted_groups = [
+            g for g in groups
+            if not g.get('deleted', False)
+        ]
+
+        print(f"Retrieved {len(non_deleted_groups)} non-deleted groups for user: {user_id}")
+
+        return create_response(
+            status_code=200,
+            body={"groups": non_deleted_groups}
+        )
+
+    except Exception as e:
+        print(f"Error getting groups: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return create_response(
+            status_code=500,
+            body={"message": "Internal server error"}
+        )
+
+
+def delete_groups(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
+    """Soft delete groups (batch support). Built-in groups cannot be deleted."""
+    try:
+        body = json.loads(event.get('body', '{}'))
+
+        if 'groupIds' not in body:
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Missing required field",
+                    "message": "Request body must contain 'groupIds' array"
+                }
+            )
+
+        group_ids = body['groupIds']
+
+        if not isinstance(group_ids, list):
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Invalid format",
+                    "message": "'groupIds' must be an array"
+                }
+            )
+
+        if len(group_ids) == 0:
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Empty groupIds array",
+                    "message": "At least one groupId is required"
+                }
+            )
+
+        table_name = os.environ.get('GROUPS_TABLE_NAME')
+        if not table_name:
+            raise ValueError("GROUPS_TABLE_NAME environment variable not set")
+
+        table = dynamodb.Table(table_name)
+
+        # Verify which items exist
+        existing_items = {}
+        for i in range(0, len(group_ids), 100):
+            batch_ids = group_ids[i:i + 100]
+            keys = [{'userId': user_id, 'groupId': gid} for gid in batch_ids]
+
+            response = dynamodb.batch_get_item(
+                RequestItems={
+                    table_name: {
+                        'Keys': keys
+                    }
+                }
+            )
+
+            for item in response.get('Responses', {}).get(table_name, []):
+                existing_items[item['groupId']] = item
+
+        # Reject deletion of built-in groups
+        built_in_ids = [gid for gid in group_ids if gid in existing_items and not existing_items[gid].get('isCustom', True)]
+        if built_in_ids:
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Cannot delete built-in groups",
+                    "message": f"The following group IDs are built-in and cannot be deleted: {built_in_ids}"
+                }
+            )
+
+        current_datetime = get_current_datetime_iso()
+        deleted_groups = []
+        not_found_ids = []
+
+        for group_id in group_ids:
+            if group_id not in existing_items:
+                not_found_ids.append(group_id)
+                continue
+
+            response = table.update_item(
+                Key={
+                    'userId': user_id,
+                    'groupId': group_id
+                },
+                UpdateExpression='SET deleted = :deleted, lastModifiedDatetime = :lastModified',
+                ExpressionAttributeValues={
+                    ':deleted': True,
+                    ':lastModified': current_datetime
+                },
+                ReturnValues='ALL_NEW'
+            )
+
+            deleted_groups.append(response.get('Attributes', {}))
+
+        print(f"Soft deleted {len(deleted_groups)} groups for user: {user_id}")
+
+        return create_response(
+            status_code=200,
+            body={
+                "message": f"Successfully deleted {len(deleted_groups)} group(s)",
+                "deletedGroups": deleted_groups,
+                "notFoundIds": not_found_ids
+            }
+        )
+
+    except json.JSONDecodeError:
+        return create_response(
+            status_code=400,
+            body={
+                "error": "Invalid JSON",
+                "message": "Request body must be valid JSON"
+            }
+        )
+    except Exception as e:
+        print(f"Error deleting groups: {str(e)}")
         import traceback
         traceback.print_exc()
         return create_response(

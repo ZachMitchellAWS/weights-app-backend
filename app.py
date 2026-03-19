@@ -224,6 +224,7 @@ def main():
         set_plan_templates_table=checkin_stack.set_plan_templates_table,
         user_properties_table=user_stack.user_properties_table,
         entitlement_grants_table=entitlements_stack.entitlement_grants_table,
+        groups_table=checkin_stack.groups_table,
         env=env,
         description=f"Insights service stack for {env_name} environment",
     )

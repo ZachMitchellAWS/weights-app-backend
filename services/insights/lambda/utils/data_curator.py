@@ -1,8 +1,9 @@
 """
 Data curation for weekly insights generation.
 
-Queries 6 DynamoDB tables concurrently, then pre-computes all numeric summaries
-in Python so GPT only writes narratives.
+Queries DynamoDB tables concurrently, then pre-computes all numeric summaries
+(including strength tiers, milestones, and balance) in Python so GPT only
+writes narratives.
 """
 
 import os
@@ -19,6 +20,89 @@ logger = logging.getLogger(__name__)
 
 dynamodb = boto3.resource('dynamodb')
 
+
+# ---------------------------------------------------------------------------
+# Strength Tier Definitions (mirrors StrengthTierDefinitions.swift)
+# ---------------------------------------------------------------------------
+
+TIER_ORDER = ['Rookie', 'Beginner', 'Intermediate', 'Advanced', 'Elite', 'Legend']
+
+CORE_EXERCISES = ['Deadlifts', 'Squats', 'Bench Press', 'Barbell Row', 'Overhead Press']
+
+# BW multiplier thresholds per exercise per sex.
+# Each list is ordered by tier (Rookie → Legend). The value is the *minimum*
+# multiplier to enter that tier.
+TIER_THRESHOLDS: dict[str, dict[str, list[float]]] = {
+    'Deadlifts': {
+        'male':   [0, 1.0, 1.5, 2.25, 3.0, 3.5],
+        'female': [0, 0.5, 1.0, 1.75, 2.25, 3.0],
+    },
+    'Squats': {
+        'male':   [0, 0.75, 1.25, 1.75, 2.5, 3.0],
+        'female': [0, 0.5, 1.0, 1.5, 1.75, 2.25],
+    },
+    'Bench Press': {
+        'male':   [0, 0.5, 1.0, 1.5, 2.0, 2.25],
+        'female': [0, 0.25, 0.5, 0.75, 1.0, 1.25],
+    },
+    'Barbell Row': {
+        'male':   [0, 0.50, 0.75, 1.0, 1.5, 1.75],
+        'female': [0, 0.25, 0.40, 0.65, 0.90, 1.20],
+    },
+    'Overhead Press': {
+        'male':   [0, 0.40, 0.55, 0.80, 1.05, 1.35],
+        'female': [0, 0.20, 0.35, 0.55, 0.75, 1.00],
+    },
+}
+
+RATIO_COEFFICIENTS = {
+    'Deadlifts': 1.40,
+    'Squats': 1.25,
+    'Bench Press': 1.00,
+    'Barbell Row': 0.825,
+    'Overhead Press': 0.625,
+}
+
+BALANCE_CATEGORIES = [
+    (0, 'Symmetrical'),
+    (1, 'Balanced'),
+    (2, 'Uneven'),
+    (3, 'Skewed'),
+]
+# 4+ = Lopsided (default fallback)
+
+
+def _get_tier_index(exercise_name: str, e1rm: float, bodyweight: float, sex: str) -> int:
+    """Return the tier index (0=Rookie … 5=Legend) for a given e1RM."""
+    thresholds = TIER_THRESHOLDS.get(exercise_name, {}).get(sex)
+    if not thresholds or bodyweight <= 0:
+        return 0
+    multiplier = e1rm / bodyweight
+    tier_idx = 0
+    for i, threshold_min in enumerate(thresholds):
+        if multiplier >= threshold_min:
+            tier_idx = i
+    return tier_idx
+
+
+def _get_tier_name(index: int) -> str:
+    return TIER_ORDER[min(index, len(TIER_ORDER) - 1)]
+
+
+def _balance_category(tier_indices: list[int]) -> str:
+    """Determine balance category from tier spread."""
+    if not tier_indices:
+        return 'Unknown'
+    spread = max(tier_indices) - min(tier_indices)
+    for max_spread, label in BALANCE_CATEGORIES:
+        if spread <= max_spread:
+            return label
+    return 'Lopsided'
+
+
+# ---------------------------------------------------------------------------
+# Main Entry Point
+# ---------------------------------------------------------------------------
 
 def curate_training_data(
     user_id: str,
@@ -46,23 +130,22 @@ def curate_training_data(
     # Pad by ±1 day to cover sets near midnight in any timezone (up to UTC±12)
     window_start_iso = f"{(window_start - timedelta(days=1)).isoformat()}T00:00:00.000Z"
     window_end_iso = f"{(focus_end + timedelta(days=1)).isoformat()}T23:59:59.999Z"
-    focus_start_iso = f"{(focus_start - timedelta(days=1)).isoformat()}T00:00:00.000Z"
 
-    # Run all 7 queries concurrently
+    # Run all queries concurrently
     with ThreadPoolExecutor(max_workers=7) as executor:
         lift_sets_future = executor.submit(_query_lift_sets, user_id, window_start_iso, window_end_iso)
         exercises_future = executor.submit(_query_exercises, user_id)
         e1rm_future = executor.submit(_query_estimated_1rm, user_id, window_start_iso, window_end_iso)
-        accessory_future = executor.submit(_query_accessory_checkins, user_id, focus_start_iso, window_end_iso)
         user_props_future = executor.submit(_query_user_properties, user_id)
         templates_future = executor.submit(_query_set_plan_templates, user_id)
+        groups_future = executor.submit(_query_groups, user_id)
 
     lift_sets = lift_sets_future.result()
     exercises = exercises_future.result()
     e1rm_records = e1rm_future.result()
-    accessory_checkins = accessory_future.result()
     user_properties = user_props_future.result()
     templates = templates_future.result()
+    groups = groups_future.result()
 
     # Resolve timezone from user properties (falls back to UTC)
     user_tz_str = user_properties.get('timezone') if user_properties else None
@@ -80,26 +163,32 @@ def curate_training_data(
     # Group sets by week
     focus_week_sets, prior_weeks_sets = _split_by_week(active_sets, focus_start, focus_end, tz)
 
-    # Build all-time e1RM max per exercise (for PR detection)
+    # Build e1RM baselines: pre-focus max (for accurate effort classification)
+    # and all-time max including focus week (for strength status)
+    pre_focus_e1rm = _build_e1rm_before(e1rm_records, focus_start, tz)
     all_time_e1rm = _build_all_time_e1rm(e1rm_records)
 
-    # Pre-compute focus week details
-    focus_summary = _build_focus_week_summary(focus_week_sets, exercise_map, all_time_e1rm, tz)
+    # Pre-compute focus week details (uses pre-focus baseline + running max)
+    focus_summary = _build_focus_week_summary(focus_week_sets, exercise_map, pre_focus_e1rm, tz)
 
     # Pre-compute prior weeks summaries
     prior_summaries = _build_prior_weeks_summaries(prior_weeks_sets, exercise_map, focus_start, tz)
 
-    # Format accessory goals
-    accessory_summary = _format_accessory_goals(accessory_checkins)
-
     # Format user context
-    user_context = _format_user_context(user_properties, templates, focus_start, prior_weeks_sets)
+    user_context = _format_user_context(user_properties, templates, focus_start, prior_weeks_sets, groups)
+
+    # Format strength status
+    strength_status = _format_strength_status(user_properties, exercise_map, all_time_e1rm)
 
     # Assemble the prompt
+    generation_date = date.today().isoformat()
     parts = [
         f"## Focus Week: {week_start} to {week_end}",
+        f"Report generated: {generation_date}",
         "",
         user_context,
+        "",
+        strength_status,
         "",
         "## Focus Week Detail",
         focus_summary,
@@ -107,9 +196,6 @@ def curate_training_data(
         "## Prior 11 Weeks Summary",
         prior_summaries,
     ]
-
-    if accessory_summary:
-        parts.extend(["", "## Accessory Goals (Focus Week)", accessory_summary])
 
     return "\n".join(parts)
 
@@ -184,19 +270,21 @@ def _query_estimated_1rm(user_id: str, start_iso: str, end_iso: str) -> list[dic
     return items
 
 
-def _query_accessory_checkins(user_id: str, start_iso: str, end_iso: str) -> list[dict]:
-    """Query accessory goal checkins for the focus week."""
-    table_name = os.environ.get('ACCESSORY_GOAL_CHECKINS_TABLE_NAME')
+def _query_user_properties(user_id: str) -> dict | None:
+    """Get user properties."""
+    table_name = os.environ.get('USER_PROPERTIES_TABLE_NAME')
+    table = dynamodb.Table(table_name)
+    response = table.get_item(Key={'userId': user_id})
+    return response.get('Item')
+
+
+def _query_set_plan_templates(user_id: str) -> list[dict]:
+    """Query all non-deleted set plan templates for a user."""
+    table_name = os.environ.get('SET_PLAN_TEMPLATES_TABLE_NAME')
     table = dynamodb.Table(table_name)
 
     items = []
-    kwargs = {
-        'IndexName': 'userId-createdDatetime-index',
-        'KeyConditionExpression': (
-            Key('userId').eq(user_id) &
-            Key('createdDatetime').between(start_iso, end_iso)
-        ),
-    }
+    kwargs = {'KeyConditionExpression': Key('userId').eq(user_id)}
     while True:
         response = table.query(**kwargs)
         for item in response.get('Items', []):
@@ -209,17 +297,9 @@ def _query_accessory_checkins(user_id: str, start_iso: str, end_iso: str) -> lis
     return items
 
 
-def _query_user_properties(user_id: str) -> dict | None:
-    """Get user properties."""
-    table_name = os.environ.get('USER_PROPERTIES_TABLE_NAME')
-    table = dynamodb.Table(table_name)
-    response = table.get_item(Key={'userId': user_id})
-    return response.get('Item')
-
-
-def _query_set_plan_templates(user_id: str) -> list[dict]:
-    """Query all non-deleted set plan templates for a user."""
-    table_name = os.environ.get('SET_PLAN_TEMPLATES_TABLE_NAME')
+def _query_groups(user_id: str) -> list[dict]:
+    """Query all non-deleted groups for a user."""
+    table_name = os.environ.get('GROUPS_TABLE_NAME')
     table = dynamodb.Table(table_name)
 
     items = []
@@ -255,14 +335,12 @@ def _calc_e1rm(weight: float, reps: int) -> float:
 
 
 def _effort_tier(e1rm: float, max_e1rm: float) -> str:
-    """Classify a set's effort tier based on its e1RM relative to all-time max."""
+    """Classify a set's effort tier based on its e1RM relative to a baseline max."""
     if max_e1rm <= 0:
         return "unknown"
     ratio = e1rm / max_e1rm
     if ratio > 1.0:
         return "PR"
-    elif ratio >= 0.92:
-        return "Redline"
     elif ratio >= 0.82:
         return "Hard"
     elif ratio >= 0.70:
@@ -308,35 +386,85 @@ def _build_all_time_e1rm(e1rm_records: list[dict]) -> dict[str, float]:
     return result
 
 
+def _build_e1rm_before(
+    e1rm_records: list[dict],
+    focus_start: date,
+    tz: ZoneInfo,
+) -> dict[str, float]:
+    """Build a map of exerciseId → max e1RM from records *before* focus_start.
+
+    This gives the correct baseline for effort tier classification during the
+    focus week — sets are compared against what was known before the week began,
+    not the current all-time max which may include focus-week PRs.
+    """
+    result = {}
+    for rec in e1rm_records:
+        if rec.get('deleted'):
+            continue
+        created = rec.get('createdDatetime', '')
+        if not created:
+            continue
+        local_date = _get_local_date(created, tz)
+        if local_date >= focus_start:
+            continue
+        ex_id = rec.get('exerciseId')
+        val = _to_float(rec.get('value', 0))
+        if ex_id and val > result.get(ex_id, 0):
+            result[ex_id] = val
+    return result
+
+
 def _build_focus_week_summary(
     sets: list[dict],
     exercise_map: dict,
-    all_time_e1rm: dict[str, float],
+    pre_focus_e1rm: dict[str, float],
     tz: ZoneInfo,
 ) -> str:
-    """Build detailed focus week summary text."""
+    """Build detailed focus week summary text.
+
+    Uses pre-focus e1RM as baseline, with a running max that updates as
+    focus-week PRs are encountered (chronological processing). This means:
+    - A set that was a PR *at the time* shows as PR
+    - Subsequent sets are compared against the updated running max
+    """
     if not sets:
         return "No training data logged this week."
 
+    # Sort sets chronologically for accurate running-max PR detection
+    sorted_sets = sorted(sets, key=lambda s: s['createdDatetime'])
+
+    # Running max starts from pre-focus baseline
+    running_max: dict[str, float] = dict(pre_focus_e1rm)
+
     # Group sets by day
-    days = {}
-    for s in sets:
+    days: dict[str, list[dict]] = {}
+    for s in sorted_sets:
         local_date = _get_local_date(s['createdDatetime'], tz)
         day_key = local_date.isoformat()
         if day_key not in days:
             days[day_key] = []
         days[day_key].append(s)
 
-    # Compute per-exercise stats
-    exercise_stats = {}  # exerciseId → {name, sets, max_e1rm, effort_tiers, movement_type}
-    for s in sets:
+    # Compute per-exercise stats with running max
+    exercise_stats: dict[str, dict] = {}
+    for s in sorted_sets:
         ex_id = s['exerciseId']
         ex = exercise_map.get(ex_id, {})
         weight = _to_float(s.get('weight', 0))
         reps = int(s.get('reps', 0))
         e1rm = _calc_e1rm(weight, reps)
-        max_e1rm = all_time_e1rm.get(ex_id, e1rm)
-        tier = _effort_tier(e1rm, max_e1rm)
+
+        # Classify against running max (what was known at this point in time)
+        baseline = running_max.get(ex_id, 0)
+        if baseline <= 0:
+            # First ever set for this exercise — treat as baseline
+            tier = "PR"
+        else:
+            tier = _effort_tier(e1rm, baseline)
+
+        # If this is a PR, update the running max for subsequent sets
+        if tier == "PR" and e1rm > running_max.get(ex_id, 0):
+            running_max[ex_id] = e1rm
 
         if ex_id not in exercise_stats:
             exercise_stats[ex_id] = {
@@ -368,13 +496,13 @@ def _build_focus_week_summary(
     for stats in exercise_stats.values():
         all_tiers.extend(stats['effort_tiers'])
 
-    tier_counts = {}
+    tier_counts: dict[str, int] = {}
     for t in all_tiers:
         tier_counts[t] = tier_counts.get(t, 0) + 1
     total_sets = len(all_tiers)
 
     # Movement type totals
-    movement_totals = {}
+    movement_totals: dict[str, int] = {}
     for stats in exercise_stats.values():
         mt = stats['movementType']
         movement_totals[mt] = movement_totals.get(mt, 0) + stats['sets']
@@ -401,20 +529,6 @@ def _build_focus_week_summary(
             f"max e1RM {stats['max_e1rm']} lbs, effort: [{tier_dist}]{pr_flag}"
         )
 
-    # Day-by-day detail
-    lines.append("")
-    lines.append("### Day-by-Day Sets")
-    for day_key in sorted(days.keys()):
-        day_sets = days[day_key]
-        lines.append(f"\n**{day_key}** ({len(day_sets)} sets):")
-        for s in day_sets:
-            ex = exercise_map.get(s['exerciseId'], {})
-            weight = _to_float(s.get('weight', 0))
-            reps = int(s.get('reps', 0))
-            e1rm = round(_calc_e1rm(weight, reps), 1)
-            rir_str = f", RIR {s['rir']}" if s.get('rir') is not None else ""
-            lines.append(f"  {ex.get('name', 'Unknown')}: {weight} lbs × {reps} reps (e1RM: {e1rm}){rir_str}")
-
     return "\n".join(lines)
 
 
@@ -429,7 +543,7 @@ def _build_prior_weeks_summaries(
         return "No prior training data available."
 
     # Group sets by week (Monday start)
-    weeks = {}
+    weeks: dict[str, list[dict]] = {}
     for s in sets:
         local_date = _get_local_date(s['createdDatetime'], tz)
         monday = local_date - timedelta(days=local_date.weekday())
@@ -443,8 +557,8 @@ def _build_prior_weeks_summaries(
         week_sets = weeks[week_key]
         # Count sessions (unique days)
         session_days = set()
-        movement_counts = {}
-        exercise_max_e1rm = {}
+        movement_counts: dict[str, int] = {}
+        exercise_max_e1rm: dict[str, float] = {}
 
         for s in week_sets:
             local_date = _get_local_date(s['createdDatetime'], tz)
@@ -472,23 +586,111 @@ def _build_prior_weeks_summaries(
     return "\n".join(lines)
 
 
-def _format_accessory_goals(checkins: list[dict]) -> str:
-    """Format accessory goal checkins for the focus week."""
-    if not checkins:
-        return ""
+def _format_strength_status(
+    user_properties: dict | None,
+    exercise_map: dict,
+    all_time_e1rm: dict[str, float],
+) -> str:
+    """Format the Strength Status section with tiers, milestones, and balance.
 
-    # Group by metric type
-    by_type = {}
-    for c in checkins:
-        mt = c.get('metricType', 'unknown')
-        if mt not in by_type:
-            by_type[mt] = []
-        by_type[mt].append(_to_float(c.get('value', 0)))
+    Uses all-time e1RM (including focus week) since this represents the user's
+    current best, which is the correct basis for tier/milestone display.
+    """
+    if not user_properties:
+        return "## Strength Status\nInsufficient data — no user properties available."
 
-    lines = []
-    for metric_type, values in sorted(by_type.items()):
-        avg_val = round(sum(values) / len(values), 1)
-        lines.append(f"- {metric_type}: {len(values)} entries, avg {avg_val}, range {min(values)}-{max(values)}")
+    bodyweight = _to_float(user_properties.get('bodyweight', 0)) if user_properties.get('bodyweight') else 0
+    sex = user_properties.get('biologicalSex', 'male')  # default male if not set
+
+    if bodyweight <= 0:
+        return "## Strength Status\nBodyweight not set — cannot compute strength tiers."
+
+    # Build exercise name → exerciseId lookup for core exercises
+    name_to_id: dict[str, str] = {}
+    for ex_id, ex in exercise_map.items():
+        name = ex.get('name', '')
+        if name in CORE_EXERCISES:
+            name_to_id[name] = ex_id
+
+    lines = ["## Strength Status", f"- Bodyweight: {bodyweight} lbs, Sex: {sex}"]
+
+    tier_indices: list[int] = []
+    exercise_tiers: dict[str, dict] = {}
+
+    for ex_name in CORE_EXERCISES:
+        ex_id = name_to_id.get(ex_name)
+        current_e1rm = all_time_e1rm.get(ex_id, 0) if ex_id else 0
+
+        tier_idx = _get_tier_index(ex_name, current_e1rm, bodyweight, sex)
+        tier_name = _get_tier_name(tier_idx)
+        tier_indices.append(tier_idx)
+
+        # Compute next tier target
+        thresholds = TIER_THRESHOLDS.get(ex_name, {}).get(sex, [])
+        next_target_e1rm = None
+        lbs_remaining = None
+        if tier_idx < len(TIER_ORDER) - 1 and tier_idx + 1 < len(thresholds):
+            next_target_e1rm = round(thresholds[tier_idx + 1] * bodyweight, 1)
+            lbs_remaining = round(next_target_e1rm - current_e1rm, 1) if current_e1rm > 0 else None
+
+        # Rookie milestone: 50% of Beginner threshold
+        rookie_milestone_e1rm = None
+        if tier_idx == 0 and len(thresholds) > 1:
+            rookie_milestone_e1rm = round(thresholds[1] * bodyweight * 0.5, 1)
+
+        exercise_tiers[ex_name] = {
+            'tier': tier_name,
+            'tier_idx': tier_idx,
+            'e1rm': round(current_e1rm, 1),
+            'next_target': next_target_e1rm,
+            'lbs_remaining': lbs_remaining,
+            'rookie_milestone': rookie_milestone_e1rm,
+        }
+
+    # Overall tier = lowest
+    overall_idx = min(tier_indices) if tier_indices else 0
+    overall_tier = _get_tier_name(overall_idx)
+
+    # Balance category
+    balance = _balance_category(tier_indices)
+
+    # Weakest / strongest
+    weakest = min(exercise_tiers.items(), key=lambda x: x[1]['tier_idx']) if exercise_tiers else None
+    strongest = max(exercise_tiers.items(), key=lambda x: x[1]['tier_idx']) if exercise_tiers else None
+
+    lines.append(f"- Overall tier: **{overall_tier}** (determined by weakest exercise)")
+    lines.append(f"- Balance: **{balance}**")
+    if weakest:
+        lines.append(f"- Weakest: {weakest[0]} ({weakest[1]['tier']})")
+    if strongest:
+        lines.append(f"- Strongest: {strongest[0]} ({strongest[1]['tier']})")
+
+    lines.append("")
+    lines.append("### Per-Exercise Tier Status")
+    for ex_name in CORE_EXERCISES:
+        info = exercise_tiers.get(ex_name)
+        if not info:
+            lines.append(f"- {ex_name}: No data")
+            continue
+
+        parts = [f"{ex_name}: **{info['tier']}** (e1RM: {info['e1rm']} lbs)"]
+
+        if info['tier_idx'] == 0 and info['rookie_milestone']:
+            # Show rookie milestone progress
+            if info['e1rm'] >= info['rookie_milestone']:
+                parts.append(f"— Rookie milestone achieved ({info['rookie_milestone']} lbs)")
+            else:
+                remaining = round(info['rookie_milestone'] - info['e1rm'], 1)
+                parts.append(f"— {remaining} lbs to Rookie milestone ({info['rookie_milestone']} lbs)")
+
+        if info['next_target'] and info['lbs_remaining'] is not None:
+            next_tier = _get_tier_name(info['tier_idx'] + 1)
+            if info['lbs_remaining'] > 0:
+                parts.append(f"— {info['lbs_remaining']} lbs to {next_tier} ({info['next_target']} lbs)")
+            else:
+                parts.append(f"— {next_tier} threshold reached!")
+
+        lines.append(f"- {' '.join(parts)}")
 
     return "\n".join(lines)
 
@@ -498,6 +700,7 @@ def _format_user_context(
     templates: list[dict],
     focus_start: date,
     prior_sets: list[dict],
+    groups: list[dict] | None = None,
 ) -> str:
     """Format user context information."""
     lines = ["## User Context"]
@@ -516,6 +719,16 @@ def _format_user_context(
     if templates:
         template_names = [t.get('name', 'Unnamed') for t in templates]
         lines.append(f"- Set plan templates: {', '.join(template_names)}")
+
+    # Exercise groups
+    if groups:
+        group_names = [g.get('name', 'Unnamed') for g in groups]
+        lines.append(f"- Exercise groups: {', '.join(group_names)}")
+        active_group_id = user_properties.get('activeGroupId') if user_properties else None
+        if active_group_id:
+            active_group = next((g for g in groups if g.get('groupId') == active_group_id), None)
+            if active_group:
+                lines.append(f"- Active group: {active_group.get('name', 'Unknown')}")
 
     # First week flag
     is_first_week = len(prior_sets) == 0
