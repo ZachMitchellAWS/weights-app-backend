@@ -80,12 +80,26 @@ class WebsiteStack(Stack):
                 self.config.CLOUDFRONT_CERT_ARN,
             )
 
+        response_headers_policy = cloudfront.ResponseHeadersPolicy(
+            self,
+            "WebsiteCorsPolicy",
+            response_headers_policy_name=f"{self.project_name}-{self.env_name}-website-cors",
+            cors_behavior=cloudfront.ResponseHeadersCorsBehavior(
+                access_control_allow_origins=domain_names,
+                access_control_allow_methods=["GET", "HEAD"],
+                access_control_allow_headers=["*"],
+                access_control_allow_credentials=False,
+                origin_override=False,
+            ),
+        )
+
         distribution = cloudfront.Distribution(
             self,
             "WebsiteDistribution",
             default_behavior=cloudfront.BehaviorOptions(
                 origin=origins.S3Origin(self.website_bucket),
                 viewer_protocol_policy=cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+                response_headers_policy=response_headers_policy,
             ),
             domain_names=domain_names if certificate else None,
             certificate=certificate,
