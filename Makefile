@@ -224,9 +224,9 @@ deploy-website-infra-production:
 # Builds React app, syncs to S3, invalidates CloudFront cache
 deploy-website-staging:
 	@echo "Building website for staging..."
-	cd ../website && npm run build -- --mode staging
+	cd ./website && npm run build -- --mode staging
 	@echo "Syncing to S3..."
-	aws s3 sync ../website/dist/ s3://liftthebull-staging-website/ --delete --region us-west-1
+	aws s3 sync ./website/dist/ s3://liftthebull-staging-website/ --delete --region us-west-1
 	@echo "Invalidating CloudFront cache..."
 	aws cloudfront create-invalidation \
 		--distribution-id $$(aws cloudformation describe-stacks \
@@ -243,9 +243,9 @@ deploy-website-production:
 	@echo "Press Ctrl+C to cancel, or Enter to continue..."
 	@read confirm
 	@echo "Building website for production..."
-	cd ../website && npm run build -- --mode production
+	cd ./website && npm run build -- --mode production
 	@echo "Syncing to S3..."
-	aws s3 sync ../website/dist/ s3://liftthebull-production-website/ --delete --region us-west-1
+	aws s3 sync ./website/dist/ s3://liftthebull-production-website/ --delete --region us-west-1
 	@echo "Invalidating CloudFront cache..."
 	aws cloudfront create-invalidation \
 		--distribution-id $$(aws cloudformation describe-stacks \

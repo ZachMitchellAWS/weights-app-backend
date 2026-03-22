@@ -474,7 +474,7 @@ Creates new groups or updates existing ones.
   "groups": [
     {
       "groupId": "uuid",
-      "name": "Tier Exercises",
+      "name": "Strength Tier Exercises",
       "exerciseIds": ["uuid-1", "uuid-2", "uuid-3"],
       "isCustom": false,
       "sortOrder": 0,
@@ -519,7 +519,7 @@ Retrieves all non-deleted groups for the authenticated user.
     {
       "userId": "uuid",
       "groupId": "uuid",
-      "name": "Tier Exercises",
+      "name": "Strength Tier Exercises",
       "exerciseIds": ["uuid-1", "uuid-2"],
       "isCustom": false,
       "sortOrder": 0,

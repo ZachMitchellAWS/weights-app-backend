@@ -25,12 +25,12 @@ dynamodb = boto3.resource('dynamodb')
 # Strength Tier Definitions (mirrors StrengthTierDefinitions.swift)
 # ---------------------------------------------------------------------------
 
-TIER_ORDER = ['Rookie', 'Beginner', 'Intermediate', 'Advanced', 'Elite', 'Legend']
+TIER_ORDER = ['Novice', 'Beginner', 'Intermediate', 'Advanced', 'Elite', 'Legend']
 
 CORE_EXERCISES = ['Deadlifts', 'Squats', 'Bench Press', 'Barbell Row', 'Overhead Press']
 
 # BW multiplier thresholds per exercise per sex.
-# Each list is ordered by tier (Rookie → Legend). The value is the *minimum*
+# Each list is ordered by tier (Novice → Legend). The value is the *minimum*
 # multiplier to enter that tier.
 TIER_THRESHOLDS: dict[str, dict[str, list[float]]] = {
     'Deadlifts': {
@@ -73,7 +73,7 @@ BALANCE_CATEGORIES = [
 
 
 def _get_tier_index(exercise_name: str, e1rm: float, bodyweight: float, sex: str) -> int:
-    """Return the tier index (0=Rookie … 5=Legend) for a given e1RM."""
+    """Return the tier index (0=Novice … 5=Legend) for a given e1RM."""
     thresholds = TIER_THRESHOLDS.get(exercise_name, {}).get(sex)
     if not thresholds or bodyweight <= 0:
         return 0
@@ -633,10 +633,10 @@ def _format_strength_status(
             next_target_e1rm = round(thresholds[tier_idx + 1] * bodyweight, 1)
             lbs_remaining = round(next_target_e1rm - current_e1rm, 1) if current_e1rm > 0 else None
 
-        # Rookie milestone: 50% of Beginner threshold
-        rookie_milestone_e1rm = None
+        # Novice milestone: 50% of Beginner threshold
+        novice_milestone_e1rm = None
         if tier_idx == 0 and len(thresholds) > 1:
-            rookie_milestone_e1rm = round(thresholds[1] * bodyweight * 0.5, 1)
+            novice_milestone_e1rm = round(thresholds[1] * bodyweight * 0.5, 1)
 
         exercise_tiers[ex_name] = {
             'tier': tier_name,
@@ -644,7 +644,7 @@ def _format_strength_status(
             'e1rm': round(current_e1rm, 1),
             'next_target': next_target_e1rm,
             'lbs_remaining': lbs_remaining,
-            'rookie_milestone': rookie_milestone_e1rm,
+            'novice_milestone': novice_milestone_e1rm,
         }
 
     # Overall tier = lowest
@@ -675,13 +675,13 @@ def _format_strength_status(
 
         parts = [f"{ex_name}: **{info['tier']}** (e1RM: {info['e1rm']} lbs)"]
 
-        if info['tier_idx'] == 0 and info['rookie_milestone']:
-            # Show rookie milestone progress
-            if info['e1rm'] >= info['rookie_milestone']:
-                parts.append(f"— Rookie milestone achieved ({info['rookie_milestone']} lbs)")
+        if info['tier_idx'] == 0 and info['novice_milestone']:
+            # Show novice milestone progress
+            if info['e1rm'] >= info['novice_milestone']:
+                parts.append(f"— Novice milestone achieved ({info['novice_milestone']} lbs)")
             else:
-                remaining = round(info['rookie_milestone'] - info['e1rm'], 1)
-                parts.append(f"— {remaining} lbs to Rookie milestone ({info['rookie_milestone']} lbs)")
+                remaining = round(info['novice_milestone'] - info['e1rm'], 1)
+                parts.append(f"— {remaining} lbs to Novice milestone ({info['novice_milestone']} lbs)")
 
         if info['next_target'] and info['lbs_remaining'] is not None:
             next_tier = _get_tier_name(info['tier_idx'] + 1)

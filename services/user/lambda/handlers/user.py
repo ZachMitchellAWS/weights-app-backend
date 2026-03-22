@@ -412,6 +412,21 @@ def handle_update_properties(event: Dict[str, Any]) -> Dict[str, Any]:
                     }
                 )
 
+        # Handle weightUnit (non-nullable string - "lbs" or "kg")
+        if "weightUnit" in body:
+            weight_unit = body.get("weightUnit")
+            if isinstance(weight_unit, str) and weight_unit in ("lbs", "kg"):
+                update_parts.append("weightUnit = :weightUnit")
+                expression_values[":weightUnit"] = weight_unit
+            else:
+                return create_response(
+                    status_code=400,
+                    body={
+                        "error": "Invalid field value",
+                        "message": "weightUnit must be 'lbs' or 'kg'"
+                    }
+                )
+
         # Handle activeGroupId (nullable string - can be set or removed)
         if "activeGroupId" in body:
             active_group = body.get("activeGroupId")

@@ -59,12 +59,12 @@ Named, ordered collections of exercises. The user's active group determines whic
 | Field | Type | Description |
 |-------|------|-------------|
 | groupId | String (UUID) | Unique identifier |
-| name | String | Group name (e.g., "Tier Exercises") |
+| name | String | Group name (e.g., "Strength Tier Exercises") |
 | exerciseIds | List\<String (UUID)\> | Ordered list of exercise IDs in this group |
 | isCustom | Boolean | Whether the user created this group |
 | sortOrder | Integer | Display order |
 
-The built-in "Tier Exercises" group contains the 5 fundamental lifts (Deadlifts, Squats, Bench Press, Barbell Row, Overhead Press). Users can create custom groups to organize exercises differently.
+The built-in "Strength Tier Exercises" group contains the 5 fundamental lifts (Deadlifts, Squats, Bench Press, Barbell Row, Overhead Press). Users can create custom groups to organize exercises differently.
 
 ## Strength Tiers
 
@@ -72,7 +72,7 @@ Users progress through 6 strength tiers based on their estimated 1RM (e1RM) rela
 
 | Tier | Description |
 |------|-------------|
-| Rookie | Just getting started — building movement patterns |
+| Novice | Just getting started — building movement patterns |
 | Beginner | Foundational strength — consistent training habits |
 | Intermediate | Solid strength base — meaningful working weights |
 | Advanced | Strong lifter — above-average strength |
@@ -87,7 +87,7 @@ Each tier has a bodyweight multiplier threshold per exercise. For example, a mal
 
 Each tier has 5 milestones — one per core exercise. A milestone is achieved when the user's e1RM for that exercise reaches the tier's threshold.
 
-- **Rookie milestones** are set at 50% of the Beginner threshold (so new lifters get early wins).
+- **Novice milestones** are set at 50% of the Beginner threshold (so new lifters get early wins).
 - Progress toward the next milestone is tracked as a percentage and absolute lbs remaining.
 
 The curated data will include per-exercise milestone progress. Use this to frame achievements ("You hit your Intermediate milestone for Squats!") and goals ("Only 12 more lbs on your Bench Press to reach Advanced").
