@@ -52,14 +52,7 @@
 | bodyweight | Number | No | Nullable -- can be removed via null in POST |
 | minReps | Number | No | Global minimum reps target |
 | maxReps | Number | No | Global maximum reps target |
-| easyMinReps | Number | No | Easy effort min reps |
-| easyMaxReps | Number | No | Easy effort max reps |
-| moderateMinReps | Number | No | Moderate effort min reps |
-| moderateMaxReps | Number | No | Moderate effort max reps |
-| hardMinReps | Number | No | Hard effort min reps |
-| hardMaxReps | Number | No | Hard effort max reps |
 | activeSetPlanTemplateId | String | No | Nullable -- UUID of active set plan template |
-| activeGroupId | String | No | Nullable -- UUID of active exercise group |
 | createdDatetime | String | Yes | ISO 8601 |
 | lastModifiedDatetime | String | Yes | ISO 8601 |
 
@@ -205,7 +198,7 @@ users ──── user-properties     (userId)
   │
   ├────── set-plan-templates   (userId, activeSetPlanTemplateId in user-properties)
   │
-  ├────── groups               (userId, activeGroupId in user-properties)
+  ├────── groups               (userId)
   │
   ├────── recovery-checkins    (userId)
   │

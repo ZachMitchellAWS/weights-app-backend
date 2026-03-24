@@ -67,6 +67,62 @@ def put_cached_insights(
     logger.info(f"Cached insights for user {user_id}, week {week_start_date}")
 
 
+def get_cached_starter(user_id: str) -> dict | None:
+    """
+    Read cached starter insight for a user.
+
+    Uses insightWeek="starter" as the sort key.
+    """
+    table = _get_cache_table()
+    response = table.get_item(Key={'userId': user_id, 'insightWeek': 'starter'})
+    return response.get('Item')
+
+
+def put_cached_starter(
+    user_id: str,
+    body: str,
+    model_version: str,
+) -> None:
+    """
+    Write generated starter insight to cache.
+
+    Uses insightWeek="starter" as the sort key.
+    """
+    table = _get_cache_table()
+    now_utc = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+    ttl = int(time.time()) + (60 * 60 * 24 * 365)  # 1 year
+
+    table.put_item(
+        Item={
+            'userId': user_id,
+            'insightWeek': 'starter',
+            'body': body,
+            'generatedAt': now_utc,
+            'modelVersion': model_version,
+            'ttl': ttl,
+        }
+    )
+    logger.info(f"Cached starter insight for user {user_id}")
+
+
+def update_starter_audio_key(
+    user_id: str,
+    audio_key: str,
+) -> None:
+    """
+    Add audio key to the starter cache item.
+
+    Uses UpdateItem so it doesn't overwrite the full item.
+    """
+    table = _get_cache_table()
+    table.update_item(
+        Key={'userId': user_id, 'insightWeek': 'starter'},
+        UpdateExpression='SET audioKey = :ak',
+        ExpressionAttributeValues={':ak': audio_key},
+    )
+    logger.info(f"Updated starter audio key for user {user_id}")
+
+
 def update_audio_keys(
     user_id: str,
     week_start_date: str,

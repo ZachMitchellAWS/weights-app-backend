@@ -1,11 +1,13 @@
 """
 Insights service Lambda handler.
 
-Four invocation pathways:
+Six invocation pathways:
 1. SCHEDULE_TASK — async from checkin Lambda after lift set creation
 2. PROCESS_TASKS — EventBridge cron every 15 min, processes ripe tasks
 3. GET_INSIGHTS — API Gateway GET /insights/weekly
 4. GENERATE_AUDIO — async self-invoke to generate TTS audio after insights are cached
+5. GET_STARTER_INSIGHT — API Gateway GET /insights/starter (all users)
+6. GENERATE_STARTER_AUDIO — async self-invoke to generate TTS for starter insight
 """
 
 import json
@@ -29,8 +31,8 @@ from utils.task_manager import (
     get_insight_week,
     STALE_THRESHOLD_SECONDS,
 )
-from utils.cache import get_cached_insights, put_cached_insights, update_audio_keys
-from utils.data_curator import curate_training_data, has_sets_in_week
+from utils.cache import get_cached_insights, put_cached_insights, update_audio_keys, get_cached_starter, put_cached_starter, update_starter_audio_key
+from utils.data_curator import curate_training_data, has_sets_in_week, curate_starter_data
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -376,6 +378,146 @@ def get_weekly_insights(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
 
 
 # ===========================================================================
+# Pathway 5: GET_STARTER_INSIGHT (API Gateway GET /insights/starter)
+# ===========================================================================
+
+# Module-level cache for the starter system prompt
+_starter_prompt = None
+
+
+def _get_starter_prompt() -> str:
+    """Load the starter_context.md system prompt (cached across warm invocations)."""
+    global _starter_prompt
+    if _starter_prompt is not None:
+        return _starter_prompt
+
+    context_path = Path(__file__).parent.parent / "context" / "starter_context.md"
+    with open(context_path, 'r') as f:
+        _starter_prompt = f.read()
+    return _starter_prompt
+
+
+def _attach_starter_audio_url(result: dict, audio_key: str) -> None:
+    """Attach a presigned S3 URL for starter audio to the result dict."""
+    bucket = os.environ.get('INSIGHTS_AUDIO_BUCKET')
+    if not bucket:
+        return
+    s3 = _get_s3_client()
+    try:
+        url = s3.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': bucket, 'Key': audio_key},
+            ExpiresIn=3600,
+        )
+        result['audioUrl'] = url
+    except Exception as e:
+        logger.warning(f"Failed to generate presigned URL for starter audio {audio_key}: {e}")
+
+
+def _invoke_generate_starter_audio(user_id: str) -> None:
+    """Async self-invoke to generate TTS audio for cached starter insight."""
+    function_name = os.environ.get('INSIGHTS_FUNCTION_NAME')
+    if not function_name:
+        logger.warning("INSIGHTS_FUNCTION_NAME not set, skipping starter TTS generation")
+        return
+
+    try:
+        lambda_client = boto3.client('lambda')
+        payload = json.dumps({
+            'invocationType': 'GENERATE_STARTER_AUDIO',
+            'userId': user_id,
+        })
+        lambda_client.invoke(
+            FunctionName=function_name,
+            InvocationType='Event',
+            Payload=payload,
+        )
+        logger.info(f"Async-invoked starter TTS generation for user {user_id}")
+    except Exception as e:
+        logger.warning(f"Failed to invoke starter TTS generation: {e}")
+
+
+def get_starter_insight(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
+    """
+    Get the one-time starter insight for a user.
+
+    No premium check — available to all users. Cache-based dedup ensures
+    one-time generation.
+    """
+    # Check cache first
+    cached = get_cached_starter(user_id)
+    if cached:
+        body = cached.get('body', '')
+        audio_key = cached.get('audioKey')
+        result = {"body": body, "generatedAt": cached.get('generatedAt')}
+        if audio_key:
+            _attach_starter_audio_url(result, audio_key)
+        return create_response(200, result)
+
+    # No cache — generate synchronously
+    from utils.openai_client import generate_starter_insight
+
+    starter_prompt = _get_starter_prompt()
+    curated = curate_starter_data(user_id)
+
+    # If no tier unlocked (all 5 exercises not logged), return empty
+    if curated is None:
+        return create_response(200, {"body": None, "message": "No tier unlocked yet"})
+
+    body = generate_starter_insight(starter_prompt, curated)
+    model = os.environ.get('OPENAI_MODEL', 'gpt-5.4')
+    put_cached_starter(user_id, body, model)
+
+    # Fire-and-forget TTS
+    _invoke_generate_starter_audio(user_id)
+
+    now_utc = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+    return create_response(200, {"body": body, "generatedAt": now_utc})
+
+
+# ===========================================================================
+# Pathway 6: GENERATE_STARTER_AUDIO (async self-invoke)
+# ===========================================================================
+
+def generate_starter_audio(user_id: str) -> dict:
+    """
+    Generate TTS audio for cached starter insight and update the cache item.
+
+    Called asynchronously after starter insight is generated and cached.
+    """
+    from utils.tts import _generate_one, _prepare_for_tts
+    from utils.openai_client import _get_client
+
+    cached = get_cached_starter(user_id)
+    if not cached:
+        logger.warning(f"No cached starter insight for user {user_id} — skipping TTS")
+        return {"status": "skipped", "reason": "no_cache"}
+
+    if cached.get('audioKey'):
+        logger.info(f"Starter audio already exists for user {user_id} — skipping")
+        return {"status": "skipped", "reason": "already_exists"}
+
+    body = cached.get('body', '')
+    if not body:
+        return {"status": "skipped", "reason": "no_body"}
+
+    try:
+        client = _get_client()
+        bucket = os.environ.get('INSIGHTS_AUDIO_BUCKET')
+        if not bucket:
+            raise ValueError("INSIGHTS_AUDIO_BUCKET environment variable not set")
+
+        s3_key = f"{user_id}/starter/0.mp3"
+        _generate_one(client, body, bucket, s3_key)
+        update_starter_audio_key(user_id, s3_key)
+        logger.info(f"Starter TTS audio generated and cached for user {user_id}")
+        return {"status": "completed", "audioKey": s3_key}
+    except Exception as e:
+        logger.error(f"Starter TTS generation failed for user {user_id}: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+# ===========================================================================
 # Main Handler
 # ===========================================================================
 
@@ -406,6 +548,15 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         logger.info(f"Generating TTS audio for user {user_id}, week {week_start}")
         return generate_audio(user_id, week_start)
 
+    # Async self-invoke to generate TTS audio for starter insight
+    if invocation_type == "GENERATE_STARTER_AUDIO":
+        user_id = event.get("userId")
+        if not user_id:
+            logger.error(f"GENERATE_STARTER_AUDIO missing userId: {event}")
+            return {"error": "Missing userId"}
+        logger.info(f"Generating starter TTS audio for user {user_id}")
+        return generate_starter_audio(user_id)
+
     # Async invoke from checkin Lambda
     if invocation_type == "SCHEDULE_TASK":
         user_id = event.get("userId")
@@ -424,6 +575,9 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     if http_method and event.get("requestContext", {}).get("authorizer"):
         user_id = event["requestContext"]["authorizer"]["userId"]
         logger.info(f"Insights request: {http_method} {path} for user {user_id}")
+
+        if http_method == "GET" and path.endswith("/insights/starter"):
+            return get_starter_insight(event, user_id)
 
         if http_method == "GET" and path.endswith("/insights/weekly"):
             return get_weekly_insights(event, user_id)

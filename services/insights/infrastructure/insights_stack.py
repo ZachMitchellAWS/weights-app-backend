@@ -332,3 +332,13 @@ class InsightsStack(Stack):
             authorizer=self.authorizer,
             authorization_type=apigateway.AuthorizationType.CUSTOM,
         )
+
+        # Create /insights/starter resource (no premium check — available to all users)
+        starter_resource = insights_resource.add_resource("starter")
+        starter_resource.add_method(
+            "GET",
+            insights_integration,
+            api_key_required=True,
+            authorizer=self.authorizer,
+            authorization_type=apigateway.AuthorizationType.CUSTOM,
+        )

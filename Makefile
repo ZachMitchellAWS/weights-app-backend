@@ -227,6 +227,11 @@ deploy-website-staging:
 	cd ./website && npm run build -- --mode staging
 	@echo "Syncing to S3..."
 	aws s3 sync ./website/dist/ s3://liftthebull-staging-website/ --delete --region us-west-1
+	@echo "Setting AASA content-type..."
+	aws s3 cp \
+		s3://liftthebull-staging-website/.well-known/apple-app-site-association \
+		s3://liftthebull-staging-website/.well-known/apple-app-site-association \
+		--content-type application/json --metadata-directive REPLACE --region us-west-1
 	@echo "Invalidating CloudFront cache..."
 	aws cloudfront create-invalidation \
 		--distribution-id $$(aws cloudformation describe-stacks \
@@ -246,6 +251,11 @@ deploy-website-production:
 	cd ./website && npm run build -- --mode production
 	@echo "Syncing to S3..."
 	aws s3 sync ./website/dist/ s3://liftthebull-production-website/ --delete --region us-west-1
+	@echo "Setting AASA content-type..."
+	aws s3 cp \
+		s3://liftthebull-production-website/.well-known/apple-app-site-association \
+		s3://liftthebull-production-website/.well-known/apple-app-site-association \
+		--content-type application/json --metadata-directive REPLACE --region us-west-1
 	@echo "Invalidating CloudFront cache..."
 	aws cloudfront create-invalidation \
 		--distribution-id $$(aws cloudformation describe-stacks \

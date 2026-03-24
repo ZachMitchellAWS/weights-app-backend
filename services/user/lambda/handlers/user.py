@@ -427,23 +427,6 @@ def handle_update_properties(event: Dict[str, Any]) -> Dict[str, Any]:
                     }
                 )
 
-        # Handle activeGroupId (nullable string - can be set or removed)
-        if "activeGroupId" in body:
-            active_group = body.get("activeGroupId")
-            if active_group is None:
-                remove_parts.append("activeGroupId")
-            elif isinstance(active_group, str):
-                update_parts.append("activeGroupId = :activeGroupId")
-                expression_values[":activeGroupId"] = active_group
-            else:
-                return create_response(
-                    status_code=400,
-                    body={
-                        "error": "Invalid field type",
-                        "message": "activeGroupId must be a string or null"
-                    }
-                )
-
         # Handle apnsDeviceToken (nullable string - can be set or removed)
         if "apnsDeviceToken" in body:
             apns_token = body.get("apnsDeviceToken")
@@ -460,21 +443,6 @@ def handle_update_properties(event: Dict[str, Any]) -> Dict[str, Any]:
                         "message": "apnsDeviceToken must be a string (max 200 chars) or null"
                     }
                 )
-
-        # Handle per-mode effort rep range fields
-        for field in ["easyMinReps", "easyMaxReps", "moderateMinReps", "moderateMaxReps", "hardMinReps", "hardMaxReps"]:
-            if field in body:
-                val = body.get(field)
-                if not isinstance(val, int) or val < 1:
-                    return create_response(
-                        status_code=400,
-                        body={
-                            "error": "Invalid field type",
-                            "message": f"{field} must be a positive integer"
-                        }
-                    )
-                update_parts.append(f"{field} = :{field}")
-                expression_values[f":{field}"] = val
 
         # Require at least one field to update
         if not update_parts and not remove_parts:

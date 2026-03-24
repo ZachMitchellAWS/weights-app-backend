@@ -591,12 +591,6 @@ def generate_static_records():
         "availableChangePlates": [2.5, 5, 10, 25, 35, 45],
         "minReps": 3,
         "maxReps": 5,
-        "easyMinReps": 8,
-        "easyMaxReps": 12,
-        "moderateMinReps": 5,
-        "moderateMaxReps": 8,
-        "hardMinReps": 2,
-        "hardMaxReps": 4,
         "createdDatetime": created_str,
         "lastModifiedDatetime": created_str,
     }

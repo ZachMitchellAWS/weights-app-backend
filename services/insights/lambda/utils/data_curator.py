@@ -724,18 +724,105 @@ def _format_user_context(
     if groups:
         group_names = [g.get('name', 'Unnamed') for g in groups]
         lines.append(f"- Exercise groups: {', '.join(group_names)}")
-        active_group_id = user_properties.get('activeGroupId') if user_properties else None
-        if active_group_id:
-            active_group = next((g for g in groups if g.get('groupId') == active_group_id), None)
-            if active_group:
-                lines.append(f"- Active group: {active_group.get('name', 'Unknown')}")
-
     # First week flag
     is_first_week = len(prior_sets) == 0
     if is_first_week:
         lines.append("- **This is the user's first week of training data.** Use 'establishing baselines' framing.")
 
     return "\n".join(lines)
+
+
+def curate_starter_data(user_id: str) -> str | None:
+    """
+    Curate lightweight data for starter insight generation.
+
+    Only queries user properties, exercises, and all-time e1RM records.
+    Returns None if fewer than 5 core exercises have e1RM data.
+
+    Args:
+        user_id: The user's unique identifier
+
+    Returns:
+        Formatted string for GPT, or None if not enough data
+    """
+    # Query all-time e1RM records (no date window)
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        user_props_future = executor.submit(_query_user_properties, user_id)
+        exercises_future = executor.submit(_query_exercises, user_id)
+        e1rm_future = executor.submit(_query_all_estimated_1rm, user_id)
+
+    user_properties = user_props_future.result()
+    exercises = exercises_future.result()
+    e1rm_records = e1rm_future.result()
+
+    exercise_map = {ex['exerciseItemId']: ex for ex in exercises}
+    all_time_e1rm = _build_all_time_e1rm(e1rm_records)
+
+    # Check that all 5 core exercises have e1RM data
+    name_to_id: dict[str, str] = {}
+    for ex_id, ex in exercise_map.items():
+        name = ex.get('name', '')
+        if name in CORE_EXERCISES:
+            name_to_id[name] = ex_id
+
+    core_with_data = sum(1 for name in CORE_EXERCISES if all_time_e1rm.get(name_to_id.get(name), 0) > 0)
+    if core_with_data < 5:
+        return None
+
+    strength_status = _format_strength_status(user_properties, exercise_map, all_time_e1rm)
+
+    # Compute overall tier name to pass explicitly
+    bodyweight = _to_float(user_properties.get('bodyweight', 0)) if user_properties and user_properties.get('bodyweight') else 0
+    sex = user_properties.get('biologicalSex', 'male') if user_properties else 'male'
+    tier_indices = []
+    for ex_name in CORE_EXERCISES:
+        ex_id = name_to_id.get(ex_name)
+        current_e1rm = all_time_e1rm.get(ex_id, 0) if ex_id else 0
+        tier_indices.append(_get_tier_index(ex_name, current_e1rm, bodyweight, sex))
+    overall_tier = _get_tier_name(min(tier_indices)) if tier_indices else 'Novice'
+
+    generation_date = date.today().isoformat()
+    parts = [
+        "## Starter Insight Data",
+        f"Report generated: {generation_date}",
+        "",
+        f"IMPORTANT: The user's overall strength tier is **{overall_tier}**. "
+        f"You MUST refer to this tier by name when congratulating them. "
+        f"Do NOT use any per-exercise tier name as the overall tier.",
+        "",
+        "## User Context",
+    ]
+
+    if user_properties:
+        bw = user_properties.get('bodyweight')
+        if bw:
+            parts.append(f"- Bodyweight: {_to_float(bw)} lbs, Sex: {sex}")
+        else:
+            parts.append(f"- Sex: {sex}")
+
+    parts.extend(["", strength_status])
+
+    return "\n".join(parts)
+
+
+def _query_all_estimated_1rm(user_id: str) -> list[dict]:
+    """Query all estimated 1RM records for a user (no date range)."""
+    table_name = os.environ.get('ESTIMATED_1RM_TABLE_NAME')
+    table = dynamodb.Table(table_name)
+
+    items = []
+    kwargs = {
+        'IndexName': 'userId-createdDatetime-index',
+        'KeyConditionExpression': Key('userId').eq(user_id),
+    }
+    while True:
+        response = table.query(**kwargs)
+        items.extend(response.get('Items', []))
+        if 'LastEvaluatedKey' not in response:
+            break
+        kwargs['ExclusiveStartKey'] = response['LastEvaluatedKey']
+
+    return items
 
 
 def has_sets_in_week(user_id: str, week_start: str, week_end: str) -> bool:
