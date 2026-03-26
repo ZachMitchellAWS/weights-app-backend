@@ -140,3 +140,109 @@ def update_audio_keys(
         ExpressionAttributeValues={':ak': audio_keys},
     )
     logger.info(f"Updated audio keys for user {user_id}, week {week_start_date}")
+
+
+# ---------------------------------------------------------------------------
+# Tier Unlock Cache
+# ---------------------------------------------------------------------------
+
+_TIER_SK_PREFIX = 'tier-'
+
+
+def get_cached_tier_unlock(user_id: str, tier_name: str) -> dict | None:
+    """Read cached tier unlock insight for a user and tier."""
+    table = _get_cache_table()
+    response = table.get_item(
+        Key={'userId': user_id, 'insightWeek': f'{_TIER_SK_PREFIX}{tier_name.lower()}'}
+    )
+    return response.get('Item')
+
+
+def put_cached_tier_unlock(
+    user_id: str,
+    tier_name: str,
+    body: str,
+    model_version: str,
+) -> None:
+    """Write generated tier unlock insight to cache."""
+    table = _get_cache_table()
+    now_utc = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+    table.put_item(
+        Item={
+            'userId': user_id,
+            'insightWeek': f'{_TIER_SK_PREFIX}{tier_name.lower()}',
+            'body': body,
+            'generatedAt': now_utc,
+            'modelVersion': model_version,
+        }
+    )
+    logger.info(f"Cached tier unlock insight for user {user_id}, tier {tier_name}")
+
+
+def get_all_tier_unlocks(user_id: str) -> list[dict]:
+    """
+    Query all tier unlock insights for a user.
+
+    Runs lazy migration from starter → tier-novice if needed.
+    """
+    from boto3.dynamodb.conditions import Key
+
+    table = _get_cache_table()
+    response = table.query(
+        KeyConditionExpression=(
+            Key('userId').eq(user_id) &
+            Key('insightWeek').begins_with(_TIER_SK_PREFIX)
+        )
+    )
+    items = response.get('Items', [])
+
+    # Lazy migration: if no tier-novice but starter exists, migrate it
+    has_novice = any(i['insightWeek'] == f'{_TIER_SK_PREFIX}novice' for i in items)
+    if not has_novice:
+        migrated = migrate_starter_to_tier_unlock(user_id)
+        if migrated:
+            items.append(migrated)
+
+    return items
+
+
+def update_tier_unlock_audio_key(user_id: str, tier_name: str, audio_key: str) -> None:
+    """Add audio key to a tier unlock cache item."""
+    table = _get_cache_table()
+    table.update_item(
+        Key={'userId': user_id, 'insightWeek': f'{_TIER_SK_PREFIX}{tier_name.lower()}'},
+        UpdateExpression='SET audioKey = :ak',
+        ExpressionAttributeValues={':ak': audio_key},
+    )
+    logger.info(f"Updated tier unlock audio key for user {user_id}, tier {tier_name}")
+
+
+def migrate_starter_to_tier_unlock(user_id: str) -> dict | None:
+    """
+    Lazy migration: copy insightWeek='starter' to 'tier-novice' and delete the old item.
+
+    Returns the new tier-novice item if migration occurred, None otherwise.
+    """
+    table = _get_cache_table()
+    starter = get_cached_starter(user_id)
+    if not starter:
+        return None
+
+    now_utc = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+    new_item = {
+        'userId': user_id,
+        'insightWeek': f'{_TIER_SK_PREFIX}novice',
+        'body': starter.get('body', ''),
+        'generatedAt': starter.get('generatedAt', now_utc),
+        'modelVersion': starter.get('modelVersion', 'unknown'),
+    }
+    # Carry over audio key if present
+    if starter.get('audioKey'):
+        new_item['audioKey'] = starter['audioKey']
+
+    table.put_item(Item=new_item)
+    table.delete_item(Key={'userId': user_id, 'insightWeek': 'starter'})
+    logger.info(f"Migrated starter insight to tier-novice for user {user_id}")
+    return new_item

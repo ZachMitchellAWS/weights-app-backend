@@ -45,7 +45,18 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         print(f"Handling request: {http_method} {path}")
 
         # Route to appropriate handler based on path and method
-        if path.endswith("/user/delete-account"):
+        if path.endswith("/user/feedback"):
+            if http_method == "POST":
+                return handle_submit_feedback(event)
+            else:
+                return create_response(
+                    status_code=405,
+                    body={
+                        "error": "Method not allowed",
+                        "message": f"Method {http_method} not supported for {path}"
+                    }
+                )
+        elif path.endswith("/user/delete-account"):
             if http_method == "POST":
                 return handle_delete_account_request(event)
             else:
@@ -564,5 +575,82 @@ def handle_delete_account_request(event: Dict[str, Any]) -> Dict[str, Any]:
             body={
                 "error": "Internal server error",
                 "message": "Failed to process account deletion request"
+            }
+        )
+
+
+def handle_submit_feedback(event: Dict[str, Any]) -> Dict[str, Any]:
+    """Handle POST /user/feedback requests."""
+    try:
+        request_context = event.get("requestContext", {})
+        authorizer = request_context.get("authorizer", {})
+        user_id = authorizer.get("userId")
+
+        if not user_id:
+            return create_response(
+                status_code=401,
+                body={
+                    "error": "Unauthorized",
+                    "message": "User ID not found in authorization context"
+                }
+            )
+
+        body = json.loads(event.get("body", "{}"))
+        message = body.get("message")
+
+        if not isinstance(message, str) or len(message.strip()) == 0:
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Invalid field",
+                    "message": "message is required and must be a non-empty string"
+                }
+            )
+
+        if len(message) > 2000:
+            return create_response(
+                status_code=400,
+                body={
+                    "error": "Invalid field",
+                    "message": "message must be 2000 characters or fewer"
+                }
+            )
+
+        table_name = os.environ.get("FEEDBACK_TABLE_NAME")
+        if not table_name:
+            raise ValueError("FEEDBACK_TABLE_NAME environment variable not set")
+
+        table = dynamodb.Table(table_name)
+
+        table.put_item(Item={
+            "userId": user_id,
+            "createdDatetime": get_current_datetime_iso(),
+            "message": message.strip(),
+        })
+
+        print(f"Feedback submitted by user: {user_id}")
+
+        return create_response(
+            status_code=200,
+            body={"message": "Feedback received"}
+        )
+
+    except json.JSONDecodeError:
+        return create_response(
+            status_code=400,
+            body={
+                "error": "Invalid JSON",
+                "message": "Request body must be valid JSON"
+            }
+        )
+    except Exception as e:
+        print(f"Error in handle_submit_feedback: {str(e)}")
+        print(traceback.format_exc())
+
+        return create_response(
+            status_code=500,
+            body={
+                "error": "Internal server error",
+                "message": "Failed to submit feedback"
             }
         )

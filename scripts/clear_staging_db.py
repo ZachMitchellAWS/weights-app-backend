@@ -29,6 +29,8 @@ TABLES = [
     ("set-plan-templates", "userId", "templateId"),
     ("accessory-goal-checkins", "userId", "checkinId"),
     ("groups", "userId", "groupId"),
+    ("insight-tasks", "userId", "insightWeek"),
+    ("insights-cache", "userId", "insightWeek"),
 ]
 
 

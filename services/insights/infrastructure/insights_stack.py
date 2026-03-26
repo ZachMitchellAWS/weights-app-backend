@@ -342,3 +342,23 @@ class InsightsStack(Stack):
             authorizer=self.authorizer,
             authorization_type=apigateway.AuthorizationType.CUSTOM,
         )
+
+        # Create /insights/tier-unlock resource (POST, no premium check)
+        tier_unlock_resource = insights_resource.add_resource("tier-unlock")
+        tier_unlock_resource.add_method(
+            "POST",
+            insights_integration,
+            api_key_required=True,
+            authorizer=self.authorizer,
+            authorization_type=apigateway.AuthorizationType.CUSTOM,
+        )
+
+        # Create /insights/tier-unlocks resource (GET, no premium check)
+        tier_unlocks_resource = insights_resource.add_resource("tier-unlocks")
+        tier_unlocks_resource.add_method(
+            "GET",
+            insights_integration,
+            api_key_required=True,
+            authorizer=self.authorizer,
+            authorization_type=apigateway.AuthorizationType.CUSTOM,
+        )

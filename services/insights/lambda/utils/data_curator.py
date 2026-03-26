@@ -805,6 +805,148 @@ def curate_starter_data(user_id: str) -> str | None:
     return "\n".join(parts)
 
 
+def curate_tier_unlock_data(user_id: str, tier_name: str) -> str | None:
+    """
+    Curate data for tier unlock insight generation.
+
+    Server-side validates that the user's computed overall tier matches the
+    requested tier. Returns None if tier mismatch or cache already exists.
+
+    Args:
+        user_id: The user's unique identifier
+        tier_name: Tier name to generate for (e.g. 'Beginner', 'Intermediate')
+
+    Returns:
+        Formatted string for GPT, or None if validation fails
+    """
+    from utils.cache import get_cached_tier_unlock
+
+    # Check cache first (idempotency)
+    if get_cached_tier_unlock(user_id, tier_name):
+        return None
+
+    # Query data
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        user_props_future = executor.submit(_query_user_properties, user_id)
+        exercises_future = executor.submit(_query_exercises, user_id)
+        e1rm_future = executor.submit(_query_all_estimated_1rm, user_id)
+
+    user_properties = user_props_future.result()
+    exercises = exercises_future.result()
+    e1rm_records = e1rm_future.result()
+
+    exercise_map = {ex['exerciseItemId']: ex for ex in exercises}
+    all_time_e1rm = _build_all_time_e1rm(e1rm_records)
+
+    bodyweight = _to_float(user_properties.get('bodyweight', 0)) if user_properties and user_properties.get('bodyweight') else 0
+    sex = user_properties.get('biologicalSex', 'male') if user_properties else 'male'
+
+    if bodyweight <= 0:
+        return None
+
+    # Build per-exercise tier data
+    name_to_id: dict[str, str] = {}
+    for ex_id, ex in exercise_map.items():
+        name = ex.get('name', '')
+        if name in CORE_EXERCISES:
+            name_to_id[name] = ex_id
+
+    tier_indices = []
+    exercise_tiers: dict[str, dict] = {}
+    for ex_name in CORE_EXERCISES:
+        ex_id = name_to_id.get(ex_name)
+        current_e1rm = all_time_e1rm.get(ex_id, 0) if ex_id else 0
+        tier_idx = _get_tier_index(ex_name, current_e1rm, bodyweight, sex)
+        tier_indices.append(tier_idx)
+        exercise_tiers[ex_name] = {
+            'tier': _get_tier_name(tier_idx),
+            'tier_idx': tier_idx,
+        }
+
+    # Compute overall tier and validate
+    computed_overall_idx = min(tier_indices) if tier_indices else 0
+    computed_overall = _get_tier_name(computed_overall_idx)
+
+    if computed_overall.lower() != tier_name.lower():
+        logger.info(f"Tier mismatch for user {user_id}: requested {tier_name}, computed {computed_overall}")
+        return None
+
+    # Determine previous tier by checking actual unlock history.
+    # If no prior tier unlock exists, this is the user's first tier regardless
+    # of tier index (e.g. first-ever unlock at Beginner should NOT say "from Novice").
+    from utils.cache import get_all_tier_unlocks
+
+    existing_unlocks = get_all_tier_unlocks(user_id)
+    # Exclude the current tier being generated (may already be cached in a race)
+    prior_unlocks = [
+        u for u in existing_unlocks
+        if u.get('insightWeek', '') != f'tier-{tier_name.lower()}'
+    ]
+
+    if prior_unlocks and computed_overall_idx > 0:
+        prev_tier = _get_tier_name(computed_overall_idx - 1)
+    else:
+        prev_tier = None
+
+    # Determine weakest (bottleneck) and strongest
+    weakest = min(exercise_tiers.items(), key=lambda x: x[1]['tier_idx'])
+    strongest = max(exercise_tiers.items(), key=lambda x: x[1]['tier_idx'])
+
+    # Balance
+    balance = _balance_category(tier_indices)
+
+    # Distance to next tier (relative terms only)
+    next_tier = _get_tier_name(computed_overall_idx + 1) if computed_overall_idx < len(TIER_ORDER) - 1 else None
+
+    # Per-exercise relative performance (tier name only, no numbers)
+    exercise_lines = []
+    for ex_name in CORE_EXERCISES:
+        info = exercise_tiers[ex_name]
+        exercise_lines.append(f"- {ex_name}: {info['tier']}")
+
+    # Build prompt data (deliberately excludes specific weights/dates/set counts)
+    generation_date = date.today().isoformat()
+    parts = [
+        "## Tier Unlock Data",
+        f"Report generated: {generation_date}",
+        "",
+        f"IMPORTANT: The user's overall strength tier is **{computed_overall}**.",
+        f"You MUST refer to this tier by name when congratulating them.",
+        f"Do NOT use any per-exercise tier name as the overall tier.",
+    ]
+
+    if prev_tier:
+        parts.append(f"Previous overall tier: **{prev_tier}** (the user has advanced from {prev_tier} to {computed_overall}).")
+    else:
+        parts.append("This is the user's FIRST overall tier (no previous tier).")
+
+    is_first_tier = (prev_tier is None)
+    parts.append(f"Is first tier unlock: {'yes' if is_first_tier else 'no'}")
+
+    parts.extend([
+        "",
+        "## Per-Exercise Tier Status (relative only)",
+        *exercise_lines,
+        "",
+        f"- Balance category: {balance}",
+        f"- Bottleneck exercise (weakest): {weakest[0]} ({weakest[1]['tier']})",
+        f"- Strongest exercise: {strongest[0]} ({strongest[1]['tier']})",
+    ])
+
+    if next_tier:
+        parts.append(f"- Next overall tier: {next_tier}")
+    else:
+        parts.append("- User has reached the highest tier!")
+
+    parts.extend([
+        "",
+        "## User Context",
+        f"- Sex: {sex}",
+    ])
+
+    return "\n".join(parts)
+
+
 def _query_all_estimated_1rm(user_id: str) -> list[dict]:
     """Query all estimated 1RM records for a user (no date range)."""
     table_name = os.environ.get('ESTIMATED_1RM_TABLE_NAME')

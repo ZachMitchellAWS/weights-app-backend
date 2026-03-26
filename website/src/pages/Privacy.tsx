@@ -2,7 +2,7 @@ function Privacy() {
   return (
     <div className="legal-page">
       <h1>Privacy Policy</h1>
-      <p>Our Privacy Policy was last updated on April 15th 2024.</p>
+      <p>Our Privacy Policy was last updated on April 1st 2026.</p>
       <p>This Privacy Policy describes Our policies and procedures on the collection, use and disclosure of Your information when You use the Service and tells You about Your privacy rights and how the law protects You.</p>
       <p>We use Your Personal data to provide and improve the Service. By using the Service, You agree to the collection and use of information in accordance with this Privacy Policy.</p>
       <h2>Interpretation and Definitions</h2>
@@ -105,6 +105,9 @@ function Privacy() {
       <li>
       <p>Usage Data</p>
       </li>
+      <li>
+      <p>Fitness and Workout Data (exercise names, sets, reps, weights, bodyweight, estimated one-rep maxes, strength tier assessments, workout history, and related fitness metrics You provide through the Service)</p>
+      </li>
       </ul>
       <h4>Usage Data</h4>
       <p>Usage Data is collected automatically when using the Service or visiting the Website.</p>
@@ -138,6 +141,9 @@ function Privacy() {
       <li>
       <p><strong>For other purposes</strong>: We may use Your information for other purposes, such as data analysis, identifying usage trends, determining the effectiveness of our promotional campaigns and to evaluate and improve our Service, products, services, marketing and Your experience.</p>
       </li>
+      <li>
+      <p><strong>To generate AI-powered insights:</strong> We process Your Fitness and Workout Data through third-party AI services (currently OpenAI) to generate personalized weekly training summaries, strength assessments, and audio narration.</p>
+      </li>
       </ul>
       <p>We may share Your personal information in the following situations:</p>
       <ul>
@@ -145,7 +151,6 @@ function Privacy() {
       <li><strong>For business transfers:</strong> We may share or transfer Your personal information in connection with, or during negotiations of, any merger, sale of Company assets, financing, or acquisition of all or a portion of Our business to another company.</li>
       <li><strong>With Affiliates:</strong> We may share Your information with Our affiliates, in which case we will require those affiliates to honor this Privacy Policy. Affiliates include Our parent company and any other subsidiaries, joint venture partners or other companies that We control or that are under common control with Us.</li>
       <li><strong>With business partners:</strong> We may share Your information with Our business partners to offer You certain products, services or promotions.</li>
-      <li><strong>With other users:</strong> when You share personal information or otherwise interact in the public areas with other users, such information may be viewed by all users and may be publicly distributed outside.</li>
       <li><strong>With Your consent</strong>: We may disclose Your personal information for any other purpose with Your consent.</li>
       </ul>
       <h3>Retention of Your Personal Data</h3>
@@ -179,7 +184,7 @@ function Privacy() {
       <h2>Detailed Information on the Processing of Your Personal Data</h2>
       <p>The Service Providers We use may have access to Your Personal Data. These third-party vendors collect, store, use, process and transfer information about Your activity on Our Service in accordance with their Privacy Policies.</p>
       <h3>AI Services</h3>
-      <p>We utilize technology provided by OpenAI for certain functionalities within Our Service. We do not send Personal Data to OpenAI unless such data is voluntarily provided by You during Your use of Our Service. Any Personal Data You choose to disclose through Our Service that utilizes OpenAI's technology will be governed by OpenAI’s Privacy Policy. We encourage You to review their policy at <a href="https://openai.com/privacy">openai.com/privacy</a> to understand how they process Personal Data.</p>
+      <p>We send Your Fitness and Workout Data — including exercise names, weights, reps, bodyweight, and performance metrics — to OpenAI’s API to generate weekly training insights, strength assessments, and audio narration. This data does not include Your email address or account identifiers. OpenAI processes this data subject to their API data usage policies, which provide that data submitted through the API is not used to train their models. For more information, please review OpenAI’s Privacy Policy at <a href="https://openai.com/privacy">openai.com/privacy</a>.</p>
       <h3>Cloud Services</h3>
       <p>We use Amazon Web Services (AWS) for cloud-based infrastructure services, including hosting and processing data for Our Service. AWS provides secure computing power, database storage, and content delivery, which We leverage to enhance and operate Our Service. All data collected, including Personal Data, is stored and processed on AWS's secured servers, adhering to industry best practices such as ISO certifications and GDPR compliance. AWS employs robust security measures to protect Our infrastructure and data against unauthorized access and threats. The data We collect may be processed and stored in any of AWS's global data centers, with adequate protections to ensure compliance with applicable data protection laws. For detailed information on AWS’s data handling and privacy practices, please visit their privacy page at <a href="https://aws.amazon.com/privacy/">https://aws.amazon.com/privacy/</a>. By using Our Service, You consent to the transfer and storage of Your Personal Data on AWS servers as outlined.</p>
       <h3>Email Marketing</h3>
@@ -249,7 +254,7 @@ function Privacy() {
       <li>
       <p><strong>Category E: Biometric information.</strong></p>
       <p>Examples: Genetic, physiological, behavioral, and biological characteristics, or activity patterns used to extract a template or other identifier or identifying information, such as, fingerprints, faceprints, and voiceprints, iris or retina scans, keystroke, gait, or other physical patterns, and sleep, health, or exercise data.</p>
-      <p>Collected: No.</p>
+      <p>Collected: Yes. We collect exercise and fitness data (workout logs, bodyweight, exercise performance metrics) voluntarily provided by You through the Service. We do not collect biometric identifiers such as fingerprints, faceprints, or retina scans.</p>
       </li>
       <li>
       <p><strong>Category F: Internet or other similar network activity.</strong></p>
@@ -279,7 +284,7 @@ function Privacy() {
       <li>
       <p><strong>Category K: Inferences drawn from other personal information.</strong></p>
       <p>Examples: Profile reflecting a person's preferences, characteristics, psychological trends, predispositions, behavior, attitudes, intelligence, abilities, and aptitudes.</p>
-      <p>Collected: No.</p>
+      <p>Collected: Yes. We derive estimated one-rep maxes, strength tier classifications, and training assessments from Your Fitness and Workout Data. These are inferences about Your physical capabilities and fitness progress.</p>
       </li>
       <li>
       <p><strong>Category L: Sensitive personal information.</strong></p>

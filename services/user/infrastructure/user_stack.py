@@ -57,6 +57,7 @@ class UserStack(Stack):
         # Create resources
         self.user_properties_table = self._create_user_properties_table()
         self.deletion_requests_table = self._create_deletion_requests_table()
+        self.feedback_table = self._create_feedback_table()
         self.user_function = self._create_user_lambda()
         self._create_api_routes()
 
@@ -111,6 +112,27 @@ class UserStack(Stack):
 
         return table
 
+    def _create_feedback_table(self) -> dynamodb.Table:
+        """Create DynamoDB table for user feedback submissions."""
+        table = dynamodb.Table(
+            self,
+            "FeedbackTable",
+            table_name=f"{self.project_name}-{self.env_name}-feedback",
+            partition_key=dynamodb.Attribute(
+                name="userId",
+                type=dynamodb.AttributeType.STRING
+            ),
+            sort_key=dynamodb.Attribute(
+                name="createdDatetime",
+                type=dynamodb.AttributeType.STRING
+            ),
+            billing_mode=self.config.DYNAMODB_BILLING_MODE,
+            point_in_time_recovery=self.config.DYNAMODB_POINT_IN_TIME_RECOVERY,
+            removal_policy=self.config.REMOVAL_POLICY,
+        )
+
+        return table
+
     def _create_user_lambda(self) -> lambda_.Function:
         """
         Create Lambda function for user service operations.
@@ -140,6 +162,7 @@ class UserStack(Stack):
             environment={
                 "USER_PROPERTIES_TABLE_NAME": self.user_properties_table.table_name,
                 "DELETION_REQUESTS_TABLE_NAME": self.deletion_requests_table.table_name,
+                "FEEDBACK_TABLE_NAME": self.feedback_table.table_name,
                 "ENVIRONMENT": self.config.ENVIRONMENT,
                 "LOG_LEVEL": self.config.LOG_LEVEL,
             },
@@ -149,6 +172,7 @@ class UserStack(Stack):
         # Grant read/write permissions to DynamoDB tables
         self.user_properties_table.grant_read_write_data(function)
         self.deletion_requests_table.grant_read_write_data(function)
+        self.feedback_table.grant_read_write_data(function)
 
         return function
 
@@ -186,6 +210,18 @@ class UserStack(Stack):
 
         # Add POST method (requires API key + JWT authentication)
         properties_resource.add_method(
+            "POST",
+            user_integration,
+            api_key_required=True,
+            authorizer=self.authorizer,
+            authorization_type=apigateway.AuthorizationType.CUSTOM,
+        )
+
+        # Create /user/feedback resource
+        feedback_resource = user_resource.add_resource("feedback")
+
+        # Add POST method (requires API key + JWT authentication)
+        feedback_resource.add_method(
             "POST",
             user_integration,
             api_key_required=True,

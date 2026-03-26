@@ -135,6 +135,54 @@ def generate_starter_insight(system_prompt: str, curated_data: str) -> str:
                 raise
 
 
+def generate_tier_unlock_insight(system_prompt: str, curated_data: str) -> str:
+    """
+    Call OpenAI with structured output to generate a tier unlock insight.
+
+    Same schema as starter (single body field). Reuses STARTER_SCHEMA.
+
+    Args:
+        system_prompt: The tier_unlock_context.md markdown
+        curated_data: Pre-computed tier data for the user prompt
+
+    Returns:
+        Single string body of the tier unlock insight
+
+    Raises:
+        Exception: If all retry attempts fail
+    """
+    client = _get_client()
+    model = os.environ.get('OPENAI_MODEL', 'gpt-5.4')
+
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": curated_data},
+                ],
+                response_format=STARTER_SCHEMA,
+                temperature=0.7,
+            )
+
+            content = response.choices[0].message.content
+            parsed = json.loads(content)
+            body = parsed.get("body", "")
+
+            logger.info(f"Generated tier unlock insight using {model}")
+            return body
+
+        except Exception as e:
+            logger.warning(f"OpenAI tier unlock attempt {attempt + 1}/{max_retries} failed: {e}")
+            if attempt < max_retries - 1:
+                wait_time = 2 ** attempt
+                time.sleep(wait_time)
+            else:
+                raise
+
+
 def generate_insights(system_prompt: str, curated_data: str) -> list[dict]:
     """
     Call OpenAI with structured output to generate weekly insights.

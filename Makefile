@@ -163,7 +163,7 @@ destroy-production:
 # WARNING: This deletes ALL data from staging tables
 clear-staging-db:
 	@echo "WARNING: This will delete ALL items from staging DynamoDB tables!"
-	@echo "Tables: users, user-properties, password-reset-codes, exercises, lift-sets, estimated-1rm, splits, set-plan-templates, accessory-goal-checkins, entitlement-grants, subscription-events"
+	@echo "Tables: users, user-properties, password-reset-codes, exercises, lift-sets, estimated-1rm, splits, set-plan-templates, accessory-goal-checkins, entitlement-grants, subscription-events, insight-tasks, insights-cache"
 	@echo "Press Ctrl+C to cancel, or Enter to continue..."
 	@read confirm
 	$(PYTHON) scripts/clear_staging_db.py
@@ -172,7 +172,7 @@ clear-staging-db:
 # WARNING: This deletes ALL data from production tables
 clear-production-db:
 	@echo "WARNING: This will delete ALL items from PRODUCTION DynamoDB tables!"
-	@echo "Tables: users, user-properties, password-reset-codes, exercises, lift-sets, estimated-1rm, splits, set-plan-templates, accessory-goal-checkins, entitlement-grants, subscription-events"
+	@echo "Tables: users, user-properties, password-reset-codes, exercises, lift-sets, estimated-1rm, splits, set-plan-templates, accessory-goal-checkins, entitlement-grants, subscription-events, insight-tasks, insights-cache"
 	@echo "This action cannot be undone. Press Ctrl+C to cancel, or Enter to continue..."
 	@read confirm
 	$(PYTHON) scripts/clear_production_db.py

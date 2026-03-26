@@ -1,13 +1,16 @@
 """
 Insights service Lambda handler.
 
-Six invocation pathways:
+Nine invocation pathways:
 1. SCHEDULE_TASK — async from checkin Lambda after lift set creation
 2. PROCESS_TASKS — EventBridge cron every 15 min, processes ripe tasks
 3. GET_INSIGHTS — API Gateway GET /insights/weekly
 4. GENERATE_AUDIO — async self-invoke to generate TTS audio after insights are cached
 5. GET_STARTER_INSIGHT — API Gateway GET /insights/starter (all users)
 6. GENERATE_STARTER_AUDIO — async self-invoke to generate TTS for starter insight
+7. POST_TIER_UNLOCK — API Gateway POST /insights/tier-unlock (all users)
+8. GET_TIER_UNLOCKS — API Gateway GET /insights/tier-unlocks (all users)
+9. GENERATE_TIER_UNLOCK_AUDIO — async self-invoke to generate TTS for tier unlock
 """
 
 import json
@@ -31,8 +34,13 @@ from utils.task_manager import (
     get_insight_week,
     STALE_THRESHOLD_SECONDS,
 )
-from utils.cache import get_cached_insights, put_cached_insights, update_audio_keys, get_cached_starter, put_cached_starter, update_starter_audio_key
-from utils.data_curator import curate_training_data, has_sets_in_week, curate_starter_data
+from utils.cache import (
+    get_cached_insights, put_cached_insights, update_audio_keys,
+    get_cached_starter, put_cached_starter, update_starter_audio_key,
+    get_cached_tier_unlock, put_cached_tier_unlock, get_all_tier_unlocks,
+    update_tier_unlock_audio_key,
+)
+from utils.data_curator import curate_training_data, has_sets_in_week, curate_starter_data, curate_tier_unlock_data
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -518,6 +526,198 @@ def generate_starter_audio(user_id: str) -> dict:
 
 
 # ===========================================================================
+# Pathway 7: POST_TIER_UNLOCK (API Gateway POST /insights/tier-unlock)
+# ===========================================================================
+
+# Module-level cache for the tier unlock system prompt
+_tier_unlock_prompt = None
+
+
+def _get_tier_unlock_prompt() -> str:
+    """Load the tier_unlock_context.md system prompt (cached across warm invocations)."""
+    global _tier_unlock_prompt
+    if _tier_unlock_prompt is not None:
+        return _tier_unlock_prompt
+
+    context_path = Path(__file__).parent.parent / "context" / "tier_unlock_context.md"
+    with open(context_path, 'r') as f:
+        _tier_unlock_prompt = f.read()
+    return _tier_unlock_prompt
+
+
+def _invoke_generate_tier_unlock_audio(user_id: str, tier_name: str) -> None:
+    """Async self-invoke to generate TTS audio for cached tier unlock insight."""
+    function_name = os.environ.get('INSIGHTS_FUNCTION_NAME')
+    if not function_name:
+        logger.warning("INSIGHTS_FUNCTION_NAME not set, skipping tier unlock TTS generation")
+        return
+
+    try:
+        lambda_client = boto3.client('lambda')
+        payload = json.dumps({
+            'invocationType': 'GENERATE_TIER_UNLOCK_AUDIO',
+            'userId': user_id,
+            'tierName': tier_name,
+        })
+        lambda_client.invoke(
+            FunctionName=function_name,
+            InvocationType='Event',
+            Payload=payload,
+        )
+        logger.info(f"Async-invoked tier unlock TTS generation for user {user_id}, tier {tier_name}")
+    except Exception as e:
+        logger.warning(f"Failed to invoke tier unlock TTS generation: {e}")
+
+
+def _attach_tier_audio_url(result: dict, audio_key: str) -> None:
+    """Attach a presigned S3 URL for tier unlock audio to the result dict."""
+    bucket = os.environ.get('INSIGHTS_AUDIO_BUCKET')
+    if not bucket:
+        return
+    s3 = _get_s3_client()
+    try:
+        url = s3.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': bucket, 'Key': audio_key},
+            ExpiresIn=3600,
+        )
+        result['audioUrl'] = url
+    except Exception as e:
+        logger.warning(f"Failed to generate presigned URL for tier unlock audio {audio_key}: {e}")
+
+
+def post_tier_unlock(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
+    """
+    Generate or return cached tier unlock insight.
+
+    No premium check — available to all users.
+    """
+    # Parse tier from request body
+    try:
+        body = json.loads(event.get('body', '{}'))
+    except (json.JSONDecodeError, TypeError):
+        return create_response(400, {"error": "Invalid request body"})
+
+    tier = body.get('tier')
+    if not tier:
+        return create_response(400, {"error": "Missing 'tier' in request body"})
+
+    tier_lower = tier.lower()
+
+    # Check cache — if exists, return it
+    cached = get_cached_tier_unlock(user_id, tier_lower)
+    if cached:
+        result = {
+            "tier": tier_lower,
+            "body": cached.get('body', ''),
+            "generatedAt": cached.get('generatedAt'),
+        }
+        audio_key = cached.get('audioKey')
+        if audio_key:
+            _attach_tier_audio_url(result, audio_key)
+        return create_response(200, result)
+
+    # Curate data (validates tier server-side, checks cache idempotency)
+    from utils.openai_client import generate_tier_unlock_insight
+
+    curated = curate_tier_unlock_data(user_id, tier)
+    if curated is None:
+        return create_response(200, {
+            "tier": None,
+            "body": None,
+            "message": "No tier unlock message generated",
+        })
+
+    # Generate via GPT
+    tier_unlock_prompt = _get_tier_unlock_prompt()
+    body_text = generate_tier_unlock_insight(tier_unlock_prompt, curated)
+    model = os.environ.get('OPENAI_MODEL', 'gpt-5.4')
+    put_cached_tier_unlock(user_id, tier_lower, body_text, model)
+
+    # Fire-and-forget TTS
+    _invoke_generate_tier_unlock_audio(user_id, tier_lower)
+
+    now_utc = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+    return create_response(200, {
+        "tier": tier_lower,
+        "body": body_text,
+        "generatedAt": now_utc,
+    })
+
+
+# ===========================================================================
+# Pathway 8: GET_TIER_UNLOCKS (API Gateway GET /insights/tier-unlocks)
+# ===========================================================================
+
+def get_tier_unlocks(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
+    """
+    Get all tier unlock insights for a user.
+
+    No premium check — available to all users. Includes lazy migration
+    from starter → tier-novice.
+    """
+    items = get_all_tier_unlocks(user_id)
+
+    tier_unlocks = []
+    for item in items:
+        sk = item.get('insightWeek', '')
+        tier_name = sk.replace('tier-', '') if sk.startswith('tier-') else sk
+        result = {
+            "tier": tier_name,
+            "body": item.get('body', ''),
+            "generatedAt": item.get('generatedAt'),
+        }
+        audio_key = item.get('audioKey')
+        if audio_key:
+            _attach_tier_audio_url(result, audio_key)
+        tier_unlocks.append(result)
+
+    return create_response(200, {"tierUnlocks": tier_unlocks})
+
+
+# ===========================================================================
+# Pathway 9: GENERATE_TIER_UNLOCK_AUDIO (async self-invoke)
+# ===========================================================================
+
+def generate_tier_unlock_audio(user_id: str, tier_name: str) -> dict:
+    """
+    Generate TTS audio for cached tier unlock insight and update the cache item.
+
+    Called asynchronously after tier unlock insight is generated and cached.
+    """
+    from utils.tts import _generate_one
+    from utils.openai_client import _get_client
+
+    cached = get_cached_tier_unlock(user_id, tier_name)
+    if not cached:
+        logger.warning(f"No cached tier unlock insight for user {user_id}, tier {tier_name} — skipping TTS")
+        return {"status": "skipped", "reason": "no_cache"}
+
+    if cached.get('audioKey'):
+        logger.info(f"Tier unlock audio already exists for user {user_id}, tier {tier_name} — skipping")
+        return {"status": "skipped", "reason": "already_exists"}
+
+    body = cached.get('body', '')
+    if not body:
+        return {"status": "skipped", "reason": "no_body"}
+
+    try:
+        client = _get_client()
+        bucket = os.environ.get('INSIGHTS_AUDIO_BUCKET')
+        if not bucket:
+            raise ValueError("INSIGHTS_AUDIO_BUCKET environment variable not set")
+
+        s3_key = f"{user_id}/tier-{tier_name}/0.mp3"
+        _generate_one(client, body, bucket, s3_key)
+        update_tier_unlock_audio_key(user_id, tier_name, s3_key)
+        logger.info(f"Tier unlock TTS audio generated for user {user_id}, tier {tier_name}")
+        return {"status": "completed", "audioKey": s3_key}
+    except Exception as e:
+        logger.error(f"Tier unlock TTS generation failed for user {user_id}, tier {tier_name}: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+# ===========================================================================
 # Main Handler
 # ===========================================================================
 
@@ -557,6 +757,16 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         logger.info(f"Generating starter TTS audio for user {user_id}")
         return generate_starter_audio(user_id)
 
+    # Async self-invoke to generate TTS audio for tier unlock insight
+    if invocation_type == "GENERATE_TIER_UNLOCK_AUDIO":
+        user_id = event.get("userId")
+        tier_name = event.get("tierName")
+        if not user_id or not tier_name:
+            logger.error(f"GENERATE_TIER_UNLOCK_AUDIO missing required fields: {event}")
+            return {"error": "Missing userId or tierName"}
+        logger.info(f"Generating tier unlock TTS audio for user {user_id}, tier {tier_name}")
+        return generate_tier_unlock_audio(user_id, tier_name)
+
     # Async invoke from checkin Lambda
     if invocation_type == "SCHEDULE_TASK":
         user_id = event.get("userId")
@@ -575,6 +785,12 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     if http_method and event.get("requestContext", {}).get("authorizer"):
         user_id = event["requestContext"]["authorizer"]["userId"]
         logger.info(f"Insights request: {http_method} {path} for user {user_id}")
+
+        if http_method == "POST" and path.endswith("/insights/tier-unlock"):
+            return post_tier_unlock(event, user_id)
+
+        if http_method == "GET" and path.endswith("/insights/tier-unlocks"):
+            return get_tier_unlocks(event, user_id)
 
         if http_method == "GET" and path.endswith("/insights/starter"):
             return get_starter_insight(event, user_id)
