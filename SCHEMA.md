@@ -53,6 +53,7 @@
 | minReps | Number | No | Global minimum reps target |
 | maxReps | Number | No | Global maximum reps target |
 | activeSetPlanTemplateId | String | No | Nullable -- UUID of active set plan template |
+| hasMetStrengthTierConditions | Boolean | No | Default false -- set true when user completes strength tier journey |
 | createdDatetime | String | Yes | ISO 8601 |
 | lastModifiedDatetime | String | Yes | ISO 8601 |
 

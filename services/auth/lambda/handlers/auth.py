@@ -224,6 +224,7 @@ def handle_create_user(event: Dict[str, Any]) -> Dict[str, Any]:
                 "userId": user_id,
                 "availableChangePlates": [],  # Empty list by default
                 # bodyweight is optional, not set by default
+                "hasMetStrengthTierConditions": False,
                 "createdDatetime": current_datetime,
                 "lastModifiedDatetime": current_datetime,
             }
@@ -1253,6 +1254,7 @@ def handle_apple_signin(event: Dict[str, Any]) -> Dict[str, Any]:
             user_properties_item = {
                 "userId": user_id,
                 "availableChangePlates": [],
+                "hasMetStrengthTierConditions": False,
                 "createdDatetime": current_datetime,
                 "lastModifiedDatetime": current_datetime,
             }

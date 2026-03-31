@@ -13,7 +13,7 @@
     "user-properties": [
       {
         "activeSetPlanTemplateId": "00000000-0000-0000-0000-000000000101",
-        "apnsDeviceToken": "7660cb80a8136058abfed2d5d1a94644ea3e27f5a768c6796de9b0bb23100699",
+        "apnsDeviceToken": "6859a99ca4fc5cac5e5aa5277eacba36e3c7eaf8b40a405e4ecef681f4193be0",
         "availableChangePlates": [
           0.25,
           0.5,
@@ -30,7 +30,7 @@
         "easyMinReps": 9,
         "hardMaxReps": 6,
         "hardMinReps": 3,
-        "lastModifiedDatetime": "2026-03-27T22:26:48.512",
+        "lastModifiedDatetime": "2026-03-31T17:44:36.719",
         "maxReps": 10,
         "minReps": 4,
         "moderateMaxReps": 10,
@@ -39,7 +39,8 @@
         "stepsGoal": 5000,
         "timezone": "America/Los_Angeles",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "weightUnit": "lbs"
+        "weightUnit": "lbs",
+        "hasMetStrengthTierConditions": true
       }
     ],
     "password-reset-codes": [],
@@ -84,16 +85,16 @@
         "exerciseItemId": "00000000-0000-0000-0001-000000000003"
       },
       {
-        "createdDatetime": "2026-03-02T20:18:28Z",
         "createdTimezone": "America/Los_Angeles",
-        "icon": "OverheadPressIcon",
-        "isCustom": false,
-        "lastModifiedDatetime": "2026-03-27T16:33:03.445497+00:00",
-        "loadType": "Barbell",
         "movementType": "Push",
-        "name": "Overhead Press",
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "icon": "OverheadPressIcon",
         "weightIncrement": 0.5,
+        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "loadType": "Barbell",
+        "createdDatetime": "2026-03-02T20:18:28Z",
+        "lastModifiedDatetime": "2026-03-27T16:33:03.445497+00:00",
+        "isCustom": false,
+        "name": "Overhead Press",
         "exerciseItemId": "00000000-0000-0000-0001-000000000004"
       },
       {
@@ -554,33 +555,33 @@
         "exerciseItemId": "00000000-0000-0000-0001-000000000041"
       },
       {
-        "createdDatetime": "2026-03-23T00:00:00+00:00",
         "createdTimezone": "America/Chicago",
-        "deleted": false,
         "icon": "RearDeltFlysIcon",
-        "isCustom": false,
-        "lastModifiedDatetime": "2026-03-27T22:21:56.818443+00:00",
-        "loadType": "Single Load",
-        "movementType": "Pull",
-        "name": "Rear Delt Flys",
-        "notes": null,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "weightIncrement": 1,
+        "loadType": "Single Load",
+        "createdDatetime": "2026-03-23T00:00:00+00:00",
+        "name": "Rear Delt Flys",
+        "deleted": false,
+        "movementType": "Pull",
+        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "notes": null,
+        "lastModifiedDatetime": "2026-03-27T22:21:56.818443+00:00",
+        "isCustom": false,
         "exerciseItemId": "00000000-0000-0000-0001-000000000042"
       },
       {
-        "createdDatetime": "2026-03-23T00:00:00+00:00",
         "createdTimezone": "America/Chicago",
-        "deleted": false,
         "icon": "CableYRaisesIcon",
-        "isCustom": false,
-        "lastModifiedDatetime": "2026-03-27T22:45:56.171817+00:00",
-        "loadType": "Single Load",
-        "movementType": "Pull",
-        "name": "Cable Y Raises",
-        "notes": null,
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "weightIncrement": 1,
+        "loadType": "Single Load",
+        "createdDatetime": "2026-03-23T00:00:00+00:00",
+        "name": "Cable Y Raises",
+        "deleted": false,
+        "movementType": "Pull",
+        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "notes": null,
+        "lastModifiedDatetime": "2026-03-27T22:45:56.171817+00:00",
+        "isCustom": false,
         "exerciseItemId": "00000000-0000-0000-0001-000000000043"
       },
       {
@@ -2269,14 +2270,14 @@
         "liftSetId": "83E8FDCB-5AC5-4C7E-A010-EABF58D30AC5"
       },
       {
-        "createdDatetime": "2026-03-27T22:37:58Z",
+        "isBaselineSet": true,
         "createdTimezone": "America/Los_Angeles",
         "deleted": true,
-        "exerciseId": "00000000-0000-0000-0001-000000000043",
-        "isBaselineSet": true,
-        "lastModifiedDatetime": "2026-03-27T22:38:10.947636+00:00",
         "reps": 8,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "exerciseId": "00000000-0000-0000-0001-000000000043",
+        "createdDatetime": "2026-03-27T22:37:58Z",
+        "lastModifiedDatetime": "2026-03-27T22:38:10.947636+00:00",
         "weight": 20,
         "liftSetId": "8456605F-A562-41EA-9871-E8524AB0E3B4"
       },
@@ -6263,14 +6264,14 @@
         "liftSetId": "83E8FDCB-5AC5-4C7E-A010-EABF58D30AC5"
       },
       {
-        "createdDatetime": "2026-03-27T22:37:58Z",
         "createdTimezone": "America/Los_Angeles",
-        "deleted": true,
-        "estimated1RMId": "E09BC021-7EF9-4E3C-BBCF-C1053068473A",
-        "exerciseId": "00000000-0000-0000-0001-000000000043",
-        "lastModifiedDatetime": "2026-03-27T22:38:11.061523+00:00",
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "value": 42.22222222222222,
+        "deleted": true,
+        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "exerciseId": "00000000-0000-0000-0001-000000000043",
+        "createdDatetime": "2026-03-27T22:37:58Z",
+        "lastModifiedDatetime": "2026-03-27T22:38:11.061523+00:00",
+        "estimated1RMId": "E09BC021-7EF9-4E3C-BBCF-C1053068473A",
         "liftSetId": "8456605F-A562-41EA-9871-E8524AB0E3B4"
       },
       {
@@ -8676,12 +8677,30 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
+        "value": 1550,
+        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "createdDatetime": "2026-03-30T18:38:32Z",
+        "lastModifiedDatetime": "2026-03-30T18:38:39.016377+00:00",
+        "metricType": "steps",
+        "checkinId": "11923670-33D1-4B54-8107-1700FCCAA267"
+      },
+      {
+        "createdTimezone": "America/Los_Angeles",
         "value": 35,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "createdDatetime": "2026-03-10T17:26:34Z",
         "lastModifiedDatetime": "2026-03-10T17:26:38.612204+00:00",
         "metricType": "protein",
         "checkinId": "13DB044E-A024-4435-B9B4-F077CA40383F"
+      },
+      {
+        "createdTimezone": "America/Los_Angeles",
+        "value": 1750,
+        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "createdDatetime": "2026-03-30T16:15:50Z",
+        "lastModifiedDatetime": "2026-03-30T16:15:56.284720+00:00",
+        "metricType": "steps",
+        "checkinId": "15B2B993-2EB6-4D5E-A35C-3A95F8C41132"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -8991,6 +9010,15 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
+        "value": 3100,
+        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "createdDatetime": "2026-03-30T20:25:09Z",
+        "lastModifiedDatetime": "2026-03-30T20:25:12.096245+00:00",
+        "metricType": "steps",
+        "checkinId": "675D78C7-514F-4686-B683-608F78267A25"
+      },
+      {
+        "createdTimezone": "America/Los_Angeles",
         "value": 1150,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "createdDatetime": "2026-03-13T18:32:24Z",
@@ -9162,6 +9190,15 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
+        "value": 300,
+        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "createdDatetime": "2026-03-30T18:53:27Z",
+        "lastModifiedDatetime": "2026-03-30T18:53:30.858235+00:00",
+        "metricType": "steps",
+        "checkinId": "9351C7C3-430D-44C6-A301-1DED82C181DC"
+      },
+      {
+        "createdTimezone": "America/Los_Angeles",
         "value": 60,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "createdDatetime": "2026-03-04T20:44:10Z",
@@ -9177,6 +9214,15 @@
         "lastModifiedDatetime": "2026-03-11T00:05:51.119582+00:00",
         "metricType": "protein",
         "checkinId": "98FD86E3-A0D1-4377-9C0B-D1A9C487B038"
+      },
+      {
+        "createdTimezone": "America/Los_Angeles",
+        "value": 1000,
+        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "createdDatetime": "2026-03-31T16:29:24Z",
+        "lastModifiedDatetime": "2026-03-31T16:29:26.956084+00:00",
+        "metricType": "steps",
+        "checkinId": "9FE9363E-1DA4-42A1-87FC-5F6287F98DD5"
       },
       {
         "createdTimezone": "America/Los_Angeles",

@@ -520,13 +520,18 @@ def get_exercises(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
 
         table = dynamodb.Table(table_name)
 
-        # Query all exercises for this user
+        # Query all exercises for this user (with pagination)
         print(f"[DEBUG] get_exercises called for user_id={user_id}, table={table_name}")
-        response = table.query(
-            KeyConditionExpression=Key('userId').eq(user_id)
-        )
+        exercises = []
+        kwargs = {'KeyConditionExpression': Key('userId').eq(user_id)}
 
-        exercises = response.get('Items', [])
+        while True:
+            response = table.query(**kwargs)
+            exercises.extend(response.get('Items', []))
+            if 'LastEvaluatedKey' not in response:
+                break
+            kwargs['ExclusiveStartKey'] = response['LastEvaluatedKey']
+
         print(f"[DEBUG] DynamoDB returned {len(exercises)} total items")
         if exercises:
             deleted_count = sum(1 for e in exercises if e.get('deleted', False))
@@ -1827,11 +1832,15 @@ def get_set_plan_templates(event: Dict[str, Any], user_id: str) -> Dict[str, Any
 
         table = dynamodb.Table(table_name)
 
-        response = table.query(
-            KeyConditionExpression=Key('userId').eq(user_id)
-        )
+        templates = []
+        kwargs = {'KeyConditionExpression': Key('userId').eq(user_id)}
 
-        templates = response.get('Items', [])
+        while True:
+            response = table.query(**kwargs)
+            templates.extend(response.get('Items', []))
+            if 'LastEvaluatedKey' not in response:
+                break
+            kwargs['ExclusiveStartKey'] = response['LastEvaluatedKey']
 
         non_deleted_templates = [
             t for t in templates
@@ -2544,11 +2553,15 @@ def get_groups(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
 
         table = dynamodb.Table(table_name)
 
-        response = table.query(
-            KeyConditionExpression=Key('userId').eq(user_id)
-        )
+        groups = []
+        kwargs = {'KeyConditionExpression': Key('userId').eq(user_id)}
 
-        groups = response.get('Items', [])
+        while True:
+            response = table.query(**kwargs)
+            groups.extend(response.get('Items', []))
+            if 'LastEvaluatedKey' not in response:
+                break
+            kwargs['ExclusiveStartKey'] = response['LastEvaluatedKey']
 
         non_deleted_groups = [
             g for g in groups

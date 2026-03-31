@@ -228,7 +228,7 @@ class InsightsStack(Stack):
             code=lambda_.Code.from_asset(str(lambda_code_path)),
             layers=[self.dependencies_layer],
             memory_size=self.config.LAMBDA_MEMORY_SIZE,
-            timeout=Duration.seconds(60),
+            timeout=Duration.seconds(180),
             environment={
                 "LIFT_SETS_TABLE_NAME": lift_sets_table.table_name,
                 "EXERCISES_TABLE_NAME": exercises_table.table_name,

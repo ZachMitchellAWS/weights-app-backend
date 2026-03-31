@@ -447,6 +447,21 @@ def handle_update_properties(event: Dict[str, Any]) -> Dict[str, Any]:
                     }
                 )
 
+        # Handle hasMetStrengthTierConditions (boolean)
+        if 'hasMetStrengthTierConditions' in body:
+            val = body['hasMetStrengthTierConditions']
+            if isinstance(val, bool):
+                update_parts.append('hasMetStrengthTierConditions = :hmstc')
+                expression_values[':hmstc'] = val
+            else:
+                return create_response(
+                    status_code=400,
+                    body={
+                        "error": "Invalid field type",
+                        "message": "hasMetStrengthTierConditions must be a boolean"
+                    }
+                )
+
         # Handle apnsDeviceToken (nullable string - can be set or removed)
         if "apnsDeviceToken" in body:
             apns_token = body.get("apnsDeviceToken")

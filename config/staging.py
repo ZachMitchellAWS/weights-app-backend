@@ -28,7 +28,7 @@ DYNAMODB_POINT_IN_TIME_RECOVERY = False  # Not needed for staging
 
 # Lambda Configuration
 LAMBDA_MEMORY_SIZE = 512  # MB
-LAMBDA_TIMEOUT = Duration.seconds(30)
+LAMBDA_TIMEOUT = Duration.seconds(60)
 LAMBDA_RUNTIME_VERSION = "3.12"
 
 # Auth Token Configuration
