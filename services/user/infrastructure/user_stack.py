@@ -1,5 +1,7 @@
 """User service CDK stack with DynamoDB, Lambda, and API Gateway integration."""
 
+import os
+
 from aws_cdk import (
     Stack,
     aws_dynamodb as dynamodb,
@@ -58,6 +60,7 @@ class UserStack(Stack):
         self.user_properties_table = self._create_user_properties_table()
         self.deletion_requests_table = self._create_deletion_requests_table()
         self.feedback_table = self._create_feedback_table()
+        self.dependencies_layer = self._create_dependencies_layer()
         self.user_function = self._create_user_lambda()
         self._create_api_routes()
 
@@ -133,6 +136,19 @@ class UserStack(Stack):
 
         return table
 
+    def _create_dependencies_layer(self) -> lambda_.LayerVersion:
+        """Create Lambda layer with Python dependencies for user service."""
+        layer_path = Path(__file__).parent.parent / "layer"
+        layer = lambda_.LayerVersion(
+            self,
+            "DependenciesLayer",
+            layer_version_name=f"{self.project_name}-{self.env_name}-user-deps",
+            code=lambda_.Code.from_asset(str(layer_path)),
+            compatible_runtimes=[lambda_.Runtime.PYTHON_3_12],
+            description="Python dependencies for user service",
+        )
+        return layer
+
     def _create_user_lambda(self) -> lambda_.Function:
         """
         Create Lambda function for user service operations.
@@ -157,6 +173,7 @@ class UserStack(Stack):
             runtime=lambda_.Runtime.PYTHON_3_12,
             handler="handlers.user.handler",
             code=lambda_.Code.from_asset(str(lambda_code_path)),
+            layers=[self.dependencies_layer],
             memory_size=self.config.LAMBDA_MEMORY_SIZE,
             timeout=self.config.LAMBDA_TIMEOUT,
             environment={
@@ -164,6 +181,7 @@ class UserStack(Stack):
                 "DELETION_REQUESTS_TABLE_NAME": self.deletion_requests_table.table_name,
                 "FEEDBACK_TABLE_NAME": self.feedback_table.table_name,
                 "ENVIRONMENT": self.config.ENVIRONMENT,
+                "SENTRY_DSN": os.environ.get("SENTRY_DSN", ""),
                 "LOG_LEVEL": self.config.LOG_LEVEL,
             },
             log_retention=self.config.LOG_RETENTION,

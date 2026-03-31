@@ -1,2 +1,1 @@
-openai>=1.0.0
 sentry-sdk>=2.0.0

@@ -6,10 +6,17 @@ Validates required fields, writes to DynamoDB support-tickets table.
 
 import json
 import os
+import sys
 import uuid
+from pathlib import Path
 from datetime import datetime, timezone
 
+sys.path.insert(0, str(Path(__file__).parent.parent))
 import boto3
+from utils.sentry_init import init_sentry
+import sentry_sdk
+
+init_sentry()
 
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(os.environ["SUPPORT_TICKETS_TABLE_NAME"])

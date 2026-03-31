@@ -1,5 +1,7 @@
 """Entitlements service CDK stack with DynamoDB, Lambda, and API Gateway integration."""
 
+import os
+
 from aws_cdk import (
     Stack,
     aws_dynamodb as dynamodb,
@@ -323,6 +325,7 @@ class EntitlementsStack(Stack):
                 "SUBSCRIPTION_EVENTS_TABLE_NAME": self.subscription_events_table.table_name,
                 "USERS_TABLE_NAME": self.users_table_name,
                 "ENVIRONMENT": self.config.ENVIRONMENT,
+                "SENTRY_DSN": os.environ.get("SENTRY_DSN", ""),
                 "LOG_LEVEL": self.config.LOG_LEVEL,
                 "APPLE_ENVIRONMENT": apple_environment,
                 # SSM parameter names (Lambda will read values at runtime)

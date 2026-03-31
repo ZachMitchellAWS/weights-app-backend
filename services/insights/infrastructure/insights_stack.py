@@ -1,5 +1,7 @@
 """Insights service CDK stack with Lambda, DynamoDB, EventBridge, and API Gateway integration."""
 
+import os
+
 from aws_cdk import (
     Stack,
     Duration,
@@ -243,6 +245,7 @@ class InsightsStack(Stack):
                 "INSIGHTS_AUDIO_BUCKET": self.audio_bucket.bucket_name,
                 "INSIGHTS_FUNCTION_NAME": f"{self.project_name}-{self.env_name}-insights",
                 "ENVIRONMENT": self.config.ENVIRONMENT,
+                "SENTRY_DSN": os.environ.get("SENTRY_DSN", ""),
                 "LOG_LEVEL": self.config.LOG_LEVEL,
             },
             log_retention=self.config.LOG_RETENTION,

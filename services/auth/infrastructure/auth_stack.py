@@ -1,5 +1,6 @@
 """Auth service CDK stack with DynamoDB, Lambda, and API Gateway."""
 
+import os
 from aws_cdk import (
     Stack,
     Duration,
@@ -260,6 +261,7 @@ class AuthStack(Stack):
                 "APPLE_BUNDLE_ID": "io.anthroverse.WeightApp",
                 "PASSWORD_RESET_CODES_TABLE_NAME": self.password_reset_codes_table.table_name,
                 "ENVIRONMENT": self.config.ENVIRONMENT,
+                "SENTRY_DSN": os.environ.get("SENTRY_DSN", ""),
                 "LOG_LEVEL": self.config.LOG_LEVEL,
                 # SSM parameter names (Lambda will read values at runtime)
                 "JWT_SECRET_KEY_PARAM": f"/{self.project_name}/{self.env_name}/auth/jwt-secret-key",

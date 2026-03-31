@@ -90,6 +90,26 @@ build-layer:
 	cd services/insights && rm -rf layer/python && mkdir -p layer/python
 	cd services/insights && pip3 install -r requirements.txt -t layer/python/ --upgrade --platform manylinux2014_x86_64 --python-version 3.12 --only-binary=:all:
 	@echo "Lambda layer built successfully at services/insights/layer/"
+	@echo ""
+	@echo "Building Lambda layer for user service..."
+	cd services/user && rm -rf layer/python && mkdir -p layer/python
+	cd services/user && pip3 install -r requirements.txt -t layer/python/ --upgrade --platform manylinux2014_x86_64 --python-version 3.12 --only-binary=:all:
+	@echo "Lambda layer built successfully at services/user/layer/"
+	@echo ""
+	@echo "Building Lambda layer for checkin service..."
+	cd services/checkin && rm -rf layer/python && mkdir -p layer/python
+	cd services/checkin && pip3 install -r requirements.txt -t layer/python/ --upgrade --platform manylinux2014_x86_64 --python-version 3.12 --only-binary=:all:
+	@echo "Lambda layer built successfully at services/checkin/layer/"
+	@echo ""
+	@echo "Building Lambda layer for email service..."
+	cd services/email && rm -rf layer/python && mkdir -p layer/python
+	cd services/email && pip3 install -r requirements.txt -t layer/python/ --upgrade --platform manylinux2014_x86_64 --python-version 3.12 --only-binary=:all:
+	@echo "Lambda layer built successfully at services/email/layer/"
+	@echo ""
+	@echo "Building Lambda layer for website service..."
+	cd services/website && rm -rf layer/python && mkdir -p layer/python
+	cd services/website && pip3 install -r requirements.txt -t layer/python/ --upgrade --platform manylinux2014_x86_64 --python-version 3.12 --only-binary=:all:
+	@echo "Lambda layer built successfully at services/website/layer/"
 
 # Upload email templates to staging S3 bucket
 upload-email-templates-staging:

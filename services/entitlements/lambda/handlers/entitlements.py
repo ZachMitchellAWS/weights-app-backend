@@ -18,6 +18,11 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone
 
 from utils.response import create_response
+from utils.sentry_init import init_sentry, set_sentry_user
+import sentry_sdk
+
+init_sentry()
+
 from utils.apple_api import (
     get_apple_api_client,
     fetch_transaction_history,
@@ -83,6 +88,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             )
 
     except Exception as e:
+        sentry_sdk.capture_exception(e)
         print(f"Error in handler: {str(e)}")
         import traceback
         traceback.print_exc()

@@ -40,12 +40,9 @@ The user just completed their initial assessment by logging one set for each of 
 
 2. **Relative standing.** Briefly note which exercises are leading vs lagging — no numbers. If exercises are close together or share the same tier, describe their profile as "well-balanced" or "evenly developed" (this is a good thing — frame it positively). Name the bottleneck exercise simply and directly as the one that determines their overall tier. Only call an exercise "strongest" if its per-exercise tier is strictly higher than others — if all exercises share the same tier, say they're evenly matched instead.
 
-3. **How to progress.** Keep this concise — a few sentences, not a feature tour. Mention:
-   - The **Progress Options** widget on the Lift tab shows e1RM-based suggestions to help guide progressive overload.
-   - Per-exercise **increments** can be adjusted — use smaller increments for faster-progressing exercises and larger ones for lagging exercises to keep everything advancing together. If they want increments smaller than a standard plate, change plates make that possible — they can update their available change plates in settings.
-   - Frame progressive overload as the path forward.
+3. **How to progress.** Keep this concise — a couple of sentences, not a feature tour. Mention that the **Progress Options** widget on the Lift tab and adjustable per-exercise **increments** can help guide progressive overload — it may be appropriate to progress faster on some exercises and slower on others to keep all five fundamentals advancing in balance. Frame progressive overload as the path forward.
 
-4. **Closing encouragement.** End with 2-3 sentences emphasizing that proper form is the top priority above all else, and that once form is locked in, consistent incremental progress across all five exercises — keeping them in balance — is the overarching goal. Be warm and genuinely encouraging.
+4. **Closing encouragement.** End with 2-3 sentences emphasizing that proper form is the top priority above all else, and that once form is locked in, consistent incremental progress across all five exercises — keeping them in balance — is the overarching goal. Be warm and genuinely encouraging. {closing_weekly_insights_mention}
 
 ### For SUBSEQUENT tier unlocks (user has a real previous tier):
 
@@ -53,13 +50,9 @@ The user just completed their initial assessment by logging one set for each of 
 
 2. **What changed.** Note their relative exercise balance — which exercises are leading, which are lagging. Describe balance positively if exercises are close together ("well-balanced", "evenly developed"). Comment on what the bottleneck exercise means for continued progress. Only call an exercise "strongest" if its per-exercise tier is strictly higher than others.
 
-3. **What to target next.** Keep this concise and practical:
-   - Reference the **Progress Options** widget on the Lift tab as a tool for targeting the next tier with e1RM-based suggestions.
-   - Suggest adjusting per-exercise **increments** to keep lifts progressing together. If smaller increments would help, mention that change plates make this possible and they can update their available change plates in settings.
-   - Include tier-appropriate training advice (technique refinement, programming periodization, recovery) but keep it brief and actionable.
-   - Name the next tier as a goal if applicable.
+3. **What to target next.** Keep this concise and practical. Mention that the **Progress Options** widget on the Lift tab and adjustable per-exercise **increments** can help target the next tier — it may be appropriate to progress faster on some exercises and slower on others to keep all five fundamentals advancing in balance. Include brief tier-appropriate training advice (technique refinement, programming periodization, recovery) and name the next tier as a goal if applicable.
 
-4. **Closing encouragement.** End with 2-3 sentences emphasizing that proper form is the top priority above all else, and that once form is locked in, consistent incremental progress across all five exercises — keeping them in balance — is the overarching goal. Be warm and genuinely encouraging.
+4. **Closing encouragement.** End with 2-3 sentences emphasizing that proper form is the top priority above all else, and that once form is locked in, consistent incremental progress across all five exercises — keeping them in balance — is the overarching goal. Be warm and genuinely encouraging. {closing_weekly_insights_mention}
 
 ## Terminology
 

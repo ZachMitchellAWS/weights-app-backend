@@ -26,7 +26,10 @@ from utils.jwt_utils import (
 )
 from utils.password import hash_password, verify_password
 from utils.apple_auth import verify_apple_identity_token
+from utils.sentry_init import init_sentry, set_sentry_user
+import sentry_sdk
 
+init_sentry()
 
 # Initialize DynamoDB client
 dynamodb = boto3.resource('dynamodb')
@@ -97,6 +100,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             )
 
     except Exception as e:
+        sentry_sdk.capture_exception(e)
         # Log the full error for debugging
         print(f"Unexpected error in handler: {str(e)}")
         print(traceback.format_exc())

@@ -41,6 +41,10 @@ from utils.cache import (
     update_tier_unlock_audio_key,
 )
 from utils.data_curator import curate_training_data, has_sets_in_week, curate_starter_data, curate_tier_unlock_data
+from utils.sentry_init import init_sentry, set_sentry_user
+import sentry_sdk
+
+init_sentry()
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -628,8 +632,19 @@ def post_tier_unlock(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
             "message": "No tier unlock message generated",
         })
 
-    # Generate via GPT
+    # Generate via GPT — adjust prompt based on premium status
+    is_premium = check_premium(user_id)
     tier_unlock_prompt = _get_tier_unlock_prompt()
+    if is_premium:
+        tier_unlock_prompt = tier_unlock_prompt.replace(
+            "{closing_weekly_insights_mention}",
+            "Close with a brief one-sentence mention encouraging the user to check out their weekly insights for ongoing AI-powered analysis of their training."
+        )
+    else:
+        tier_unlock_prompt = tier_unlock_prompt.replace(
+            "{closing_weekly_insights_mention}",
+            "Close with a brief one-sentence mention encouraging the user to unlock weekly insights for ongoing AI-powered analysis of their training."
+        )
     body_text = generate_tier_unlock_insight(tier_unlock_prompt, curated)
     model = os.environ.get('OPENAI_MODEL', 'gpt-5.4')
     put_cached_tier_unlock(user_id, tier_lower, body_text, model)
@@ -784,6 +799,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
     if http_method and event.get("requestContext", {}).get("authorizer"):
         user_id = event["requestContext"]["authorizer"]["userId"]
+        set_sentry_user(user_id)
         logger.info(f"Insights request: {http_method} {path} for user {user_id}")
 
         if http_method == "POST" and path.endswith("/insights/tier-unlock"):

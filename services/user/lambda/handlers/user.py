@@ -14,7 +14,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from utils.response import create_response, get_current_datetime_iso
+from utils.sentry_init import init_sentry, set_sentry_user
+import sentry_sdk
 
+init_sentry()
 
 # Initialize DynamoDB client
 dynamodb = boto3.resource('dynamodb')
@@ -43,6 +46,11 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         path = event.get("path", "")
         http_method = event.get("httpMethod", "")
         print(f"Handling request: {http_method} {path}")
+
+        # Set Sentry user context
+        user_id_from_auth = event.get("requestContext", {}).get("authorizer", {}).get("userId")
+        if user_id_from_auth:
+            set_sentry_user(user_id_from_auth)
 
         # Route to appropriate handler based on path and method
         if path.endswith("/user/feedback"):
@@ -90,6 +98,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             )
 
     except Exception as e:
+        sentry_sdk.capture_exception(e)
         # Log the full error for debugging
         print(f"Unexpected error in user handler: {str(e)}")
         print(traceback.format_exc())

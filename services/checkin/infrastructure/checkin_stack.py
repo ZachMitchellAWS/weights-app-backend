@@ -1,5 +1,7 @@
 """Checkin service CDK stack with DynamoDB, Lambda, and API Gateway integration."""
 
+import os
+
 from aws_cdk import (
     Stack,
     aws_dynamodb as dynamodb,
@@ -61,6 +63,7 @@ class CheckinStack(Stack):
         self.set_plan_templates_table = self._create_set_plan_templates_table()
         self.accessory_goal_checkins_table = self._create_accessory_goal_checkins_table()
         self.groups_table = self._create_groups_table()
+        self.dependencies_layer = self._create_dependencies_layer()
         self.checkin_function = self._create_checkin_lambda()
         self._create_api_routes()
 
@@ -368,6 +371,19 @@ class CheckinStack(Stack):
 
         return table
 
+    def _create_dependencies_layer(self) -> lambda_.LayerVersion:
+        """Create Lambda layer with Python dependencies for checkin service."""
+        layer_path = Path(__file__).parent.parent / "layer"
+        layer = lambda_.LayerVersion(
+            self,
+            "DependenciesLayer",
+            layer_version_name=f"{self.project_name}-{self.env_name}-checkin-deps",
+            code=lambda_.Code.from_asset(str(layer_path)),
+            compatible_runtimes=[lambda_.Runtime.PYTHON_3_12],
+            description="Python dependencies for checkin service",
+        )
+        return layer
+
     def _create_checkin_lambda(self) -> lambda_.Function:
         """
         Create Lambda function for checkin service operations.
@@ -393,6 +409,7 @@ class CheckinStack(Stack):
             runtime=lambda_.Runtime.PYTHON_3_12,
             handler="handlers.checkin.handler",
             code=lambda_.Code.from_asset(str(lambda_code_path)),
+            layers=[self.dependencies_layer],
             memory_size=self.config.LAMBDA_MEMORY_SIZE,
             timeout=self.config.LAMBDA_TIMEOUT,
             environment={
@@ -403,6 +420,7 @@ class CheckinStack(Stack):
                 "ACCESSORY_GOAL_CHECKINS_TABLE_NAME": self.accessory_goal_checkins_table.table_name,
                 "GROUPS_TABLE_NAME": self.groups_table.table_name,
                 "ENVIRONMENT": self.config.ENVIRONMENT,
+                "SENTRY_DSN": os.environ.get("SENTRY_DSN", ""),
                 "LOG_LEVEL": self.config.LOG_LEVEL,
             },
             log_retention=self.config.LOG_RETENTION,

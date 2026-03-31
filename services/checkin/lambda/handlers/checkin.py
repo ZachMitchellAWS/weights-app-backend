@@ -40,6 +40,10 @@ from typing import Dict, Any, List, Optional
 
 from utils.response import create_response
 from utils.datetime_utils import get_current_datetime_iso
+from utils.sentry_init import init_sentry, set_sentry_user
+import sentry_sdk
+
+init_sentry()
 
 # Initialize DynamoDB client
 dynamodb = boto3.resource('dynamodb')
@@ -72,6 +76,9 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # The Lambda Authorizer adds this to the request context
         user_id = event.get('requestContext', {}).get('authorizer', {}).get('userId')
         print(f"[DEBUG] Extracted user_id from authorizer: {user_id}")
+
+        if user_id:
+            set_sentry_user(user_id)
 
         if not user_id:
             return create_response(
@@ -129,6 +136,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             )
 
     except Exception as e:
+        sentry_sdk.capture_exception(e)
         print(f"Error in handler: {str(e)}")
         import traceback
         traceback.print_exc()

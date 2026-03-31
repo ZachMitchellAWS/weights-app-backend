@@ -4,6 +4,7 @@ Hosts the static React SPA on S3 behind CloudFront with a custom domain,
 and provides a public support form endpoint via API Gateway + Lambda + DynamoDB.
 """
 
+import os
 from pathlib import Path
 
 from aws_cdk import (
@@ -49,6 +50,7 @@ class WebsiteStack(Stack):
         self.distribution = self._create_cloudfront_distribution()
         self._create_route53_records()
         self.support_tickets_table = self._create_support_tickets_table()
+        self.dependencies_layer = self._create_dependencies_layer()
         self.support_function = self._create_support_lambda()
         self._create_api_route()
 
@@ -193,6 +195,19 @@ class WebsiteStack(Stack):
             removal_policy=self.config.REMOVAL_POLICY,
         )
 
+    def _create_dependencies_layer(self) -> lambda_.LayerVersion:
+        """Create Lambda layer with Python dependencies for website service."""
+        layer_path = Path(__file__).parent.parent / "layer"
+        layer = lambda_.LayerVersion(
+            self,
+            "DependenciesLayer",
+            layer_version_name=f"{self.project_name}-{self.env_name}-website-deps",
+            code=lambda_.Code.from_asset(str(layer_path)),
+            compatible_runtimes=[lambda_.Runtime.PYTHON_3_12],
+            description="Python dependencies for website service",
+        )
+        return layer
+
     def _create_support_lambda(self) -> lambda_.Function:
         """Create Lambda for support form submissions."""
         lambda_code_path = Path(__file__).parent.parent / "lambda"
@@ -204,11 +219,13 @@ class WebsiteStack(Stack):
             runtime=lambda_.Runtime.PYTHON_3_12,
             handler="handlers.support.handler",
             code=lambda_.Code.from_asset(str(lambda_code_path)),
+            layers=[self.dependencies_layer],
             memory_size=self.config.LAMBDA_MEMORY_SIZE,
             timeout=self.config.LAMBDA_TIMEOUT,
             environment={
                 "SUPPORT_TICKETS_TABLE_NAME": self.support_tickets_table.table_name,
                 "ENVIRONMENT": self.config.ENVIRONMENT,
+                "SENTRY_DSN": os.environ.get("SENTRY_DSN", ""),
                 "LOG_LEVEL": self.config.LOG_LEVEL,
             },
             log_retention=self.config.LOG_RETENTION,
