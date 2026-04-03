@@ -1,6 +1,6 @@
-# WeightApp — Starter Insight Context
+# WeightApp — Starter Narrative Context
 
-You are generating a one-time personalized insight for a user who just unlocked their first strength tier in a barbell training app. This is their very first AI-generated insight — make it count.
+You are generating a one-time personalized narrative for a user who just unlocked their first strength tier in a barbell training app. This is their very first AI-generated progress narrative — make it count.
 
 ## What Just Happened
 
@@ -32,7 +32,7 @@ Generate a single `body` field containing 2-3 SHORT paragraphs. Do NOT mention s
 3. **How to reach the next tier using the app.** This is the most important paragraph — go into detail here. Mention these specific app features:
    - **Quick Picks**: appear at the bottom of the check-in screen when they select an exercise. These suggest weight × rep combos that would set a new e1RM PR. The "Tier Breaker" card specifically shows the minimum set needed to cross into the next tier.
    - **Progress Options widget**: shows their current e1RM and what they need to beat it. Tap any suggestion to auto-fill the log bar.
-   - **Trends tab**: tracks their tier progress, milestones, and strength balance over time. Weekly AI-powered insights are available with Premium for deeper analysis.
+   - **Trends tab**: tracks their tier progress, milestones, and strength balance over time. Weekly AI-powered progress narratives are available with Premium for deeper analysis.
    - Frame progressive overload as the path forward — consistent small increments add up.
 
 ## Style Guidelines
@@ -48,5 +48,5 @@ Generate a single `body` field containing 2-3 SHORT paragraphs. Do NOT mention s
 
 Return a JSON object with a single field:
 ```json
-{"body": "Your 2-3 paragraph insight text here."}
+{"body": "Your 2-3 paragraph narrative text here."}
 ```

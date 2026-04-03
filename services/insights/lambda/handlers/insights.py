@@ -637,13 +637,13 @@ def post_tier_unlock(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     tier_unlock_prompt = _get_tier_unlock_prompt()
     if is_premium:
         tier_unlock_prompt = tier_unlock_prompt.replace(
-            "{closing_weekly_insights_mention}",
-            "Close with a brief one-sentence mention encouraging the user to check out their weekly insights for ongoing AI-powered analysis of their training."
+            "{closing_weekly_narratives_mention}",
+            "Close with a brief one-sentence mention encouraging the user to check out their weekly progress narratives for ongoing AI-powered analysis of their training."
         )
     else:
         tier_unlock_prompt = tier_unlock_prompt.replace(
-            "{closing_weekly_insights_mention}",
-            "Close with a brief one-sentence mention encouraging the user to unlock weekly insights for ongoing AI-powered analysis of their training."
+            "{closing_weekly_narratives_mention}",
+            "Close with a brief one-sentence mention encouraging the user to unlock weekly progress narratives for ongoing AI-powered analysis of their training."
         )
     body_text = generate_tier_unlock_insight(tier_unlock_prompt, curated)
     model = os.environ.get('OPENAI_MODEL', 'gpt-5.4')

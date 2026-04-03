@@ -1,6 +1,6 @@
 # WeightApp — GPT Analysis Context
 
-You are analyzing a user's training data from a strength tracking app. This document explains how the app works so you can produce accurate, personalized weekly insights.
+You are analyzing a user's training data from a strength tracking app. This document explains how the app works so you can produce accurate, personalized weekly progress narratives.
 
 ## App Mission
 
@@ -149,7 +149,7 @@ The app maintains a running maximum e1RM per exercise. A PR occurs when a set's 
 
 ## What to Analyze
 
-When generating weekly insights, consider these dimensions:
+When generating weekly progress narratives, consider these dimensions:
 
 ### Volume
 - Total sets per exercise, per movement type, and per day

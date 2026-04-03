@@ -247,7 +247,7 @@ class EmailStack(Stack):
             timeout=self.config.LAMBDA_TIMEOUT,
             environment={
                 "TEMPLATES_BUCKET": self.templates_bucket.bucket_name,
-                "SENDER_EMAIL": "noreply@anthroverse.io",
+                "SENDER_EMAIL": "noreply@liftthebull.io",
                 "PASSWORD_RESET_CONFIG_SET": self.password_reset_config_set_name,
                 "WELCOME_CONFIG_SET": self.welcome_config_set_name,
                 "ENVIRONMENT": self.config.ENVIRONMENT,

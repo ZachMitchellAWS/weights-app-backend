@@ -45,20 +45,185 @@ TIMEZONE = "America/Los_Angeles"
 
 # ─── Exercise Catalog ──────────────────────────────────────────────────────────
 
-# Default setPlan array matching what the iOS app generates
-DEFAULT_SET_PLAN = ["easy", "easy", "moderate", "moderate", "hard", "hard", "pr"]
+# Authoritative UUID mapping from the iOS app's Exercise.builtInTemplates.
+# Exercises matching these names use the app's UUIDs so lift sets/e1RMs
+# reference the same IDs the app expects for strength tiers, groups, etc.
+BUILTIN_EXERCISE_UUIDS = {
+    "Ab Wheel Rollouts": "00000000-0000-0000-0001-000000000126",
+    "Alternating Front Raises": "00000000-0000-0000-0001-000000000052",
+    "Arnold Presses": "00000000-0000-0000-0001-000000000050",
+    "Back Extensions": "00000000-0000-0000-0001-000000000045",
+    "Back Presses": "00000000-0000-0000-0001-000000000047",
+    "Barbell Curls": "00000000-0000-0000-0001-000000000008",
+    "Barbell Front Raises": "00000000-0000-0000-0001-000000000053",
+    "Barbell Lunges": "00000000-0000-0000-0001-000000000104",
+    "Barbell Pullovers": "00000000-0000-0000-0001-000000000070",
+    "Barbell Rows": "00000000-0000-0000-0001-000000000005",
+    "Barbell Shrugs": "00000000-0000-0000-0001-000000000036",
+    "Bench Press": "00000000-0000-0000-0001-000000000003",
+    "Bent Over Dumbbell Rows": "00000000-0000-0000-0001-000000000078",
+    "Bent Over Lateral Raises": "00000000-0000-0000-0001-000000000051",
+    "Box Squats": "00000000-0000-0000-0001-000000000094",
+    "Bulgarian Split Squats": "00000000-0000-0000-0001-000000000035",
+    "Cable Crunches": "00000000-0000-0000-0001-000000000114",
+    "Cable Flys": "00000000-0000-0000-0001-000000000069",
+    "Cable Hip Abductions": "00000000-0000-0000-0001-000000000109",
+    "Cable Hip Adductions": "00000000-0000-0000-0001-000000000099",
+    "Cable Kickbacks": "00000000-0000-0000-0001-000000000106",
+    "Cable Lateral Raises": "00000000-0000-0000-0001-000000000131",
+    "Cable Rows": "00000000-0000-0000-0001-000000000040",
+    "Cable Woodchops": "00000000-0000-0000-0001-000000000128",
+    "Cable Y Raises": "00000000-0000-0000-0001-000000000043",
+    "Chin-Ups": "00000000-0000-0000-0001-000000000071",
+    "Close Grip Bench Press": "00000000-0000-0000-0001-000000000041",
+    "Close Grip Lat Pull-Downs": "00000000-0000-0000-0001-000000000073",
+    "Close Grip Seated Rows": "00000000-0000-0000-0001-000000000075",
+    "Close Grip Upright Rows": "00000000-0000-0000-0001-000000000079",
+    "Concentration Curls": "00000000-0000-0000-0001-000000000011",
+    "Crunches": "00000000-0000-0000-0001-000000000112",
+    "Deadlifts": "00000000-0000-0000-0001-000000000001",
+    "Decline Bench Press": "00000000-0000-0000-0001-000000000062",
+    "Donkey Calf Raises": "00000000-0000-0000-0001-000000000102",
+    "Dumbbell Bench Press": "00000000-0000-0000-0001-000000000065",
+    "Dumbbell Curls": "00000000-0000-0000-0001-000000000010",
+    "Dumbbell Flys": "00000000-0000-0000-0001-000000000033",
+    "Dumbbell Lunges": "00000000-0000-0000-0001-000000000105",
+    "Dumbbell Pullovers": "00000000-0000-0000-0001-000000000038",
+    "Dumbbell Shrugs": "00000000-0000-0000-0001-000000000085",
+    "Dumbbell Side Bends": "00000000-0000-0000-0001-000000000117",
+    "Dumbbell Squats": "00000000-0000-0000-0001-000000000090",
+    "EZ-Bar Curls": "00000000-0000-0000-0001-000000000121",
+    "Face Pulls": "00000000-0000-0000-0001-000000000119",
+    "Farmer's Carries": "00000000-0000-0000-0001-000000000130",
+    "Finger Curls": "00000000-0000-0000-0001-000000000021",
+    "Front Squats": "00000000-0000-0000-0001-000000000044",
+    "Glute Bridges": "00000000-0000-0000-0001-000000000108",
+    "Goblet Squats": "00000000-0000-0000-0001-000000000124",
+    "Good Mornings": "00000000-0000-0000-0001-000000000098",
+    "Hack Squats": "00000000-0000-0000-0001-000000000092",
+    "Hammer Curls": "00000000-0000-0000-0001-000000000013",
+    "Hanging Leg Raises": "00000000-0000-0000-0001-000000000046",
+    "High Pulley Curls": "00000000-0000-0000-0001-000000000015",
+    "High Pulley Lateral Extensions": "00000000-0000-0000-0001-000000000037",
+    "High Pulley Neck Extensions": "00000000-0000-0000-0001-000000000089",
+    "High Pulley Neck Pulls": "00000000-0000-0000-0001-000000000088",
+    "Hip Thrusts": "00000000-0000-0000-0001-000000000123",
+    "Incline Bench Press": "00000000-0000-0000-0001-000000000061",
+    "Incline Dumbbell Curls": "00000000-0000-0000-0001-000000000012",
+    "Incline Dumbbell Flys": "00000000-0000-0000-0001-000000000067",
+    "Incline Dumbbell Presses": "00000000-0000-0000-0001-000000000066",
+    "Landmine Press": "00000000-0000-0000-0001-000000000132",
+    "Lat Pull-Downs": "00000000-0000-0000-0001-000000000072",
+    "Lateral Raises": "00000000-0000-0000-0001-000000000032",
+    "Leg Extensions": "00000000-0000-0000-0001-000000000095",
+    "Leg Press": "00000000-0000-0000-0001-000000000093",
+    "Leg Raises": "00000000-0000-0000-0001-000000000116",
+    "Low Pulley Bent-Over Lateral Raises": "00000000-0000-0000-0001-000000000058",
+    "Low Pulley Curls": "00000000-0000-0000-0001-000000000014",
+    "Low Pulley Lateral Raises": "00000000-0000-0000-0001-000000000059",
+    "Lying Barbell Tricep Extensions": "00000000-0000-0000-0001-000000000026",
+    "Lying Dumbbell Tricep Extensions": "00000000-0000-0000-0001-000000000027",
+    "Lying Leg Curls": "00000000-0000-0000-0001-000000000096",
+    "Machine Back Extensions": "00000000-0000-0000-0001-000000000084",
+    "Machine Bench Press": "00000000-0000-0000-0001-000000000063",
+    "Machine Crunches": "00000000-0000-0000-0001-000000000115",
+    "Machine Curls": "00000000-0000-0000-0001-000000000016",
+    "Machine Hip Extensions": "00000000-0000-0000-0001-000000000107",
+    "Machine Lateral Raises": "00000000-0000-0000-0001-000000000055",
+    "Machine Shrugs": "00000000-0000-0000-0001-000000000087",
+    "Machine Torso Rotations": "00000000-0000-0000-0001-000000000118",
+    "One Dumbbell Front Raises": "00000000-0000-0000-0001-000000000060",
+    "One-Arm Overhead Dumbbell Tricep Extensions": "00000000-0000-0000-0001-000000000028",
+    "Overhead Press": "00000000-0000-0000-0001-000000000004",
+    "Pallof Press": "00000000-0000-0000-0001-000000000127",
+    "Pec Deck Flys": "00000000-0000-0000-0001-000000000068",
+    "Pec Deck Rear Delt Laterals": "00000000-0000-0000-0001-000000000056",
+    "Pendlay Rows": "00000000-0000-0000-0001-000000000120",
+    "Power Cleans": "00000000-0000-0000-0001-000000000129",
+    "Power Squats": "00000000-0000-0000-0001-000000000091",
+    "Preacher Curls": "00000000-0000-0000-0001-000000000017",
+    "Pull Ups": "00000000-0000-0000-0001-000000000006",
+    "Pulley External Arm Rotations": "00000000-0000-0000-0001-000000000057",
+    "Push-Ups": "00000000-0000-0000-0001-000000000064",
+    "Rear Delt Flys": "00000000-0000-0000-0001-000000000042",
+    "Reverse Barbell Curls": "00000000-0000-0000-0001-000000000022",
+    "Reverse Tricep Pushdowns": "00000000-0000-0000-0001-000000000024",
+    "Romanian Deadlifts": "00000000-0000-0000-0001-000000000009",
+    "Seated Dumbbell Presses": "00000000-0000-0000-0001-000000000049",
+    "Seated Dumbbell Tricep Extensions": "00000000-0000-0000-0001-000000000030",
+    "Seated EZ-Bar Tricep Extensions": "00000000-0000-0000-0001-000000000031",
+    "Seated Front Presses": "00000000-0000-0000-0001-000000000048",
+    "Seated Leg Curls": "00000000-0000-0000-0001-000000000097",
+    "Seated Machine Calf Raises": "00000000-0000-0000-0001-000000000103",
+    "Seated Machine Hip Abductions": "00000000-0000-0000-0001-000000000111",
+    "Seated Machine Hip Adductions": "00000000-0000-0000-0001-000000000100",
+    "Seated Reverse Curls": "00000000-0000-0000-0001-000000000019",
+    "Side Raises": "00000000-0000-0000-0001-000000000034",
+    "Single Arm Dumbbell Rows": "00000000-0000-0000-0001-000000000077",
+    "Sit-Ups": "00000000-0000-0000-0001-000000000113",
+    "Spider Curls": "00000000-0000-0000-0001-000000000122",
+    "Squats": "00000000-0000-0000-0001-000000000002",
+    "Standing Cable Overhead Tricep Extensions": "00000000-0000-0000-0001-000000000025",
+    "Standing Calf Raises": "00000000-0000-0000-0001-000000000039",
+    "Standing Machine Calf Raises": "00000000-0000-0000-0001-000000000101",
+    "Standing Machine Hip Abductions": "00000000-0000-0000-0001-000000000110",
+    "Standing Reverse Curls": "00000000-0000-0000-0001-000000000018",
+    "Step-Ups": "00000000-0000-0000-0001-000000000125",
+    "Straight Arm Pull-Downs": "00000000-0000-0000-0001-000000000074",
+    "Sumo Deadlifts": "00000000-0000-0000-0001-000000000082",
+    "Supported T-Bar Rows": "00000000-0000-0000-0001-000000000081",
+    "T-Bar Rows": "00000000-0000-0000-0001-000000000080",
+    "Trap Bar Deadlifts": "00000000-0000-0000-0001-000000000083",
+    "Trap Bar Shrugs": "00000000-0000-0000-0001-000000000086",
+    "Tricep Kickbacks": "00000000-0000-0000-0001-000000000029",
+    "Tricep Pushdowns": "00000000-0000-0000-0001-000000000023",
+    "Upright Rows": "00000000-0000-0000-0001-000000000054",
+    "Weighted Dips": "00000000-0000-0000-0001-000000000007",
+    "Wide Grip Seated Rows": "00000000-0000-0000-0001-000000000076",
+    "Wrist Curls": "00000000-0000-0000-0001-000000000020",
+}
 
 # Default exercise names that match what the iOS app creates (isCustom=False).
-# These get specific icons via the suggestedIcon() logic; all others get LiftTheBullIcon.
+# These are the 5 fundamentals + Pull Ups + Weighted Dips + Barbell Curls.
 DEFAULT_EXERCISE_NAMES = {
-    "Deadlift", "Squat", "Bench Press", "Overhead Press",
-    "Barbell Row", "Pull Ups", "Dips", "Barbell Curls",
+    "Deadlifts", "Squats", "Bench Press", "Overhead Press",
+    "Barbell Rows", "Pull Ups", "Weighted Dips", "Barbell Curls",
 }
 
 # Icon mapping mirroring IconCarouselPicker.suggestedIcon(for:) on iOS.
-# Keywords are checked in order; first match wins. Fallback is LiftTheBullIcon.
+# Exact name matches first, then keyword fallbacks. First match wins.
 def suggested_icon(name: str) -> str:
     lowered = name.lower()
+
+    # Exact / specific name matches (arms)
+    exact_matches = {
+        "dumbbell curls": "DumbbellCurlsIcon",
+        "concentration curls": "ConcentrationCurlsIcon",
+        "incline dumbbell curls": "InclineDumbbellCurlsIcon",
+        "hammer curls": "HammerCurlsIcon",
+        "low pulley curls": "LowPulleyCurlsIcon",
+        "high pulley curls": "HighPulleyCurlsIcon",
+        "machine curls": "MachineCurlsIcon",
+        "preacher curls": "PreacherCurlsIcon",
+        "standing reverse curls": "StandingReverseCurlsIcon",
+        "seated reverse curls": "SeatedReverseCurlsIcon",
+        "wrist curls": "WristCurlsIcon",
+        "finger curls": "FingerCurlsIcon",
+        "reverse barbell curls": "ReverseBarbellCurlsIcon",
+        "tricep pushdowns": "TricepPushdownsIcon",
+        "reverse tricep pushdowns": "ReverseTricepPushdownsIcon",
+        "standing cable overhead tricep extensions": "StandingCableOverheadTricepExtensionsIcon",
+        "lying barbell tricep extensions": "LyingBarbellTricepExtensionsIcon",
+        "lying dumbbell tricep extensions": "LyingDumbbellTricepExtensionsIcon",
+        "one-arm overhead dumbbell tricep extensions": "OneArmOverheadDumbbellTricepExtensionsIcon",
+        "tricep kickbacks": "TricepKickbacksIcon",
+        "seated dumbbell tricep extensions": "SeatedDumbbellTricepExtensionsIcon",
+        "seated ez-bar tricep extensions": "SeatedEZBarTricepExtensionsIcon",
+    }
+    if lowered in exact_matches:
+        return exact_matches[lowered]
+
+    # Generic keyword matches
     if "overhead" in lowered and "press" in lowered:
         return "OverheadPressIcon"
     if "bench" in lowered:
@@ -77,148 +242,312 @@ def suggested_icon(name: str) -> str:
         return "CurlsIcon"
     return "LiftTheBullIcon"
 
+
 # (name, loadType, movementType, base_1rm, peak_1rm)
+# Names match Exercise.builtInTemplates exactly. Load types and movement types
+# also match. Custom exercises (not in builtInTemplates) use isCustom=True.
 EXERCISE_CATALOG = [
-    # Barbell — Push
-    ("Bench Press", "Barbell", "Push", 185, 265),
-    ("Incline Bench Press", "Barbell", "Push", 155, 225),
-    ("Overhead Press", "Barbell", "Push", 115, 165),
-    ("Close-Grip Bench Press", "Barbell", "Push", 155, 225),
-    ("Push Press", "Barbell", "Push", 135, 195),
-    ("Floor Press", "Barbell", "Push", 165, 240),
-    # Barbell — Pull
-    ("Barbell Row", "Barbell", "Pull", 155, 235),
-    ("Pendlay Row", "Barbell", "Pull", 145, 215),
-    ("T-Bar Row", "Barbell", "Pull", 135, 205),
-    ("Barbell Curls", "Barbell", "Pull", 75, 110),
-    ("Barbell Shrug", "Barbell", "Pull", 185, 315),
-    # Barbell — Squat
-    ("Squat", "Barbell", "Squat", 225, 365),
-    ("Front Squat", "Barbell", "Squat", 185, 295),
-    ("Pause Squat", "Barbell", "Squat", 195, 305),
-    ("Box Squat", "Barbell", "Squat", 205, 315),
-    ("Zercher Squat", "Barbell", "Squat", 155, 245),
-    # Barbell — Hinge
-    ("Deadlift", "Barbell", "Hinge", 275, 425),
-    ("Romanian Deadlift", "Barbell", "Hinge", 205, 315),
-    ("Sumo Deadlift", "Barbell", "Hinge", 265, 405),
-    ("Stiff-Leg Deadlift", "Barbell", "Hinge", 185, 285),
-    ("Hip Thrust", "Barbell", "Hinge", 225, 365),
-    ("Good Morning", "Barbell", "Hinge", 135, 205),
-    # Barbell — Core
-    ("Barbell Rollout", "Barbell", "Core", 45, 75),
-    ("Landmine Rotation", "Barbell", "Core", 55, 85),
-    # Barbell — Other
-    ("Power Clean", "Barbell", "Other", 155, 225),
-    ("Hang Clean", "Barbell", "Other", 145, 215),
-    ("Clean and Jerk", "Barbell", "Other", 155, 225),
-    ("Snatch", "Barbell", "Other", 115, 175),
-    ("Barbell Lunge", "Barbell", "Other", 115, 185),
-    ("Barbell Step-Up", "Barbell", "Other", 95, 155),
-    ("Viking Press", "Barbell", "Other", 135, 205),
-    ("Barbell Calf Raise", "Barbell", "Other", 185, 275),
-    # Single Load — Push
-    ("Dips", "Single Load", "Push", 45, 90),
-    ("Dumbbell Bench Press", "Single Load", "Push", 70, 100),
-    ("Dumbbell Shoulder Press", "Single Load", "Push", 50, 75),
-    ("Dumbbell Incline Press", "Single Load", "Push", 60, 90),
-    ("Cable Fly", "Single Load", "Push", 30, 55),
-    ("Lateral Raise", "Single Load", "Push", 20, 35),
-    ("Tricep Pushdown", "Single Load", "Push", 50, 80),
-    ("Overhead Tricep Extension", "Single Load", "Push", 40, 65),
-    ("Machine Chest Press", "Single Load", "Push", 140, 220),
-    # Single Load — Pull
-    ("Pull Ups", "Single Load", "Pull", 0, 45),
-    ("Dumbbell Row", "Single Load", "Pull", 70, 110),
-    ("Cable Row", "Single Load", "Pull", 120, 190),
-    ("Lat Pulldown", "Single Load", "Pull", 130, 200),
-    ("Face Pull", "Single Load", "Pull", 40, 65),
-    ("Dumbbell Curl", "Single Load", "Pull", 30, 50),
-    ("Hammer Curl", "Single Load", "Pull", 35, 55),
-    ("Cable Curl", "Single Load", "Pull", 40, 65),
-    ("Machine Row", "Single Load", "Pull", 130, 200),
-    # Single Load — Squat
-    ("Goblet Squat", "Single Load", "Squat", 60, 100),
-    ("Leg Press", "Single Load", "Squat", 360, 580),
-    ("Leg Extension", "Single Load", "Squat", 100, 160),
-    ("Bulgarian Split Squat", "Single Load", "Squat", 50, 80),
-    # Single Load — Hinge
-    ("Dumbbell RDL", "Single Load", "Hinge", 60, 100),
-    ("Leg Curl", "Single Load", "Hinge", 80, 130),
-    ("Cable Pull-Through", "Single Load", "Hinge", 60, 100),
-    ("Kettlebell Swing", "Single Load", "Hinge", 53, 88),
-    # Single Load — Core
-    ("Cable Crunch", "Single Load", "Core", 80, 130),
-    ("Cable Woodchop", "Single Load", "Core", 40, 65),
-    ("Dumbbell Side Bend", "Single Load", "Core", 50, 80),
-    # Single Load — Other
-    ("Dumbbell Lunge", "Single Load", "Other", 50, 80),
-    ("Machine Calf Raise", "Single Load", "Other", 160, 260),
-    ("Dumbbell Shrug", "Single Load", "Other", 70, 110),
-    ("Reverse Fly", "Single Load", "Other", 20, 35),
-    ("Machine Lateral Raise", "Single Load", "Other", 60, 100),
-    ("Wrist Curl", "Single Load", "Other", 30, 50),
+    # ── Barbell — Push ──
+    ("Bench Press",                "Barbell",                     "Push",  185, 265),
+    ("Incline Bench Press",        "Barbell",                     "Push",  155, 225),
+    ("Overhead Press",             "Barbell",                     "Push",  115, 165),
+    ("Close Grip Bench Press",     "Barbell",                     "Push",  155, 225),
+    ("Decline Bench Press",        "Barbell",                     "Push",  165, 240),
+    ("Back Presses",               "Barbell",                     "Push",  120, 175),
+    ("Seated Front Presses",       "Barbell",                     "Push",  105, 155),
+    ("Barbell Front Raises",       "Barbell",                     "Push",  55,  85),
+    ("Landmine Press",             "Barbell",                     "Push",  135, 205),
+    # ── Barbell — Pull ──
+    ("Barbell Rows",               "Barbell",                     "Pull",  155, 235),
+    ("Pendlay Rows",               "Barbell",                     "Pull",  145, 215),
+    ("T-Bar Rows",                 "Barbell",                     "Pull",  135, 205),
+    ("Supported T-Bar Rows",       "Barbell",                     "Pull",  130, 195),
+    ("Barbell Curls",              "Barbell",                     "Pull",  75,  110),
+    ("Reverse Barbell Curls",      "Barbell",                     "Pull",  50,  80),
+    ("EZ-Bar Curls",               "Barbell",                     "Pull",  65,  100),
+    ("Barbell Shrugs",             "Barbell",                     "Pull",  185, 315),
+    ("Upright Rows",               "Barbell",                     "Pull",  85,  135),
+    ("Close Grip Upright Rows",    "Barbell",                     "Pull",  80,  125),
+    ("Barbell Pullovers",          "Barbell",                     "Pull",  55,  85),
+    ("Trap Bar Shrugs",            "Barbell",                     "Pull",  195, 325),
+    # ── Barbell — Squat ──
+    ("Squats",                     "Barbell",                     "Squat", 225, 365),
+    ("Front Squats",               "Barbell",                     "Squat", 185, 295),
+    ("Box Squats",                 "Barbell",                     "Squat", 205, 315),
+    ("Barbell Lunges",             "Barbell",                     "Squat", 115, 185),
+    # ── Barbell — Hinge ──
+    ("Deadlifts",                  "Barbell",                     "Hinge", 275, 425),
+    ("Romanian Deadlifts",         "Barbell",                     "Hinge", 205, 315),
+    ("Sumo Deadlifts",             "Barbell",                     "Hinge", 265, 405),
+    ("Trap Bar Deadlifts",         "Barbell",                     "Hinge", 265, 405),
+    ("Good Mornings",              "Barbell",                     "Hinge", 135, 205),
+    ("Hip Thrusts",                "Barbell",                     "Hinge", 225, 365),
+    ("Glute Bridges",              "Barbell",                     "Hinge", 205, 335),
+    ("Power Cleans",               "Barbell",                     "Hinge", 155, 225),
+    # ── Barbell — Push (tricep extensions) ──
+    ("Lying Barbell Tricep Extensions",  "Barbell",               "Push",  65,  100),
+    ("Seated EZ-Bar Tricep Extensions",  "Barbell",               "Push",  55,  85),
+    # ── Bodyweight + Single Load — Push ──
+    ("Weighted Dips",              "Bodyweight + Single Load",    "Push",  45,  90),
+    ("Push-Ups",                   "Bodyweight + Single Load",    "Push",  0,   45),
+    # ── Bodyweight + Single Load — Pull ──
+    ("Pull Ups",                   "Bodyweight + Single Load",    "Pull",  0,   45),
+    ("Chin-Ups",                   "Bodyweight + Single Load",    "Pull",  0,   45),
+    # ── Bodyweight + Single Load — Core ──
+    ("Hanging Leg Raises",         "Bodyweight + Single Load",    "Core",  0,   25),
+    ("Crunches",                   "Bodyweight + Single Load",    "Core",  0,   25),
+    ("Sit-Ups",                    "Bodyweight + Single Load",    "Core",  0,   25),
+    ("Leg Raises",                 "Bodyweight + Single Load",    "Core",  0,   25),
+    ("Ab Wheel Rollouts",         "Bodyweight + Single Load",    "Core",  0,   25),
+    # ── Single Load — Push ──
+    ("Dumbbell Bench Press",       "Single Load",                 "Push",  70,  100),
+    ("Incline Dumbbell Presses",   "Single Load",                 "Push",  60,  90),
+    ("Machine Bench Press",        "Single Load",                 "Push",  140, 220),
+    ("Seated Dumbbell Presses",    "Single Load",                 "Push",  50,  75),
+    ("Arnold Presses",             "Single Load",                 "Push",  45,  70),
+    ("Cable Flys",                 "Single Load",                 "Push",  30,  55),
+    ("Lateral Raises",             "Single Load",                 "Push",  20,  35),
+    ("Side Raises",                "Single Load",                 "Push",  18,  32),
+    ("Machine Lateral Raises",     "Single Load",                 "Push",  60,  100),
+    ("Alternating Front Raises",   "Single Load",                 "Push",  20,  35),
+    ("One Dumbbell Front Raises",  "Single Load",                 "Push",  25,  40),
+    ("Low Pulley Lateral Raises",  "Single Load",                 "Push",  15,  30),
+    ("Cable Lateral Raises",       "Single Load",                 "Push",  15,  30),
+    ("Tricep Pushdowns",           "Single Load",                 "Push",  50,  80),
+    ("Reverse Tricep Pushdowns",   "Single Load",                 "Push",  35,  60),
+    ("Standing Cable Overhead Tricep Extensions", "Single Load",  "Push",  40,  65),
+    ("Lying Dumbbell Tricep Extensions", "Single Load",           "Push",  25,  45),
+    ("One-Arm Overhead Dumbbell Tricep Extensions", "Single Load","Push",  20,  35),
+    ("Tricep Kickbacks",           "Single Load",                 "Push",  15,  30),
+    ("Seated Dumbbell Tricep Extensions", "Single Load",          "Push",  30,  50),
+    ("Dumbbell Flys",              "Single Load",                 "Push",  30,  50),
+    ("Incline Dumbbell Flys",      "Single Load",                 "Push",  25,  45),
+    ("Pec Deck Flys",              "Single Load",                 "Push",  100, 160),
+    ("High Pulley Neck Extensions","Single Load",                 "Push",  30,  50),
+    # ── Single Load — Pull ──
+    ("Cable Rows",                 "Single Load",                 "Pull",  120, 190),
+    ("Close Grip Seated Rows",     "Single Load",                 "Pull",  110, 175),
+    ("Wide Grip Seated Rows",      "Single Load",                 "Pull",  100, 165),
+    ("Single Arm Dumbbell Rows",   "Single Load",                 "Pull",  70,  110),
+    ("Bent Over Dumbbell Rows",    "Single Load",                 "Pull",  55,  90),
+    ("Lat Pull-Downs",             "Single Load",                 "Pull",  130, 200),
+    ("Close Grip Lat Pull-Downs",  "Single Load",                 "Pull",  120, 185),
+    ("Straight Arm Pull-Downs",    "Single Load",                 "Pull",  50,  80),
+    ("Face Pulls",                 "Single Load",                 "Pull",  40,  65),
+    ("Dumbbell Curls",             "Single Load",                 "Pull",  30,  50),
+    ("Concentration Curls",        "Single Load",                 "Pull",  20,  35),
+    ("Incline Dumbbell Curls",     "Single Load",                 "Pull",  20,  35),
+    ("Hammer Curls",               "Single Load",                 "Pull",  35,  55),
+    ("Low Pulley Curls",           "Single Load",                 "Pull",  30,  50),
+    ("High Pulley Curls",          "Single Load",                 "Pull",  25,  40),
+    ("Machine Curls",              "Single Load",                 "Pull",  40,  65),
+    ("Preacher Curls",             "Single Load",                 "Pull",  35,  55),
+    ("Standing Reverse Curls",     "Single Load",                 "Pull",  25,  40),
+    ("Seated Reverse Curls",       "Single Load",                 "Pull",  20,  35),
+    ("Finger Curls",               "Single Load",                 "Pull",  25,  45),
+    ("Spider Curls",               "Single Load",                 "Pull",  20,  35),
+    ("Wrist Curls",                "Single Load",                 "Pull",  30,  50),
+    ("Dumbbell Pullovers",         "Single Load",                 "Pull",  40,  65),
+    ("Rear Delt Flys",             "Single Load",                 "Pull",  20,  35),
+    ("Cable Y Raises",             "Single Load",                 "Pull",  15,  30),
+    ("Bent Over Lateral Raises",   "Single Load",                 "Pull",  15,  28),
+    ("Pec Deck Rear Delt Laterals","Single Load",                 "Pull",  50,  85),
+    ("Pulley External Arm Rotations", "Single Load",              "Pull",  15,  25),
+    ("Low Pulley Bent-Over Lateral Raises", "Single Load",        "Pull",  15,  28),
+    ("High Pulley Lateral Extensions", "Single Load",             "Pull",  25,  45),
+    ("Dumbbell Shrugs",            "Single Load",                 "Pull",  70,  110),
+    ("Machine Shrugs",             "Single Load",                 "Pull",  120, 190),
+    ("High Pulley Neck Pulls",     "Single Load",                 "Pull",  30,  50),
+    # ── Single Load — Squat ──
+    ("Bulgarian Split Squats",     "Single Load",                 "Squat", 50,  80),
+    ("Goblet Squats",              "Single Load",                 "Squat", 60,  100),
+    ("Leg Press",                  "Single Load",                 "Squat", 360, 580),
+    ("Leg Extensions",             "Single Load",                 "Squat", 100, 160),
+    ("Dumbbell Squats",            "Single Load",                 "Squat", 55,  90),
+    ("Power Squats",               "Single Load",                 "Squat", 180, 280),
+    ("Hack Squats",                "Single Load",                 "Squat", 180, 280),
+    ("Dumbbell Lunges",            "Single Load",                 "Squat", 50,  80),
+    ("Step-Ups",                   "Single Load",                 "Squat", 40,  70),
+    # ── Single Load — Hinge ──
+    ("Back Extensions",            "Single Load",                 "Hinge", 25,  50),
+    ("Machine Back Extensions",    "Single Load",                 "Hinge", 70,  120),
+    ("Lying Leg Curls",            "Single Load",                 "Hinge", 80,  130),
+    ("Seated Leg Curls",           "Single Load",                 "Hinge", 80,  130),
+    ("Machine Hip Extensions",     "Single Load",                 "Hinge", 80,  130),
+    ("Standing Calf Raises",       "Single Load",                 "Other", 70,  120),
+    # ── Single Load — Core ──
+    ("Cable Crunches",             "Single Load",                 "Core",  80,  130),
+    ("Machine Crunches",           "Single Load",                 "Core",  60,  100),
+    ("Dumbbell Side Bends",        "Single Load",                 "Core",  50,  80),
+    ("Cable Woodchops",            "Single Load",                 "Core",  40,  65),
+    ("Machine Torso Rotations",    "Single Load",                 "Core",  40,  65),
+    ("Pallof Press",               "Single Load",                 "Core",  30,  50),
+    # ── Single Load — Other ──
+    ("Standing Machine Calf Raises", "Single Load",               "Other", 160, 260),
+    ("Donkey Calf Raises",         "Single Load",                 "Other", 160, 260),
+    ("Seated Machine Calf Raises", "Single Load",                 "Other", 100, 170),
+    ("Cable Kickbacks",            "Single Load",                 "Other", 25,  45),
+    ("Cable Hip Adductions",       "Single Load",                 "Other", 30,  50),
+    ("Seated Machine Hip Adductions", "Single Load",              "Other", 80,  130),
+    ("Cable Hip Abductions",       "Single Load",                 "Other", 30,  50),
+    ("Standing Machine Hip Abductions", "Single Load",            "Other", 70,  110),
+    ("Seated Machine Hip Abductions", "Single Load",              "Other", 70,  110),
+    ("Farmer's Carries",           "Single Load",                 "Other", 70,  110),
 ]
 
 
-# ─── Sequence Templates ───────────────────────────────────────────────────────
+# ─── Set Plan Templates ──────────────────────────────────────────────────────
 
-# (name, list of exercise name references)
-SEQUENCE_TEMPLATES = [
-    # Full Body (Phase 1)
-    ("Full Body A", ["Squat", "Bench Press", "Barbell Row", "Overhead Press", "Barbell Curls", "Cable Crunch"]),
-    ("Full Body B", ["Deadlift", "Incline Bench Press", "Lat Pulldown", "Dumbbell Shoulder Press", "Hammer Curl", "Cable Woodchop"]),
-    ("Full Body C", ["Front Squat", "Close-Grip Bench Press", "Dumbbell Row", "Lateral Raise", "Leg Curl", "Dumbbell Side Bend"]),
+# Matches SetPlan.builtInTemplates exactly (16 plans with deterministic UUIDs)
+SET_PLAN_TEMPLATES = [
+    ("00000000-0000-0000-0000-000000000101", "Standard",            ["easy", "easy", "moderate", "moderate", "hard", "pr"],                        "Progressive warmup to PR attempt"),
+    ("00000000-0000-0000-0000-000000000102", "Grease the Groove",   ["easy", "easy", "easy", "easy", "moderate", "moderate", "moderate", "hard"],  "High volume, low intensity"),
+    ("00000000-0000-0000-0000-000000000103", "Maintenance",         ["moderate", "moderate", "hard"],                                              "Moderate volume, hold strength"),
+    ("00000000-0000-0000-0000-000000000104", "Deload",              ["easy", "easy", "easy"],                                                      "Recovery phase"),
+    ("00000000-0000-0000-0000-000000000105", "Pyramid",             ["easy", "moderate", "hard", "pr", "hard", "moderate"],                        "Build up then back off"),
+    ("00000000-0000-0000-0000-000000000106", "Top Set + Backoff",   ["easy", "moderate", "hard", "pr", "moderate", "moderate"],                    "Work up to max, drop intensity"),
+    ("00000000-0000-0000-0000-000000000107", "Reverse Pyramid",     ["hard", "pr", "hard", "moderate", "moderate", "easy"],                        "Heaviest set first, then reduce"),
+    ("00000000-0000-0000-0000-000000000108", "Wave Loading",        ["moderate", "hard", "pr", "moderate", "hard", "pr"],                          "Ascending waves of intensity"),
+    ("00000000-0000-0000-0000-000000000109", "Cluster Sets",        ["hard", "hard", "hard", "hard", "hard"],                                      "Short rest between heavy singles/doubles"),
+    ("00000000-0000-0000-0000-000000000110", "Rest-Pause",          ["hard", "pr", "hard", "hard"],                                                "Near-failure set, brief rest, continue"),
+    ("00000000-0000-0000-0000-000000000111", "Drop Sets",           ["pr", "hard", "moderate", "easy"],                                            "Reduce weight each set, rep to failure"),
+    ("00000000-0000-0000-0000-000000000112", "Ladders",             ["easy", "easy", "moderate", "moderate", "hard", "moderate", "hard", "pr"],     "Ascending rep ladder pattern"),
+    ("00000000-0000-0000-0000-000000000113", "Pause Reps",          ["moderate", "moderate", "hard", "hard"],                                      "Paused reps to build positional strength"),
+    ("00000000-0000-0000-0000-000000000114", "Speed / Dynamic",     ["easy", "easy", "easy", "easy", "easy", "easy", "easy", "easy"],              "Submaximal weight, max velocity"),
+    ("00000000-0000-0000-0000-000000000115", "EMOM",                ["moderate", "moderate", "moderate", "moderate", "moderate", "moderate"],       "Every minute on the minute"),
+    ("00000000-0000-0000-0000-000000000116", "Technique",           ["easy", "easy", "easy", "moderate", "moderate"],                              "Light load, focus on form"),
+]
+
+
+# ─── Exercise Groups ─────────────────────────────────────────────────────────
+
+# Matches ExerciseGroup.builtInTemplates exactly (6 groups with deterministic UUIDs).
+# Exercise IDs reference the APP's built-in UUIDs (segment 0001).
+EXERCISE_GROUPS = [
+    {
+        "groupId": "00000000-0000-0000-0002-000000000001",
+        "name": "Strength Tier",
+        "exerciseIds": [
+            "00000000-0000-0000-0001-000000000001",  # Deadlifts
+            "00000000-0000-0000-0001-000000000002",  # Squats
+            "00000000-0000-0000-0001-000000000003",  # Bench Press
+            "00000000-0000-0000-0001-000000000005",  # Barbell Rows
+            "00000000-0000-0000-0001-000000000004",  # Overhead Press
+        ],
+        "sortOrder": 0,
+    },
+    {
+        "groupId": "00000000-0000-0000-0002-000000000002",
+        "name": "Deadlifts+",
+        "exerciseIds": [
+            "00000000-0000-0000-0001-000000000001",  # Deadlifts
+            "00000000-0000-0000-0001-000000000044",  # Front Squats
+            "00000000-0000-0000-0001-000000000045",  # Back Extensions
+            "00000000-0000-0000-0001-000000000046",  # Hanging Leg Raises
+        ],
+        "sortOrder": 1,
+    },
+    {
+        "groupId": "00000000-0000-0000-0002-000000000003",
+        "name": "Squats+",
+        "exerciseIds": [
+            "00000000-0000-0000-0001-000000000002",  # Squats
+            "00000000-0000-0000-0001-000000000035",  # Bulgarian Split Squats
+            "00000000-0000-0000-0001-000000000009",  # Romanian Deadlifts
+            "00000000-0000-0000-0001-000000000039",  # Standing Calf Raises
+        ],
+        "sortOrder": 2,
+    },
+    {
+        "groupId": "00000000-0000-0000-0002-000000000004",
+        "name": "Bench Press+",
+        "exerciseIds": [
+            "00000000-0000-0000-0001-000000000003",  # Bench Press
+            "00000000-0000-0000-0001-000000000007",  # Weighted Dips
+            "00000000-0000-0000-0001-000000000033",  # Dumbbell Flys
+            "00000000-0000-0000-0001-000000000032",  # Lateral Raises
+        ],
+        "sortOrder": 3,
+    },
+    {
+        "groupId": "00000000-0000-0000-0002-000000000005",
+        "name": "Barbell Rows+",
+        "exerciseIds": [
+            "00000000-0000-0000-0001-000000000005",  # Barbell Rows
+            "00000000-0000-0000-0001-000000000006",  # Pull Ups
+            "00000000-0000-0000-0001-000000000008",  # Barbell Curls
+            "00000000-0000-0000-0001-000000000038",  # Dumbbell Pullovers
+        ],
+        "sortOrder": 4,
+    },
+    {
+        "groupId": "00000000-0000-0000-0002-000000000006",
+        "name": "OHP+",
+        "exerciseIds": [
+            "00000000-0000-0000-0001-000000000004",  # Overhead Press
+            "00000000-0000-0000-0001-000000000041",  # Close Grip Bench Press
+            "00000000-0000-0000-0001-000000000042",  # Rear Delt Flys
+            "00000000-0000-0000-0001-000000000043",  # Cable Y Raises
+        ],
+        "sortOrder": 5,
+    },
+]
+
+
+_PLACEHOLDER_SEQ = [
+    ("Full Body A", ["Squats", "Bench Press", "Barbell Rows", "Overhead Press", "Barbell Curls", "Cable Crunches"]),
+    ("Full Body B", ["Deadlifts", "Incline Bench Press", "Lat Pull-Downs", "Seated Dumbbell Presses", "Hammer Curls", "Cable Woodchops"]),
+    ("Full Body C", ["Front Squats", "Close Grip Bench Press", "Single Arm Dumbbell Rows", "Lateral Raises", "Lying Leg Curls", "Dumbbell Side Bends"]),
     # Push/Pull/Legs (Phase 2-3)
-    ("Push A", ["Bench Press", "Overhead Press", "Dips", "Dumbbell Incline Press", "Cable Fly", "Tricep Pushdown", "Lateral Raise"]),
-    ("Push B", ["Incline Bench Press", "Push Press", "Machine Chest Press", "Overhead Tricep Extension", "Lateral Raise", "Cable Fly"]),
-    ("Pull A", ["Barbell Row", "Pull Ups", "Face Pull", "Barbell Curls", "Hammer Curl", "Barbell Shrug"]),
-    ("Pull B", ["Pendlay Row", "Cable Row", "Dumbbell Row", "Cable Curl", "Dumbbell Curl", "Face Pull"]),
-    ("Legs Squat", ["Squat", "Front Squat", "Leg Press", "Leg Extension", "Bulgarian Split Squat", "Machine Calf Raise"]),
-    ("Legs Hinge", ["Deadlift", "Romanian Deadlift", "Leg Curl", "Hip Thrust", "Cable Pull-Through", "Machine Calf Raise"]),
+    ("Push A", ["Bench Press", "Overhead Press", "Weighted Dips", "Incline Dumbbell Presses", "Cable Flys", "Tricep Pushdowns", "Lateral Raises"]),
+    ("Push B", ["Incline Bench Press", "Back Presses", "Machine Bench Press", "Standing Cable Overhead Tricep Extensions", "Lateral Raises", "Cable Flys"]),
+    ("Pull A", ["Barbell Rows", "Pull Ups", "Face Pulls", "Barbell Curls", "Hammer Curls", "Barbell Shrugs"]),
+    ("Pull B", ["Pendlay Rows", "Cable Rows", "Single Arm Dumbbell Rows", "Low Pulley Curls", "Dumbbell Curls", "Face Pulls"]),
+    ("Legs Squat", ["Squats", "Front Squats", "Leg Press", "Leg Extensions", "Bulgarian Split Squats", "Standing Machine Calf Raises"]),
+    ("Legs Hinge", ["Deadlifts", "Romanian Deadlifts", "Lying Leg Curls", "Hip Thrusts", "Back Extensions", "Standing Machine Calf Raises"]),
     # Specialization (Phase 3)
-    ("Bench Specialization", ["Bench Press", "Close-Grip Bench Press", "Floor Press", "Dumbbell Bench Press", "Tricep Pushdown"]),
-    ("Squat Specialization", ["Squat", "Pause Squat", "Box Squat", "Leg Press", "Leg Extension"]),
-    ("Deadlift Specialization", ["Deadlift", "Sumo Deadlift", "Stiff-Leg Deadlift", "Barbell Row", "Leg Curl"]),
-    ("OHP Specialization", ["Overhead Press", "Push Press", "Viking Press", "Dumbbell Shoulder Press", "Lateral Raise"]),
-    ("Back Specialization", ["Barbell Row", "T-Bar Row", "Machine Row", "Lat Pulldown", "Face Pull"]),
-    ("Arm Day", ["Barbell Curls", "Hammer Curl", "Cable Curl", "Tricep Pushdown", "Overhead Tricep Extension"]),
-    ("Olympic Lifting", ["Power Clean", "Hang Clean", "Clean and Jerk", "Snatch", "Front Squat"]),
+    ("Bench Specialization", ["Bench Press", "Close Grip Bench Press", "Decline Bench Press", "Dumbbell Bench Press", "Tricep Pushdowns"]),
+    ("Squat Specialization", ["Squats", "Front Squats", "Box Squats", "Leg Press", "Leg Extensions"]),
+    ("Deadlift Specialization", ["Deadlifts", "Sumo Deadlifts", "Romanian Deadlifts", "Barbell Rows", "Lying Leg Curls"]),
+    ("OHP Specialization", ["Overhead Press", "Back Presses", "Landmine Press", "Seated Dumbbell Presses", "Lateral Raises"]),
+    ("Back Specialization", ["Barbell Rows", "T-Bar Rows", "Close Grip Seated Rows", "Lat Pull-Downs", "Face Pulls"]),
+    ("Arm Day", ["Barbell Curls", "Hammer Curls", "Low Pulley Curls", "Tricep Pushdowns", "Standing Cable Overhead Tricep Extensions"]),
+    ("Olympic Lifting", ["Power Cleans", "Front Squats", "Overhead Press", "Barbell Rows", "Romanian Deadlifts"]),
     # Extra variety
-    ("Upper Body A", ["Bench Press", "Barbell Row", "Overhead Press", "Pull Ups", "Barbell Curls", "Dips"]),
-    ("Upper Body B", ["Incline Bench Press", "Pendlay Row", "Dumbbell Shoulder Press", "Cable Row", "Hammer Curl", "Cable Fly"]),
-    ("Lower Body A", ["Squat", "Romanian Deadlift", "Leg Press", "Leg Curl", "Machine Calf Raise"]),
-    ("Lower Body B", ["Deadlift", "Front Squat", "Bulgarian Split Squat", "Leg Extension", "Machine Calf Raise"]),
-    ("Push Hypertrophy", ["Machine Chest Press", "Dumbbell Incline Press", "Cable Fly", "Machine Lateral Raise", "Overhead Tricep Extension"]),
-    ("Pull Hypertrophy", ["Machine Row", "Lat Pulldown", "Cable Row", "Face Pull", "Dumbbell Curl", "Reverse Fly"]),
-    ("Legs Hypertrophy", ["Leg Press", "Goblet Squat", "Leg Extension", "Leg Curl", "Machine Calf Raise", "Cable Pull-Through"]),
-    ("Core Focus", ["Cable Crunch", "Cable Woodchop", "Dumbbell Side Bend", "Barbell Rollout", "Landmine Rotation"]),
-    ("Posterior Chain", ["Deadlift", "Good Morning", "Hip Thrust", "Leg Curl", "Kettlebell Swing"]),
-    ("Full Body D", ["Squat", "Overhead Press", "Barbell Row", "Dumbbell RDL", "Barbell Curls"]),
-    ("Full Body E", ["Deadlift", "Bench Press", "Lat Pulldown", "Goblet Squat", "Cable Crunch"]),
-    ("Push C", ["Close-Grip Bench Press", "Dumbbell Shoulder Press", "Machine Chest Press", "Lateral Raise", "Tricep Pushdown"]),
-    ("Pull C", ["T-Bar Row", "Lat Pulldown", "Dumbbell Row", "Face Pull", "Barbell Curls", "Dumbbell Shrug"]),
-    ("Legs C", ["Zercher Squat", "Stiff-Leg Deadlift", "Leg Press", "Leg Curl", "Dumbbell Lunge", "Machine Calf Raise"]),
-    ("Strength Test Day", ["Squat", "Bench Press", "Deadlift"]),
-    ("Accessory Day", ["Lateral Raise", "Face Pull", "Hammer Curl", "Tricep Pushdown", "Cable Crunch", "Machine Calf Raise"]),
-    ("Power Day", ["Power Clean", "Push Press", "Box Squat", "Barbell Row"]),
-    ("GPP Day", ["Kettlebell Swing", "Goblet Squat", "Dumbbell Lunge", "Cable Woodchop", "Machine Calf Raise"]),
-    ("Pressing Focus", ["Bench Press", "Overhead Press", "Floor Press", "Dumbbell Bench Press", "Dumbbell Shoulder Press"]),
-    ("Rowing Focus", ["Barbell Row", "Pendlay Row", "Cable Row", "Machine Row", "Dumbbell Row"]),
-    ("Leg Day Heavy", ["Squat", "Deadlift", "Leg Press", "Hip Thrust"]),
-    ("Recovery Day", ["Cable Crunch", "Face Pull", "Lateral Raise", "Wrist Curl", "Machine Calf Raise"]),
-    ("Volume Bench", ["Bench Press", "Incline Bench Press", "Close-Grip Bench Press", "Dumbbell Bench Press"]),
-    ("Volume Squat", ["Squat", "Front Squat", "Pause Squat", "Goblet Squat"]),
-    ("Push Pull A", ["Bench Press", "Barbell Row", "Overhead Press", "Lat Pulldown", "Tricep Pushdown", "Barbell Curls"]),
-    ("Push Pull B", ["Incline Bench Press", "Cable Row", "Dumbbell Shoulder Press", "Face Pull", "Cable Fly", "Hammer Curl"]),
-    ("Athletic Day", ["Power Clean", "Box Squat", "Push Press", "Barbell Lunge", "Barbell Step-Up", "Kettlebell Swing"]),
-    ("Isolation Focus", ["Lateral Raise", "Reverse Fly", "Leg Extension", "Leg Curl", "Dumbbell Curl", "Tricep Pushdown"]),
-    ("Compound Only", ["Squat", "Bench Press", "Deadlift", "Overhead Press", "Barbell Row"]),
-    ("Dumbbell Day", ["Dumbbell Bench Press", "Dumbbell Row", "Dumbbell Shoulder Press", "Dumbbell RDL", "Dumbbell Curl", "Dumbbell Lunge"]),
-    ("Machine Day", ["Machine Chest Press", "Machine Row", "Leg Press", "Leg Extension", "Leg Curl", "Machine Calf Raise"]),
-    ("Cable Day", ["Cable Fly", "Cable Row", "Cable Curl", "Tricep Pushdown", "Cable Crunch", "Cable Pull-Through"]),
-    ("Barbell Complex", ["Power Clean", "Front Squat", "Overhead Press", "Barbell Row", "Romanian Deadlift"]),
-    ("Weak Point Day", ["Pause Squat", "Floor Press", "Pendlay Row", "Good Morning", "Cable Crunch", "Face Pull"]),
+    ("Upper Body A", ["Bench Press", "Barbell Rows", "Overhead Press", "Pull Ups", "Barbell Curls", "Weighted Dips"]),
+    ("Upper Body B", ["Incline Bench Press", "Pendlay Rows", "Seated Dumbbell Presses", "Cable Rows", "Hammer Curls", "Cable Flys"]),
+    ("Lower Body A", ["Squats", "Romanian Deadlifts", "Leg Press", "Lying Leg Curls", "Standing Machine Calf Raises"]),
+    ("Lower Body B", ["Deadlifts", "Front Squats", "Bulgarian Split Squats", "Leg Extensions", "Standing Machine Calf Raises"]),
+    ("Push Hypertrophy", ["Machine Bench Press", "Incline Dumbbell Presses", "Cable Flys", "Machine Lateral Raises", "Standing Cable Overhead Tricep Extensions"]),
+    ("Pull Hypertrophy", ["Close Grip Seated Rows", "Lat Pull-Downs", "Cable Rows", "Face Pulls", "Dumbbell Curls", "Rear Delt Flys"]),
+    ("Legs Hypertrophy", ["Leg Press", "Goblet Squats", "Leg Extensions", "Lying Leg Curls", "Standing Machine Calf Raises", "Back Extensions"]),
+    ("Core Focus", ["Cable Crunches", "Cable Woodchops", "Dumbbell Side Bends", "Ab Wheel Rollouts", "Pallof Press"]),
+    ("Posterior Chain", ["Deadlifts", "Good Mornings", "Hip Thrusts", "Lying Leg Curls", "Back Extensions"]),
+    ("Full Body D", ["Squats", "Overhead Press", "Barbell Rows", "Romanian Deadlifts", "Barbell Curls"]),
+    ("Full Body E", ["Deadlifts", "Bench Press", "Lat Pull-Downs", "Goblet Squats", "Cable Crunches"]),
+    ("Push C", ["Close Grip Bench Press", "Seated Dumbbell Presses", "Machine Bench Press", "Lateral Raises", "Tricep Pushdowns"]),
+    ("Pull C", ["T-Bar Rows", "Lat Pull-Downs", "Single Arm Dumbbell Rows", "Face Pulls", "Barbell Curls", "Dumbbell Shrugs"]),
+    ("Legs C", ["Box Squats", "Romanian Deadlifts", "Leg Press", "Lying Leg Curls", "Dumbbell Lunges", "Standing Machine Calf Raises"]),
+    ("Strength Test Day", ["Squats", "Bench Press", "Deadlifts"]),
+    ("Accessory Day", ["Lateral Raises", "Face Pulls", "Hammer Curls", "Tricep Pushdowns", "Cable Crunches", "Standing Machine Calf Raises"]),
+    ("Power Day", ["Power Cleans", "Back Presses", "Box Squats", "Barbell Rows"]),
+    ("GPP Day", ["Back Extensions", "Goblet Squats", "Dumbbell Lunges", "Cable Woodchops", "Standing Machine Calf Raises"]),
+    ("Pressing Focus", ["Bench Press", "Overhead Press", "Decline Bench Press", "Dumbbell Bench Press", "Seated Dumbbell Presses"]),
+    ("Rowing Focus", ["Barbell Rows", "Pendlay Rows", "Cable Rows", "Close Grip Seated Rows", "Single Arm Dumbbell Rows"]),
+    ("Leg Day Heavy", ["Squats", "Deadlifts", "Leg Press", "Hip Thrusts"]),
+    ("Recovery Day", ["Cable Crunches", "Face Pulls", "Lateral Raises", "Wrist Curls", "Standing Machine Calf Raises"]),
+    ("Volume Bench", ["Bench Press", "Incline Bench Press", "Close Grip Bench Press", "Dumbbell Bench Press"]),
+    ("Volume Squat", ["Squats", "Front Squats", "Box Squats", "Goblet Squats"]),
+    ("Push Pull A", ["Bench Press", "Barbell Rows", "Overhead Press", "Lat Pull-Downs", "Tricep Pushdowns", "Barbell Curls"]),
+    ("Push Pull B", ["Incline Bench Press", "Cable Rows", "Seated Dumbbell Presses", "Face Pulls", "Cable Flys", "Hammer Curls"]),
+    ("Athletic Day", ["Power Cleans", "Box Squats", "Back Presses", "Barbell Lunges", "Step-Ups", "Back Extensions"]),
+    ("Isolation Focus", ["Lateral Raises", "Rear Delt Flys", "Leg Extensions", "Lying Leg Curls", "Dumbbell Curls", "Tricep Pushdowns"]),
+    ("Compound Only", ["Squats", "Bench Press", "Deadlifts", "Overhead Press", "Barbell Rows"]),
+    ("Dumbbell Day", ["Dumbbell Bench Press", "Single Arm Dumbbell Rows", "Seated Dumbbell Presses", "Romanian Deadlifts", "Dumbbell Curls", "Dumbbell Lunges"]),
+    ("Machine Day", ["Machine Bench Press", "Close Grip Seated Rows", "Leg Press", "Leg Extensions", "Lying Leg Curls", "Standing Machine Calf Raises"]),
+    ("Cable Day", ["Cable Flys", "Cable Rows", "Low Pulley Curls", "Tricep Pushdowns", "Cable Crunches", "Back Extensions"]),
+    ("Barbell Complex", ["Power Cleans", "Front Squats", "Overhead Press", "Barbell Rows", "Romanian Deadlifts"]),
+    ("Weak Point Day", ["Front Squats", "Decline Bench Press", "Pendlay Rows", "Good Mornings", "Cable Crunches", "Face Pulls"]),
 ]
 
 
@@ -270,14 +599,19 @@ def get_table_name(suffix: str) -> str:
 # ─── Data Generation ──────────────────────────────────────────────────────────
 
 def generate_exercises(training_start):
-    """Generate exercise items from the catalog."""
+    """Generate exercise items from the catalog.
+
+    Uses the app's built-in UUIDs for exercises that match the iOS catalog,
+    so lift sets and e1RMs reference the same IDs the app expects.
+    """
     exercises = []
     exercise_map = {}  # name -> exerciseItemId
 
     created = training_start - timedelta(days=1)
 
     for i, (name, load_type, movement_type, base_1rm, peak_1rm) in enumerate(EXERCISE_CATALOG):
-        eid = det_uuid(f"exercise-{i}-{name}")
+        # Use the app's built-in UUID if this exercise exists in the catalog
+        eid = BUILTIN_EXERCISE_UUIDS.get(name, det_uuid(f"exercise-{i}-{name}"))
         exercise_map[name] = {
             "exerciseItemId": eid,
             "loadType": load_type,
@@ -285,7 +619,7 @@ def generate_exercises(training_start):
             "peak_1rm": peak_1rm,
         }
 
-        is_custom = name not in DEFAULT_EXERCISE_NAMES
+        is_custom = name not in BUILTIN_EXERCISE_UUIDS
         icon = suggested_icon(name)
 
         exercises.append({
@@ -299,7 +633,6 @@ def generate_exercises(training_start):
             "createdDatetime": ts_z(created + timedelta(minutes=i)),
             "lastModifiedDatetime": ts_z(created + timedelta(minutes=i)),
             "movementType": movement_type,
-            "setPlan": DEFAULT_SET_PLAN,
         })
 
     return exercises, exercise_map
@@ -417,8 +750,8 @@ def generate_lift_sets_and_e1rms(sessions, exercise_map, training_start):
     Each training day gets exactly 28 sets (16 on deload weeks), distributed
     evenly across the chosen exercises.
     """
-    SETS_PER_DAY = 28
-    DELOAD_SETS_PER_DAY = 16
+    SETS_PER_DAY = 56
+    DELOAD_SETS_PER_DAY = 28
 
     rng = random.Random(42)
 
@@ -480,22 +813,17 @@ def generate_lift_sets_and_e1rms(sessions, exercise_map, training_start):
                 # Vary intensity slightly per set (ramp up)
                 set_intensity = intensity * (0.92 + 0.08 * (s / max(1, num_sets - 1)))
                 weight = round_weight(current_1rm * set_intensity, load_type)
-                weight = max(5.0 if load_type == "Single Load" else 45.0, weight)
+
+                # Minimum weight depends on load type
+                if load_type == "Bodyweight + Single Load":
+                    weight = max(0.0, weight)
+                elif load_type == "Single Load":
+                    weight = max(5.0, weight)
+                else:  # Barbell
+                    weight = max(45.0, weight)
 
                 # Vary reps slightly per set
                 set_reps = max(1, reps + rng.randint(-1, 1))
-
-                # RIR based on intensity
-                if set_intensity >= 0.95:
-                    rir = 0
-                elif set_intensity >= 0.90:
-                    rir = rng.randint(0, 1)
-                elif set_intensity >= 0.85:
-                    rir = rng.randint(1, 2)
-                elif set_intensity >= 0.78:
-                    rir = rng.randint(2, 3)
-                else:
-                    rir = rng.randint(3, 4)
 
                 # Timestamps: spread sets across the session (~1 min apart)
                 set_dt = session_dt + timedelta(minutes=ex_idx * 8 + s * 2 + rng.randint(0, 1))
@@ -510,7 +838,6 @@ def generate_lift_sets_and_e1rms(sessions, exercise_map, training_start):
                     "createdTimezone": TIMEZONE,
                     "createdDatetime": ts_z(set_dt),
                     "lastModifiedDatetime": ts_z(set_dt),
-                    "rir": rir,
                 }
 
                 # isBaselineSet: first heavy compound of the session
@@ -573,6 +900,50 @@ def generate_sequences(exercise_map, training_start):
     return sequences
 
 
+def generate_set_plans():
+    """Generate all 16 built-in set plan templates matching the app."""
+    now = ts_z(datetime.now())
+    set_plans = []
+
+    for template_id, name, sequence, description in SET_PLAN_TEMPLATES:
+        set_plans.append({
+            "userId": POWER_USER_ID,
+            "templateId": template_id,
+            "name": name,
+            "effortSequence": sequence,
+            "templateDescription": description,
+            "isCustom": False,
+            "createdTimezone": TIMEZONE,
+            "createdDatetime": now,
+            "lastModifiedDatetime": now,
+        })
+
+    return set_plans
+
+
+def generate_exercise_groups():
+    """Generate all 6 built-in exercise groups matching the app."""
+    now = ts_z(datetime.now())
+    groups = []
+
+    for group_def in EXERCISE_GROUPS:
+        groups.append({
+            "userId": POWER_USER_ID,
+            "groupId": group_def["groupId"],
+            "name": group_def["name"],
+            "exerciseIds": group_def["exerciseIds"],
+            "sortOrder": group_def["sortOrder"],
+            "isCustom": False,
+            "createdTimezone": TIMEZONE,
+            "createdDatetime": now,
+            "lastModifiedDatetime": now,
+            "deleted": False,
+            "pendingSync": False,
+        })
+
+    return groups
+
+
 def generate_static_records():
     """Generate user, user-properties, entitlement-grant, subscription-event."""
     created_str = ts_no_z(USER_CREATED)
@@ -591,6 +962,9 @@ def generate_static_records():
         "availableChangePlates": [2.5, 5, 10, 25, 35, 45],
         "minReps": 3,
         "maxReps": 5,
+        "biologicalSex": "male",
+        "hasMetStrengthTierConditions": True,
+        "activeSetPlanId": "00000000-0000-0000-0000-000000000101",
         "createdDatetime": created_str,
         "lastModifiedDatetime": created_str,
     }
@@ -600,7 +974,7 @@ def generate_static_records():
         "userId": POWER_USER_ID,
         "startUtc": "2024-02-20T00:00:00Z",
         "endUtc": ts_z(entitlement_end),
-        "entitlementName": "premium",
+        "entitlementName": "com.weightapp.premium.annual",
         "paymentPlatformSource": "app_store",
         "originalTransactionId": "2000000799999999",
         "productId": "com.liftthebull.annual",
@@ -685,17 +1059,22 @@ def main():
     print(f"  {len(lift_sets)} lift sets")
     print(f"  {len(e1rms)} estimated 1RMs")
 
-    print("Generating sequences...")
-    sequences = generate_sequences(exercise_map, training_start)
-    print(f"  {len(sequences)} sequences")
+    print("Generating set plan templates...")
+    set_plans = generate_set_plans()
+    print(f"  {len(set_plans)} set plan templates")
+
+    print("Generating exercise groups...")
+    exercise_groups = generate_exercise_groups()
+    print(f"  {len(exercise_groups)} exercise groups")
 
     print("Generating static records...")
     user, user_props, entitlement, sub_event = generate_static_records()
 
     print()
     print("=" * 60)
-    print(f"Summary: {len(exercises)} exercises, {len(sequences)} sequences, "
-          f"{len(lift_sets)} lift sets, {len(e1rms)} estimated 1RMs")
+    print(f"Summary: {len(exercises)} exercises, "
+          f"{len(lift_sets)} lift sets, {len(e1rms)} estimated 1RMs, "
+          f"{len(set_plans)} set plans, {len(exercise_groups)} exercise groups")
     print("=" * 60)
     print()
 
@@ -706,7 +1085,8 @@ def main():
     write_items("exercises", exercises, "exercises")
     write_items("lift-sets", lift_sets, "lift sets")
     write_items("estimated-1rm", e1rms, "estimated 1RMs")
-    write_items("sequences", sequences, "sequences")
+    write_items("set-plan-templates", set_plans, "set plan templates")
+    # exercise-groups are client-side only (seeded by SeedService into SwiftData)
     write_items("entitlement-grants", [entitlement], "entitlement grant")
     write_items("subscription-events", [sub_event], "subscription event")
 

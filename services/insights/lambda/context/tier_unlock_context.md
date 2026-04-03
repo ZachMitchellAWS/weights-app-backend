@@ -1,6 +1,6 @@
-# WeightApp — Tier Unlock Insight Context
+# WeightApp — Tier Unlock Narrative Context
 
-You are generating a personalized insight for a user who just reached a new overall strength tier in a barbell training app. There are at most 6 of these messages in a user's lifetime, so make each one meaningful.
+You are generating a personalized narrative for a user who just reached a new overall strength tier in a barbell training app. There are at most 6 of these messages in a user's lifetime, so make each one meaningful.
 
 ## Strength Tiers
 
@@ -42,7 +42,7 @@ The user just completed their initial assessment by logging one set for each of 
 
 3. **How to progress.** Keep this concise — a couple of sentences, not a feature tour. Mention that the **Progress Options** widget on the Lift tab and adjustable per-exercise **increments** can help guide progressive overload — it may be appropriate to progress faster on some exercises and slower on others to keep all five fundamentals advancing in balance. Frame progressive overload as the path forward.
 
-4. **Closing encouragement.** End with 2-3 sentences emphasizing that proper form is the top priority above all else, and that once form is locked in, consistent incremental progress across all five exercises — keeping them in balance — is the overarching goal. Be warm and genuinely encouraging. {closing_weekly_insights_mention}
+4. **Closing encouragement.** End with 2-3 sentences emphasizing that proper form is the top priority above all else, and that once form is locked in, consistent incremental progress across all five exercises — keeping them in balance — is the overarching goal. Be warm and genuinely encouraging. {closing_weekly_narratives_mention}
 
 ### For SUBSEQUENT tier unlocks (user has a real previous tier):
 
@@ -52,7 +52,7 @@ The user just completed their initial assessment by logging one set for each of 
 
 3. **What to target next.** Keep this concise and practical. Mention that the **Progress Options** widget on the Lift tab and adjustable per-exercise **increments** can help target the next tier — it may be appropriate to progress faster on some exercises and slower on others to keep all five fundamentals advancing in balance. Include brief tier-appropriate training advice (technique refinement, programming periodization, recovery) and name the next tier as a goal if applicable.
 
-4. **Closing encouragement.** End with 2-3 sentences emphasizing that proper form is the top priority above all else, and that once form is locked in, consistent incremental progress across all five exercises — keeping them in balance — is the overarching goal. Be warm and genuinely encouraging. {closing_weekly_insights_mention}
+4. **Closing encouragement.** End with 2-3 sentences emphasizing that proper form is the top priority above all else, and that once form is locked in, consistent incremental progress across all five exercises — keeping them in balance — is the overarching goal. Be warm and genuinely encouraging. {closing_weekly_narratives_mention}
 
 ## Terminology
 
@@ -76,5 +76,5 @@ The user just completed their initial assessment by logging one set for each of 
 
 Return a JSON object with a single field:
 ```json
-{"body": "Your 2-3 paragraph insight text here."}
+{"body": "Your 2-3 paragraph narrative text here."}
 ```

@@ -27,7 +27,7 @@ dynamodb = boto3.resource('dynamodb')
 
 TIER_ORDER = ['Novice', 'Beginner', 'Intermediate', 'Advanced', 'Elite', 'Legend']
 
-CORE_EXERCISES = ['Deadlifts', 'Squats', 'Bench Press', 'Barbell Row', 'Overhead Press']
+CORE_EXERCISES = ['Deadlifts', 'Squats', 'Bench Press', 'Barbell Rows', 'Overhead Press']
 
 # BW multiplier thresholds per exercise per sex.
 # Each list is ordered by tier (Novice → Legend). The value is the *minimum*
@@ -45,7 +45,7 @@ TIER_THRESHOLDS: dict[str, dict[str, list[float]]] = {
         'male':   [0, 0.5, 1.0, 1.5, 2.0, 2.25],
         'female': [0, 0.25, 0.5, 0.75, 1.0, 1.25],
     },
-    'Barbell Row': {
+    'Barbell Rows': {
         'male':   [0, 0.50, 0.75, 1.0, 1.5, 1.75],
         'female': [0, 0.25, 0.40, 0.65, 0.90, 1.20],
     },
@@ -59,7 +59,7 @@ RATIO_COEFFICIENTS = {
     'Deadlifts': 1.40,
     'Squats': 1.25,
     'Bench Press': 1.00,
-    'Barbell Row': 0.825,
+    'Barbell Rows': 0.825,
     'Overhead Press': 0.625,
 }
 

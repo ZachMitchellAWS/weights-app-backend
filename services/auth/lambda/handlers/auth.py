@@ -223,7 +223,8 @@ def handle_create_user(event: Dict[str, Any]) -> Dict[str, Any]:
             user_properties_item = {
                 "userId": user_id,
                 "availableChangePlates": [],  # Empty list by default
-                # bodyweight is optional, not set by default
+                "bodyweight": 200,  # Default 200 lbs — updated during onboarding
+                "biologicalSex": "male",  # Default male — updated during onboarding
                 "hasMetStrengthTierConditions": False,
                 "createdDatetime": current_datetime,
                 "lastModifiedDatetime": current_datetime,
