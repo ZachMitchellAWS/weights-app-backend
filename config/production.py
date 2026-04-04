@@ -1,7 +1,6 @@
 """Production environment configuration."""
 
 from aws_cdk import RemovalPolicy, Duration
-from aws_cdk.aws_logs import RetentionDays
 from aws_cdk.aws_dynamodb import BillingMode
 from .base import PROJECT_NAME, ACCOUNT_ID, REGION
 
@@ -19,7 +18,7 @@ CLOUDFRONT_CERT_ARN = ""  # Set after first cert stack deploy
 REMOVAL_POLICY = RemovalPolicy.RETAIN
 
 # CloudWatch Logs Configuration
-LOG_RETENTION = RetentionDays.ONE_MONTH  # 30 days retention for production
+# Log retention is set via `make set-log-retention-production` (90 days)
 LOG_LEVEL = "INFO"
 
 # DynamoDB Configuration

@@ -114,7 +114,7 @@ class EmailStack(Stack):
             self,
             "SESEventLogGroup",
             log_group_name=f"/aws/ses/{self.project_name}-{self.env_name}",
-            retention=self.config.LOG_RETENTION,
+            retention=logs.RetentionDays.THREE_MONTHS,
             removal_policy=self.config.REMOVAL_POLICY,
         )
 
@@ -254,7 +254,6 @@ class EmailStack(Stack):
                 "SENTRY_DSN": os.environ.get("SENTRY_DSN", ""),
                 "LOG_LEVEL": self.config.LOG_LEVEL,
             },
-            log_retention=self.config.LOG_RETENTION,
         )
 
         # Grant read permissions to S3 templates bucket

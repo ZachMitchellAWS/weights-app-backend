@@ -184,7 +184,6 @@ class UserStack(Stack):
                 "SENTRY_DSN": os.environ.get("SENTRY_DSN", ""),
                 "LOG_LEVEL": self.config.LOG_LEVEL,
             },
-            log_retention=self.config.LOG_RETENTION,
         )
 
         # Grant read/write permissions to DynamoDB tables

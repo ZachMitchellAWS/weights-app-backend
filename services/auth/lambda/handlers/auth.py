@@ -658,12 +658,13 @@ def handle_authorizer_request(event: Dict[str, Any]) -> Dict[str, Any]:
 
         print(f"Token validated for user: {user_id}")
 
-        # Return Allow policy with user context
-        # The context is passed to the main handler in requestContext.authorizer
+        # Return Allow policy with wildcard resource so cached result
+        # applies to all endpoints (required when authorizer caching is enabled)
+        wildcard_arn = "/".join(method_arn.split("/")[:2]) + "/*" if "/" in method_arn else method_arn
         return generate_policy(
             user_id,
             "Allow",
-            method_arn,
+            wildcard_arn,
             context={
                 "userId": user_id,
                 "email": email

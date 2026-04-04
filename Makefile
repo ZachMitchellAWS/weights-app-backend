@@ -129,6 +129,30 @@ upload-email-templates-production:
 		--region us-west-1
 	@echo "Email templates uploaded successfully to liftthebull-production-email-templates"
 
+# Set CloudWatch log retention for staging (30 days)
+set-log-retention-staging:
+	@echo "Setting log retention to 30 days for staging..."
+	@for fn in auth checkin user entitlements insights email-processing website-support; do \
+		echo "  /aws/lambda/liftthebull-staging-$$fn"; \
+		aws logs put-retention-policy \
+			--log-group-name /aws/lambda/liftthebull-staging-$$fn \
+			--retention-in-days 30 \
+			--region us-west-1 2>/dev/null || echo "    (log group not found, skipping)"; \
+	done
+	@echo "Done"
+
+# Set CloudWatch log retention for production (90 days)
+set-log-retention-production:
+	@echo "Setting log retention to 90 days for production..."
+	@for fn in auth checkin user entitlements insights email-processing website-support; do \
+		echo "  /aws/lambda/liftthebull-production-$$fn"; \
+		aws logs put-retention-policy \
+			--log-group-name /aws/lambda/liftthebull-production-$$fn \
+			--retention-in-days 90 \
+			--region us-west-1 2>/dev/null || echo "    (log group not found, skipping)"; \
+	done
+	@echo "Done"
+
 # Bootstrap CDK for staging environment
 bootstrap-staging:
 	cdk bootstrap aws://569134947863/us-west-1 -c env=staging

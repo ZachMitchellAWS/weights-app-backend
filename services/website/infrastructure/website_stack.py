@@ -228,7 +228,6 @@ class WebsiteStack(Stack):
                 "SENTRY_DSN": os.environ.get("SENTRY_DSN", ""),
                 "LOG_LEVEL": self.config.LOG_LEVEL,
             },
-            log_retention=self.config.LOG_RETENTION,
         )
 
         self.support_tickets_table.grant_write_data(function)

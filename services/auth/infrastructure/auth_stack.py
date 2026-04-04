@@ -270,7 +270,6 @@ class AuthStack(Stack):
                 "REFRESH_TOKEN_EXPIRATION_MINUTES": str(self.config.REFRESH_TOKEN_EXPIRATION_MINUTES),
                 # Email Lambda ARN will be added after email stack is created
             },
-            log_retention=self.config.LOG_RETENTION,
         )
 
         # Grant read/write permissions to DynamoDB tables
@@ -354,7 +353,7 @@ class AuthStack(Stack):
             handler=self.auth_function,  # Same function handles both API and authorizer requests
             identity_source="method.request.header.Authorization",
             authorizer_name=f"{self.project_name}-{self.env_name}-jwt-authorizer",
-            results_cache_ttl=Duration.seconds(0),  # Disable caching for development (enable in production)
+            results_cache_ttl=Duration.seconds(60),  # Cache auth results for 60s
         )
 
         # Create API Key for this environment

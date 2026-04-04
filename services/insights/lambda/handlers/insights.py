@@ -63,20 +63,25 @@ def _get_s3_client():
     return _s3_client
 
 
+PRESIGNED_URL_EXPIRY_SECONDS = 21600  # 6 hours
+
+
 def _attach_audio_urls(sections: list[dict], audio_keys: list[str]) -> None:
     """Attach presigned S3 URLs to section dicts (mutates in place)."""
     bucket = os.environ.get('INSIGHTS_AUDIO_BUCKET')
     if not bucket:
         return
     s3 = _get_s3_client()
+    expires_at = (datetime.now(timezone.utc) + timedelta(seconds=PRESIGNED_URL_EXPIRY_SECONDS)).strftime('%Y-%m-%dT%H:%M:%SZ')
     for section, key in zip(sections, audio_keys):
         try:
             url = s3.generate_presigned_url(
                 'get_object',
                 Params={'Bucket': bucket, 'Key': key},
-                ExpiresIn=3600,
+                ExpiresIn=PRESIGNED_URL_EXPIRY_SECONDS,
             )
             section['audioUrl'] = url
+            section['audioUrlExpiresAt'] = expires_at
         except Exception as e:
             logger.warning(f"Failed to generate presigned URL for {key}: {e}")
 
@@ -419,9 +424,10 @@ def _attach_starter_audio_url(result: dict, audio_key: str) -> None:
         url = s3.generate_presigned_url(
             'get_object',
             Params={'Bucket': bucket, 'Key': audio_key},
-            ExpiresIn=3600,
+            ExpiresIn=PRESIGNED_URL_EXPIRY_SECONDS,
         )
         result['audioUrl'] = url
+        result['audioUrlExpiresAt'] = (datetime.now(timezone.utc) + timedelta(seconds=PRESIGNED_URL_EXPIRY_SECONDS)).strftime('%Y-%m-%dT%H:%M:%SZ')
     except Exception as e:
         logger.warning(f"Failed to generate presigned URL for starter audio {audio_key}: {e}")
 
@@ -583,9 +589,10 @@ def _attach_tier_audio_url(result: dict, audio_key: str) -> None:
         url = s3.generate_presigned_url(
             'get_object',
             Params={'Bucket': bucket, 'Key': audio_key},
-            ExpiresIn=3600,
+            ExpiresIn=PRESIGNED_URL_EXPIRY_SECONDS,
         )
         result['audioUrl'] = url
+        result['audioUrlExpiresAt'] = (datetime.now(timezone.utc) + timedelta(seconds=PRESIGNED_URL_EXPIRY_SECONDS)).strftime('%Y-%m-%dT%H:%M:%SZ')
     except Exception as e:
         logger.warning(f"Failed to generate presigned URL for tier unlock audio {audio_key}: {e}")
 

@@ -2,7 +2,7 @@
 """Generate and load a realistic "power user" dataset into staging DynamoDB.
 
 Simulates a heavy user with N months of training history (~65 exercises, 28 lift sets
-per training day, ~50 sequences). Each training day produces exactly 28 sets (16 on
+per training day). Each training day produces exactly 28 sets (16 on
 deload weeks). Data is deterministic via uuid5 and seeded random, making re-runs
 idempotent (put_item is an upsert).
 
@@ -872,34 +872,6 @@ def generate_lift_sets_and_e1rms(sessions, exercise_map, training_start):
     return lift_sets, e1rms
 
 
-def generate_sequences(exercise_map, training_start):
-    """Generate sequence items from templates."""
-    sequences = []
-    created = training_start - timedelta(hours=12)
-
-    for i, (name, ex_names) in enumerate(SEQUENCE_TEMPLATES):
-        ex_ids = []
-        for en in ex_names:
-            if en in exercise_map:
-                ex_ids.append(exercise_map[en]["exerciseItemId"])
-        if not ex_ids:
-            continue
-
-        seq_id = det_uuid(f"sequence-{i}-{name}")
-        seq_dt = created + timedelta(minutes=i * 5)
-        sequences.append({
-            "userId": POWER_USER_ID,
-            "sequenceId": seq_id,
-            "name": name,
-            "exerciseIds": ex_ids,
-            "createdTimezone": TIMEZONE,
-            "createdDatetime": ts_z(seq_dt),
-            "lastModifiedDatetime": ts_z(seq_dt),
-        })
-
-    return sequences
-
-
 def generate_set_plans():
     """Generate all 16 built-in set plan templates matching the app."""
     now = ts_z(datetime.now())
@@ -1058,6 +1030,24 @@ def main():
     lift_sets, e1rms = generate_lift_sets_and_e1rms(sessions, exercise_map, training_start)
     print(f"  {len(lift_sets)} lift sets")
     print(f"  {len(e1rms)} estimated 1RMs")
+
+    # Compute currentE1RM per exercise from generated e1RM data
+    print("Computing currentE1RM per exercise...")
+    max_e1rm_by_eid = {}  # exerciseId -> (value, datetime_str)
+    for e1rm in e1rms:
+        eid = e1rm["exerciseId"]
+        val = e1rm["value"]
+        dt = e1rm["createdDatetime"]
+        if eid not in max_e1rm_by_eid or val > max_e1rm_by_eid[eid][0]:
+            max_e1rm_by_eid[eid] = (val, dt)
+    updated_count = 0
+    for ex in exercises:
+        eid = ex["exerciseItemId"]
+        if eid in max_e1rm_by_eid:
+            ex["currentE1RM"] = max_e1rm_by_eid[eid][0]
+            ex["currentE1RMDate"] = max_e1rm_by_eid[eid][1]
+            updated_count += 1
+    print(f"  {updated_count} exercises have currentE1RM")
 
     print("Generating set plan templates...")
     set_plans = generate_set_plans()

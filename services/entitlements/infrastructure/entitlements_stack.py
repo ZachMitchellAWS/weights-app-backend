@@ -334,7 +334,6 @@ class EntitlementsStack(Stack):
                 "APPLE_ISSUER_ID_PARAM": f"/{self.project_name}/{self.env_name}/entitlements/apple-issuer-id",
                 "APPLE_BUNDLE_ID_PARAM": f"/{self.project_name}/{self.env_name}/entitlements/apple-bundle-id",
             },
-            log_retention=self.config.LOG_RETENTION,
         )
 
         # Grant read/write permissions to entitlement grants table

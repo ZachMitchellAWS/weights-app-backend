@@ -423,7 +423,6 @@ class CheckinStack(Stack):
                 "SENTRY_DSN": os.environ.get("SENTRY_DSN", ""),
                 "LOG_LEVEL": self.config.LOG_LEVEL,
             },
-            log_retention=self.config.LOG_RETENTION,
         )
 
         # Grant read/write permissions to DynamoDB tables
@@ -540,36 +539,6 @@ class CheckinStack(Stack):
 
         # Add DELETE method for estimated-1rm (batch soft delete)
         estimated_1rm_resource.add_method(
-            "DELETE",
-            checkin_integration,
-            api_key_required=True,
-            authorizer=self.authorizer,
-            authorization_type=apigateway.AuthorizationType.CUSTOM,
-        )
-
-        # Create /checkin/sequences resource
-        sequences_resource = checkin_resource.add_resource("sequences")
-
-        # Add POST method for sequences (batch upsert)
-        sequences_resource.add_method(
-            "POST",
-            checkin_integration,
-            api_key_required=True,
-            authorizer=self.authorizer,
-            authorization_type=apigateway.AuthorizationType.CUSTOM,
-        )
-
-        # Add GET method for sequences
-        sequences_resource.add_method(
-            "GET",
-            checkin_integration,
-            api_key_required=True,
-            authorizer=self.authorizer,
-            authorization_type=apigateway.AuthorizationType.CUSTOM,
-        )
-
-        # Add DELETE method for sequences (batch soft delete)
-        sequences_resource.add_method(
             "DELETE",
             checkin_integration,
             api_key_required=True,

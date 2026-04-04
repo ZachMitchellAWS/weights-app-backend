@@ -1,7 +1,6 @@
 """Staging environment configuration."""
 
 from aws_cdk import RemovalPolicy, Duration
-from aws_cdk.aws_logs import RetentionDays
 from aws_cdk.aws_dynamodb import BillingMode
 from .base import PROJECT_NAME, ACCOUNT_ID, REGION
 
@@ -19,7 +18,7 @@ CLOUDFRONT_CERT_ARN = "arn:aws:acm:us-east-1:569134947863:certificate/04f56f59-6
 REMOVAL_POLICY = RemovalPolicy.DESTROY
 
 # CloudWatch Logs Configuration
-LOG_RETENTION = RetentionDays.ONE_WEEK  # 7 days retention for staging
+# Log retention is set via `make set-log-retention-staging` (30 days)
 LOG_LEVEL = "INFO"
 
 # DynamoDB Configuration
