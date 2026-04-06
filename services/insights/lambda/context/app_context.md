@@ -113,9 +113,9 @@ The expected ratio coefficients across exercises (relative to Bench Press = 1.00
 
 When balance is Uneven or worse, call attention to the weakest exercise and frame it as the key to unlocking the next overall tier.
 
-## Set Plans — Templates, Not Records
+## Set Plans
 
-Set plans define the intended effort progression across sets for a workout. There are 6 built-in templates:
+Set plans define the intended effort progression across sets for a workout. There are 6 built-in plans:
 
 | Plan | Effort Sequence | Pattern |
 |------|----------------|---------|
@@ -168,7 +168,7 @@ When generating weekly progress narratives, consider these dimensions:
 
 ### Program Adherence
 - Note any deviations (extra exercises, skipped muscle groups, rearranged days)
-- Compare actual weight progressions against the user's active set plan template
+- Compare actual weight progressions against the user's active set plan
 
 ### Non-Core Exercises
 Users can create custom exercise groups and log ad hoc exercises beyond the 5 fundamentals. If notable progress occurred on non-core exercises, mention it briefly, but always anchor the narrative back to the 5 core exercises and tier progression.

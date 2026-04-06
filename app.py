@@ -221,7 +221,7 @@ def main():
         exercises_table=checkin_stack.exercises_table,
         accessory_goal_checkins_table=checkin_stack.accessory_goal_checkins_table,
         estimated_1rm_table=checkin_stack.estimated_1rm_table,
-        set_plan_templates_table=checkin_stack.set_plan_templates_table,
+        set_plans_table=checkin_stack.set_plans_table,
         user_properties_table=user_stack.user_properties_table,
         entitlement_grants_table=entitlements_stack.entitlement_grants_table,
         groups_table=checkin_stack.groups_table,

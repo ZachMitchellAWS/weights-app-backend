@@ -144,7 +144,7 @@ class UserStack(Stack):
             "DependenciesLayer",
             layer_version_name=f"{self.project_name}-{self.env_name}-user-deps",
             code=lambda_.Code.from_asset(str(layer_path)),
-            compatible_runtimes=[lambda_.Runtime.PYTHON_3_12],
+            compatible_runtimes=[lambda_.Runtime.PYTHON_3_13],
             description="Python dependencies for user service",
         )
         return layer
@@ -170,7 +170,7 @@ class UserStack(Stack):
             self,
             "UserFunction",
             function_name=f"{self.project_name}-{self.env_name}-user",
-            runtime=lambda_.Runtime.PYTHON_3_12,
+            runtime=lambda_.Runtime.PYTHON_3_13,
             handler="handlers.user.handler",
             code=lambda_.Code.from_asset(str(lambda_code_path)),
             layers=[self.dependencies_layer],

@@ -203,7 +203,7 @@ class WebsiteStack(Stack):
             "DependenciesLayer",
             layer_version_name=f"{self.project_name}-{self.env_name}-website-deps",
             code=lambda_.Code.from_asset(str(layer_path)),
-            compatible_runtimes=[lambda_.Runtime.PYTHON_3_12],
+            compatible_runtimes=[lambda_.Runtime.PYTHON_3_13],
             description="Python dependencies for website service",
         )
         return layer
@@ -216,7 +216,7 @@ class WebsiteStack(Stack):
             self,
             "WebsiteSupportFunction",
             function_name=f"{self.project_name}-{self.env_name}-website-support",
-            runtime=lambda_.Runtime.PYTHON_3_12,
+            runtime=lambda_.Runtime.PYTHON_3_13,
             handler="handlers.support.handler",
             code=lambda_.Code.from_asset(str(lambda_code_path)),
             layers=[self.dependencies_layer],

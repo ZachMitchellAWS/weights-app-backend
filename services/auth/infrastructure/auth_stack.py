@@ -213,7 +213,7 @@ class AuthStack(Stack):
             "DependenciesLayer",
             layer_version_name=f"{self.project_name}-{self.env_name}-auth-deps",
             code=lambda_.Code.from_asset(str(layer_path)),
-            compatible_runtimes=[lambda_.Runtime.PYTHON_3_12],
+            compatible_runtimes=[lambda_.Runtime.PYTHON_3_13],
             description="Python dependencies for auth service (PyJWT, boto3, pydantic)",
         )
 
@@ -248,7 +248,7 @@ class AuthStack(Stack):
             self,
             "AuthFunction",
             function_name=f"{self.project_name}-{self.env_name}-auth",
-            runtime=lambda_.Runtime.PYTHON_3_12,
+            runtime=lambda_.Runtime.PYTHON_3_13,
             handler="handlers.auth.handler",
             code=lambda_.Code.from_asset(str(lambda_code_path)),
             layers=[self.dependencies_layer],  # Add dependencies layer

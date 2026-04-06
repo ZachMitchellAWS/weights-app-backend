@@ -33,7 +33,7 @@
         "moderateMaxReps": 10,
         "proteinGoal": 200,
         "biologicalSex": "male",
-        "activeSetPlanTemplateId": "00000000-0000-0000-0000-000000000101",
+        "activeSetPlanId": "00000000-0000-0000-0000-000000000101",
         "weightUnit": "lbs",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "moderateMinReps": 6,
@@ -57,9 +57,7 @@
         "lastModifiedDatetime": "2026-03-16T20:12:38.499648+00:00",
         "isCustom": false,
         "name": "Deadlifts",
-        "exerciseItemId": "00000000-0000-0000-0001-000000000001",
-        "currentE1RM": 1013.3333333333333,
-        "currentE1RMDate": "2026-03-16T03:32:03Z"
+        "exerciseItemId": "00000000-0000-0000-0001-000000000001"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -72,9 +70,7 @@
         "isCustom": false,
         "name": "Squats",
         "barbellWeight": 55,
-        "exerciseItemId": "00000000-0000-0000-0001-000000000002",
-        "currentE1RM": 1013.3333333333333,
-        "currentE1RMDate": "2026-03-16T03:32:12Z"
+        "exerciseItemId": "00000000-0000-0000-0001-000000000002"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -87,9 +83,7 @@
         "lastModifiedDatetime": "2026-04-02T18:32:31.611570+00:00",
         "isCustom": false,
         "name": "Bench Press",
-        "exerciseItemId": "00000000-0000-0000-0001-000000000003",
-        "currentE1RM": 1332.0,
-        "currentE1RMDate": "2026-03-02T20:46:12Z"
+        "exerciseItemId": "00000000-0000-0000-0001-000000000003"
       },
       {
         "createdDatetime": "2026-03-02T20:18:28Z",
@@ -102,9 +96,7 @@
         "name": "Overhead Press",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "weightIncrement": 5,
-        "exerciseItemId": "00000000-0000-0000-0001-000000000004",
-        "currentE1RM": 633.3333333333333,
-        "currentE1RMDate": "2026-03-16T03:31:52Z"
+        "exerciseItemId": "00000000-0000-0000-0001-000000000004"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -117,9 +109,7 @@
         "lastModifiedDatetime": "2026-04-02T20:54:35.183885+00:00",
         "isCustom": false,
         "name": "Barbell Rows",
-        "exerciseItemId": "00000000-0000-0000-0001-000000000005",
-        "currentE1RM": 633.3333333333333,
-        "currentE1RMDate": "2026-03-16T03:31:43Z"
+        "exerciseItemId": "00000000-0000-0000-0001-000000000005"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -132,9 +122,7 @@
         "lastModifiedDatetime": "2026-03-04T22:37:48.236310+00:00",
         "isCustom": false,
         "name": "Pull Ups",
-        "exerciseItemId": "00000000-0000-0000-0001-000000000006",
-        "currentE1RM": 22.22222222222222,
-        "currentE1RMDate": "2026-03-11T22:27:19Z"
+        "exerciseItemId": "00000000-0000-0000-0001-000000000006"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -147,9 +135,7 @@
         "lastModifiedDatetime": "2026-03-09T19:39:29.478670+00:00",
         "isCustom": false,
         "name": "Weighted Dips",
-        "exerciseItemId": "00000000-0000-0000-0001-000000000007",
-        "currentE1RM": 30.0,
-        "currentE1RMDate": "2026-03-23T19:52:07Z"
+        "exerciseItemId": "00000000-0000-0000-0001-000000000007"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -162,9 +148,7 @@
         "lastModifiedDatetime": "2026-03-25T00:02:45.728903+00:00",
         "isCustom": false,
         "name": "Barbell Curls",
-        "exerciseItemId": "00000000-0000-0000-0001-000000000008",
-        "currentE1RM": 117.8,
-        "currentE1RMDate": "2026-03-25T00:05:41Z"
+        "exerciseItemId": "00000000-0000-0000-0001-000000000008"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -176,9 +160,7 @@
         "lastModifiedDatetime": "2026-03-02T20:18:28.322987+00:00",
         "isCustom": false,
         "name": "Romanian Deadlifts",
-        "exerciseItemId": "00000000-0000-0000-0001-000000000009",
-        "currentE1RM": 180.0,
-        "currentE1RMDate": "2026-03-07T00:43:15Z"
+        "exerciseItemId": "00000000-0000-0000-0001-000000000009"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -202,9 +184,7 @@
         "lastModifiedDatetime": "2026-03-04T00:00:45.950193+00:00",
         "isCustom": false,
         "name": "Concentration Curls",
-        "exerciseItemId": "00000000-0000-0000-0001-000000000011",
-        "currentE1RM": 390.55555555555554,
-        "currentE1RMDate": "2026-03-18T14:30:41Z"
+        "exerciseItemId": "00000000-0000-0000-0001-000000000011"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -216,9 +196,7 @@
         "lastModifiedDatetime": "2026-03-04T00:00:46.056105+00:00",
         "isCustom": false,
         "name": "Incline Dumbbell Curls",
-        "exerciseItemId": "00000000-0000-0000-0001-000000000012",
-        "currentE1RM": 231.16666666666666,
-        "currentE1RMDate": "2026-03-18T01:07:11Z"
+        "exerciseItemId": "00000000-0000-0000-0001-000000000012"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -266,9 +244,7 @@
         "lastModifiedDatetime": "2026-03-04T00:00:46.460453+00:00",
         "isCustom": false,
         "name": "Machine Curls",
-        "exerciseItemId": "00000000-0000-0000-0001-000000000016",
-        "currentE1RM": 390.55555555555554,
-        "currentE1RMDate": "2026-03-18T14:20:10Z"
+        "exerciseItemId": "00000000-0000-0000-0001-000000000016"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -328,9 +304,7 @@
         "lastModifiedDatetime": "2026-03-04T00:00:46.994141+00:00",
         "isCustom": false,
         "name": "Finger Curls",
-        "exerciseItemId": "00000000-0000-0000-0001-000000000021",
-        "currentE1RM": 234.33333333333331,
-        "currentE1RMDate": "2026-03-18T01:06:46Z"
+        "exerciseItemId": "00000000-0000-0000-0001-000000000021"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -354,9 +328,7 @@
         "lastModifiedDatetime": "2026-03-04T00:00:47.188579+00:00",
         "isCustom": false,
         "name": "Tricep Pushdowns",
-        "exerciseItemId": "00000000-0000-0000-0001-000000000023",
-        "currentE1RM": 48.0,
-        "currentE1RMDate": "2026-03-09T21:51:49Z"
+        "exerciseItemId": "00000000-0000-0000-0001-000000000023"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -452,9 +424,7 @@
         "lastModifiedDatetime": "2026-03-04T00:00:47.946502+00:00",
         "isCustom": false,
         "name": "Seated EZ-Bar Tricep Extensions",
-        "exerciseItemId": "00000000-0000-0000-0001-000000000031",
-        "currentE1RM": 390.55555555555554,
-        "currentE1RMDate": "2026-03-18T04:15:10Z"
+        "exerciseItemId": "00000000-0000-0000-0001-000000000031"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -466,9 +436,7 @@
         "lastModifiedDatetime": "2026-03-09T00:00:00.000000+00:00",
         "isCustom": false,
         "name": "Lateral Raises",
-        "exerciseItemId": "00000000-0000-0000-0001-000000000032",
-        "currentE1RM": 46.66666666666667,
-        "currentE1RMDate": "2026-03-09T20:20:53Z"
+        "exerciseItemId": "00000000-0000-0000-0001-000000000032"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -481,9 +449,7 @@
         "lastModifiedDatetime": "2026-03-09T22:06:27.681642+00:00",
         "isCustom": false,
         "name": "Dumbbell Flys",
-        "exerciseItemId": "00000000-0000-0000-0001-000000000033",
-        "currentE1RM": 49.0,
-        "currentE1RMDate": "2026-03-23T20:19:25Z"
+        "exerciseItemId": "00000000-0000-0000-0001-000000000033"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -495,9 +461,7 @@
         "lastModifiedDatetime": "2026-03-09T00:00:00.000000+00:00",
         "isCustom": false,
         "name": "Side Raises",
-        "exerciseItemId": "00000000-0000-0000-0001-000000000034",
-        "currentE1RM": 21.333333333333332,
-        "currentE1RMDate": "2026-03-09T23:55:45Z"
+        "exerciseItemId": "00000000-0000-0000-0001-000000000034"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -509,9 +473,7 @@
         "lastModifiedDatetime": "2026-03-11T00:00:00.000000+00:00",
         "isCustom": false,
         "name": "Bulgarian Split Squats",
-        "exerciseItemId": "00000000-0000-0000-0001-000000000035",
-        "currentE1RM": 380.0,
-        "currentE1RMDate": "2026-03-18T14:22:06Z"
+        "exerciseItemId": "00000000-0000-0000-0001-000000000035"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -523,9 +485,7 @@
         "lastModifiedDatetime": "2026-03-11T00:00:00.000000+00:00",
         "isCustom": false,
         "name": "Barbell Shrugs",
-        "exerciseItemId": "00000000-0000-0000-0001-000000000036",
-        "currentE1RM": 222.0,
-        "currentE1RMDate": "2026-03-12T00:00:26Z"
+        "exerciseItemId": "00000000-0000-0000-0001-000000000036"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -538,9 +498,7 @@
         "lastModifiedDatetime": "2026-03-11T23:44:00.731753+00:00",
         "isCustom": false,
         "name": "High Pulley Lateral Extensions",
-        "exerciseItemId": "00000000-0000-0000-0001-000000000037",
-        "currentE1RM": 48.0,
-        "currentE1RMDate": "2026-03-11T23:42:00Z"
+        "exerciseItemId": "00000000-0000-0000-0001-000000000037"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -553,9 +511,7 @@
         "lastModifiedDatetime": "2026-03-24T21:59:37.602199+00:00",
         "isCustom": false,
         "name": "Dumbbell Pullovers",
-        "exerciseItemId": "00000000-0000-0000-0001-000000000038",
-        "currentE1RM": 95.08333333333334,
-        "currentE1RMDate": "2026-03-24T22:03:39Z"
+        "exerciseItemId": "00000000-0000-0000-0001-000000000038"
       },
       {
         "createdTimezone": "America/Chicago",
@@ -597,9 +553,7 @@
         "lastModifiedDatetime": "2026-03-23T00:00:00+00:00",
         "isCustom": false,
         "name": "Close Grip Bench Press",
-        "exerciseItemId": "00000000-0000-0000-0001-000000000041",
-        "currentE1RM": 171.0,
-        "currentE1RMDate": "2026-03-27T17:08:33Z"
+        "exerciseItemId": "00000000-0000-0000-0001-000000000041"
       },
       {
         "createdTimezone": "America/Chicago",
@@ -614,9 +568,7 @@
         "notes": null,
         "lastModifiedDatetime": "2026-03-27T22:21:56.818443+00:00",
         "isCustom": false,
-        "exerciseItemId": "00000000-0000-0000-0001-000000000042",
-        "currentE1RM": 23.400000000000002,
-        "currentE1RMDate": "2026-03-27T22:26:29Z"
+        "exerciseItemId": "00000000-0000-0000-0001-000000000042"
       },
       {
         "createdTimezone": "America/Chicago",
@@ -631,9 +583,7 @@
         "notes": null,
         "lastModifiedDatetime": "2026-03-27T22:45:56.171817+00:00",
         "isCustom": false,
-        "exerciseItemId": "00000000-0000-0000-0001-000000000043",
-        "currentE1RM": 42.22222222222222,
-        "currentE1RMDate": "2026-03-27T22:37:58Z"
+        "exerciseItemId": "00000000-0000-0000-0001-000000000043"
       },
       {
         "createdTimezone": "America/Chicago",
@@ -10706,10 +10656,10 @@
       }
     ],
     "subscription-events": [],
-    "set-plan-templates": [
+    "set-plans": [
       {
         "createdTimezone": "America/Los_Angeles",
-        "templateDescription": "Progressive warmup to PR attempt",
+        "planDescription": "Progressive warmup to PR attempt",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "createdDatetime": "2026-03-02T20:18:17Z",
         "lastModifiedDatetime": "2026-03-02T20:18:29.136101+00:00",
@@ -10723,11 +10673,11 @@
           "pr"
         ],
         "name": "Standard",
-        "templateId": "00000000-0000-0000-0000-000000000101"
+        "planId": "00000000-0000-0000-0000-000000000101"
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "templateDescription": "High volume, low intensity",
+        "planDescription": "High volume, low intensity",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "createdDatetime": "2026-03-02T20:18:17Z",
         "lastModifiedDatetime": "2026-03-02T20:18:29.136101+00:00",
@@ -10743,11 +10693,11 @@
           "hard"
         ],
         "name": "Grease the Groove",
-        "templateId": "00000000-0000-0000-0000-000000000102"
+        "planId": "00000000-0000-0000-0000-000000000102"
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "templateDescription": "Moderate volume, hold strength",
+        "planDescription": "Moderate volume, hold strength",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "createdDatetime": "2026-03-02T20:18:17Z",
         "lastModifiedDatetime": "2026-03-02T20:18:29.136101+00:00",
@@ -10758,11 +10708,11 @@
           "hard"
         ],
         "name": "Maintenance",
-        "templateId": "00000000-0000-0000-0000-000000000103"
+        "planId": "00000000-0000-0000-0000-000000000103"
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "templateDescription": "Recovery phase",
+        "planDescription": "Recovery phase",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "createdDatetime": "2026-03-02T20:18:17Z",
         "lastModifiedDatetime": "2026-03-02T20:18:29.136101+00:00",
@@ -10773,11 +10723,11 @@
           "easy"
         ],
         "name": "Deload",
-        "templateId": "00000000-0000-0000-0000-000000000104"
+        "planId": "00000000-0000-0000-0000-000000000104"
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "templateDescription": "Build up then back off",
+        "planDescription": "Build up then back off",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "createdDatetime": "2026-03-02T20:18:17Z",
         "lastModifiedDatetime": "2026-03-02T20:18:29.136101+00:00",
@@ -10791,11 +10741,11 @@
           "moderate"
         ],
         "name": "Pyramid",
-        "templateId": "00000000-0000-0000-0000-000000000105"
+        "planId": "00000000-0000-0000-0000-000000000105"
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "templateDescription": "Work up to max, drop intensity",
+        "planDescription": "Work up to max, drop intensity",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "createdDatetime": "2026-03-02T20:18:17Z",
         "lastModifiedDatetime": "2026-03-02T20:18:29.136101+00:00",
@@ -10809,11 +10759,11 @@
           "moderate"
         ],
         "name": "Top Set + Backoff",
-        "templateId": "00000000-0000-0000-0000-000000000106"
+        "planId": "00000000-0000-0000-0000-000000000106"
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "templateDescription": "Heaviest set first, then reduce",
+        "planDescription": "Heaviest set first, then reduce",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "createdDatetime": "2026-04-01T23:00:00Z",
         "lastModifiedDatetime": "2026-04-01T23:00:00.000000+00:00",
@@ -10827,11 +10777,11 @@
           "easy"
         ],
         "name": "Reverse Pyramid",
-        "templateId": "00000000-0000-0000-0000-000000000107"
+        "planId": "00000000-0000-0000-0000-000000000107"
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "templateDescription": "Ascending waves of intensity",
+        "planDescription": "Ascending waves of intensity",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "createdDatetime": "2026-04-01T23:00:00Z",
         "lastModifiedDatetime": "2026-04-01T23:00:00.000000+00:00",
@@ -10845,11 +10795,11 @@
           "pr"
         ],
         "name": "Wave Loading",
-        "templateId": "00000000-0000-0000-0000-000000000108"
+        "planId": "00000000-0000-0000-0000-000000000108"
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "templateDescription": "Short rest between heavy singles/doubles",
+        "planDescription": "Short rest between heavy singles/doubles",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "createdDatetime": "2026-04-01T23:00:00Z",
         "lastModifiedDatetime": "2026-04-01T23:00:00.000000+00:00",
@@ -10862,11 +10812,11 @@
           "hard"
         ],
         "name": "Cluster Sets",
-        "templateId": "00000000-0000-0000-0000-000000000109"
+        "planId": "00000000-0000-0000-0000-000000000109"
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "templateDescription": "Near-failure set, brief rest, continue",
+        "planDescription": "Near-failure set, brief rest, continue",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "createdDatetime": "2026-04-01T23:00:00Z",
         "lastModifiedDatetime": "2026-04-01T23:00:00.000000+00:00",
@@ -10878,11 +10828,11 @@
           "hard"
         ],
         "name": "Rest-Pause",
-        "templateId": "00000000-0000-0000-0000-000000000110"
+        "planId": "00000000-0000-0000-0000-000000000110"
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "templateDescription": "Reduce weight each set, rep to failure",
+        "planDescription": "Reduce weight each set, rep to failure",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "createdDatetime": "2026-04-01T23:00:00Z",
         "lastModifiedDatetime": "2026-04-01T23:00:00.000000+00:00",
@@ -10894,11 +10844,11 @@
           "easy"
         ],
         "name": "Drop Sets",
-        "templateId": "00000000-0000-0000-0000-000000000111"
+        "planId": "00000000-0000-0000-0000-000000000111"
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "templateDescription": "Ascending rep ladder pattern",
+        "planDescription": "Ascending rep ladder pattern",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "createdDatetime": "2026-04-01T23:00:00Z",
         "lastModifiedDatetime": "2026-04-01T23:00:00.000000+00:00",
@@ -10914,11 +10864,11 @@
           "pr"
         ],
         "name": "Ladders",
-        "templateId": "00000000-0000-0000-0000-000000000112"
+        "planId": "00000000-0000-0000-0000-000000000112"
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "templateDescription": "Paused reps to build positional strength",
+        "planDescription": "Paused reps to build positional strength",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "createdDatetime": "2026-04-01T23:00:00Z",
         "lastModifiedDatetime": "2026-04-01T23:00:00.000000+00:00",
@@ -10930,11 +10880,11 @@
           "hard"
         ],
         "name": "Pause Reps",
-        "templateId": "00000000-0000-0000-0000-000000000113"
+        "planId": "00000000-0000-0000-0000-000000000113"
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "templateDescription": "Submaximal weight, max velocity",
+        "planDescription": "Submaximal weight, max velocity",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "createdDatetime": "2026-04-01T23:00:00Z",
         "lastModifiedDatetime": "2026-04-01T23:00:00.000000+00:00",
@@ -10950,11 +10900,11 @@
           "easy"
         ],
         "name": "Speed / Dynamic",
-        "templateId": "00000000-0000-0000-0000-000000000114"
+        "planId": "00000000-0000-0000-0000-000000000114"
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "templateDescription": "Every minute on the minute",
+        "planDescription": "Every minute on the minute",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "createdDatetime": "2026-04-01T23:00:00Z",
         "lastModifiedDatetime": "2026-04-01T23:00:00.000000+00:00",
@@ -10968,11 +10918,11 @@
           "moderate"
         ],
         "name": "EMOM",
-        "templateId": "00000000-0000-0000-0000-000000000115"
+        "planId": "00000000-0000-0000-0000-000000000115"
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "templateDescription": "Light load, focus on form",
+        "planDescription": "Light load, focus on form",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "createdDatetime": "2026-04-01T23:00:00Z",
         "lastModifiedDatetime": "2026-04-01T23:00:00.000000+00:00",
@@ -10985,7 +10935,7 @@
           "moderate"
         ],
         "name": "Technique",
-        "templateId": "00000000-0000-0000-0000-000000000116"
+        "planId": "00000000-0000-0000-0000-000000000116"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -11001,7 +10951,7 @@
           "pr"
         ],
         "name": "Tile",
-        "templateId": "3C24594C-2951-492E-9A3E-C608824A3ED6"
+        "planId": "3C24594C-2951-492E-9A3E-C608824A3ED6"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -11018,7 +10968,7 @@
           "easy"
         ],
         "name": "Technique",
-        "templateId": "DEA41F63-732D-4204-87F5-78734BDB9E99"
+        "planId": "DEA41F63-732D-4204-87F5-78734BDB9E99"
       }
     ],
     "accessory-goal-checkins": [

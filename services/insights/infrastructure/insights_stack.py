@@ -29,7 +29,7 @@ class InsightsStack(Stack):
     - API Gateway route for weekly insights endpoint
 
     This stack reads from checkin tables (lift-sets, exercises, estimated-1rm,
-    set-plan-templates, accessory-goal-checkins), user-properties,
+    set-plans, accessory-goal-checkins), user-properties,
     and entitlement-grants to analyze training data and generate insights.
     """
 
@@ -46,7 +46,7 @@ class InsightsStack(Stack):
         exercises_table: dynamodb.Table,
         accessory_goal_checkins_table: dynamodb.Table,
         estimated_1rm_table: dynamodb.Table,
-        set_plan_templates_table: dynamodb.Table,
+        set_plans_table: dynamodb.Table,
         user_properties_table: dynamodb.Table,
         entitlement_grants_table: dynamodb.Table,
         groups_table: dynamodb.Table,
@@ -71,7 +71,7 @@ class InsightsStack(Stack):
             exercises_table,
             accessory_goal_checkins_table,
             estimated_1rm_table,
-            set_plan_templates_table,
+            set_plans_table,
             user_properties_table,
             entitlement_grants_table,
             groups_table,
@@ -199,7 +199,7 @@ class InsightsStack(Stack):
             "DependenciesLayer",
             layer_version_name=f"{self.project_name}-{self.env_name}-insights-deps",
             code=lambda_.Code.from_asset(str(layer_path)),
-            compatible_runtimes=[lambda_.Runtime.PYTHON_3_12],
+            compatible_runtimes=[lambda_.Runtime.PYTHON_3_13],
             description="Python dependencies for insights service (openai)",
         )
 
@@ -211,7 +211,7 @@ class InsightsStack(Stack):
         exercises_table: dynamodb.Table,
         accessory_goal_checkins_table: dynamodb.Table,
         estimated_1rm_table: dynamodb.Table,
-        set_plan_templates_table: dynamodb.Table,
+        set_plans_table: dynamodb.Table,
         user_properties_table: dynamodb.Table,
         entitlement_grants_table: dynamodb.Table,
         groups_table: dynamodb.Table,
@@ -223,7 +223,7 @@ class InsightsStack(Stack):
             self,
             "InsightsFunction",
             function_name=f"{self.project_name}-{self.env_name}-insights",
-            runtime=lambda_.Runtime.PYTHON_3_12,
+            runtime=lambda_.Runtime.PYTHON_3_13,
             handler="handlers.insights.handler",
             code=lambda_.Code.from_asset(str(lambda_code_path)),
             layers=[self.dependencies_layer],
@@ -234,7 +234,7 @@ class InsightsStack(Stack):
                 "EXERCISES_TABLE_NAME": exercises_table.table_name,
                 "ACCESSORY_GOAL_CHECKINS_TABLE_NAME": accessory_goal_checkins_table.table_name,
                 "ESTIMATED_1RM_TABLE_NAME": estimated_1rm_table.table_name,
-                "SET_PLAN_TEMPLATES_TABLE_NAME": set_plan_templates_table.table_name,
+                "SET_PLANS_TABLE_NAME": set_plans_table.table_name,
                 "USER_PROPERTIES_TABLE_NAME": user_properties_table.table_name,
                 "ENTITLEMENT_GRANTS_TABLE_NAME": entitlement_grants_table.table_name,
                 "GROUPS_TABLE_NAME": groups_table.table_name,
@@ -255,7 +255,7 @@ class InsightsStack(Stack):
         exercises_table.grant_read_data(function)
         accessory_goal_checkins_table.grant_read_data(function)
         estimated_1rm_table.grant_read_data(function)
-        set_plan_templates_table.grant_read_data(function)
+        set_plans_table.grant_read_data(function)
         user_properties_table.grant_read_data(function)
         entitlement_grants_table.grant_read_data(function)
         groups_table.grant_read_data(function)

@@ -45,7 +45,7 @@ TABLES = [
     ("estimated-1rm", "userId", "liftSetId"),
     ("entitlement-grants", "userId", "startUtc"),
     ("subscription-events", "userId", "eventTimestamp"),
-    ("set-plan-templates", "userId", "templateId"),
+    ("set-plans", "userId", "planId"),
     ("accessory-goal-checkins", "userId", "checkinId"),
     ("groups", "userId", "groupId"),
 ]
@@ -72,7 +72,7 @@ TABLE_SCHEMAS = {
     "estimated-1rm": {
         "lastModifiedDatetime": _NOW_SENTINEL,
     },
-    "set-plan-templates": {
+    "set-plans": {
         "isCustom": False,
         "effortSequence": [],
         "lastModifiedDatetime": _NOW_SENTINEL,

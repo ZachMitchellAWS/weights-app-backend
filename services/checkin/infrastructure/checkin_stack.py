@@ -60,7 +60,7 @@ class CheckinStack(Stack):
         self.exercises_table = self._create_exercises_table()
         self.lift_sets_table = self._create_lift_sets_table()
         self.estimated_1rm_table = self._create_estimated_1rm_table()
-        self.set_plan_templates_table = self._create_set_plan_templates_table()
+        self.set_plans_table = self._create_set_plans_table()
         self.accessory_goal_checkins_table = self._create_accessory_goal_checkins_table()
         self.groups_table = self._create_groups_table()
         self.dependencies_layer = self._create_dependencies_layer()
@@ -240,18 +240,18 @@ class CheckinStack(Stack):
 
         return table
 
-    def _create_set_plan_templates_table(self) -> dynamodb.Table:
+    def _create_set_plans_table(self) -> dynamodb.Table:
         """
-        Create DynamoDB table for set plan templates.
+        Create DynamoDB table for set plans.
 
         Table schema:
         - userId (String, partition key): User's unique identifier
-        - templateId (String, sort key): Unique template ID (UUID from frontend)
-        - name (String): Template name
+        - planId (String, sort key): Unique plan ID (UUID from frontend)
+        - name (String): Plan name
         - effortSequence (List): Ordered list of effort levels
-        - isCustom (Boolean): Whether template is user-created or built-in
-        - templateDescription (String, optional): Description of the template
-        - createdTimezone (String): Timezone when template was created
+        - isCustom (Boolean): Whether plan is user-created or built-in
+        - planDescription (String, optional): Description of the plan
+        - createdTimezone (String): Timezone when plan was created
         - createdDatetime (String): ISO 8601 timestamp when created
         - lastModifiedDatetime (String): ISO 8601 timestamp when last modified
         - deleted (Boolean): Soft delete flag
@@ -261,14 +261,14 @@ class CheckinStack(Stack):
         """
         table = dynamodb.Table(
             self,
-            "SetPlanTemplatesTable",
-            table_name=f"{self.project_name}-{self.env_name}-set-plan-templates",
+            "SetPlansTable",
+            table_name=f"{self.project_name}-{self.env_name}-set-plans",
             partition_key=dynamodb.Attribute(
                 name="userId",
                 type=dynamodb.AttributeType.STRING
             ),
             sort_key=dynamodb.Attribute(
-                name="templateId",
+                name="planId",
                 type=dynamodb.AttributeType.STRING
             ),
             billing_mode=self.config.DYNAMODB_BILLING_MODE,
@@ -379,7 +379,7 @@ class CheckinStack(Stack):
             "DependenciesLayer",
             layer_version_name=f"{self.project_name}-{self.env_name}-checkin-deps",
             code=lambda_.Code.from_asset(str(layer_path)),
-            compatible_runtimes=[lambda_.Runtime.PYTHON_3_12],
+            compatible_runtimes=[lambda_.Runtime.PYTHON_3_13],
             description="Python dependencies for checkin service",
         )
         return layer
@@ -406,7 +406,7 @@ class CheckinStack(Stack):
             self,
             "CheckinFunction",
             function_name=f"{self.project_name}-{self.env_name}-checkin",
-            runtime=lambda_.Runtime.PYTHON_3_12,
+            runtime=lambda_.Runtime.PYTHON_3_13,
             handler="handlers.checkin.handler",
             code=lambda_.Code.from_asset(str(lambda_code_path)),
             layers=[self.dependencies_layer],
@@ -416,7 +416,7 @@ class CheckinStack(Stack):
                 "EXERCISES_TABLE_NAME": self.exercises_table.table_name,
                 "LIFT_SETS_TABLE_NAME": self.lift_sets_table.table_name,
                 "ESTIMATED_1RM_TABLE_NAME": self.estimated_1rm_table.table_name,
-                "SET_PLAN_TEMPLATES_TABLE_NAME": self.set_plan_templates_table.table_name,
+                "SET_PLANS_TABLE_NAME": self.set_plans_table.table_name,
                 "ACCESSORY_GOAL_CHECKINS_TABLE_NAME": self.accessory_goal_checkins_table.table_name,
                 "GROUPS_TABLE_NAME": self.groups_table.table_name,
                 "ENVIRONMENT": self.config.ENVIRONMENT,
@@ -429,7 +429,7 @@ class CheckinStack(Stack):
         self.exercises_table.grant_read_write_data(function)
         self.lift_sets_table.grant_read_write_data(function)
         self.estimated_1rm_table.grant_read_write_data(function)
-        self.set_plan_templates_table.grant_read_write_data(function)
+        self.set_plans_table.grant_read_write_data(function)
         self.accessory_goal_checkins_table.grant_read_write_data(function)
         self.groups_table.grant_read_write_data(function)
 
@@ -546,11 +546,11 @@ class CheckinStack(Stack):
             authorization_type=apigateway.AuthorizationType.CUSTOM,
         )
 
-        # Create /checkin/set-plan-templates resource
-        set_plan_templates_resource = checkin_resource.add_resource("set-plan-templates")
+        # Create /checkin/set-plans resource
+        set_plans_resource = checkin_resource.add_resource("set-plans")
 
-        # Add POST method for set-plan-templates (batch upsert)
-        set_plan_templates_resource.add_method(
+        # Add POST method for set-plans (batch upsert)
+        set_plans_resource.add_method(
             "POST",
             checkin_integration,
             api_key_required=True,
@@ -558,8 +558,8 @@ class CheckinStack(Stack):
             authorization_type=apigateway.AuthorizationType.CUSTOM,
         )
 
-        # Add GET method for set-plan-templates
-        set_plan_templates_resource.add_method(
+        # Add GET method for set-plans
+        set_plans_resource.add_method(
             "GET",
             checkin_integration,
             api_key_required=True,
@@ -567,8 +567,8 @@ class CheckinStack(Stack):
             authorization_type=apigateway.AuthorizationType.CUSTOM,
         )
 
-        # Add DELETE method for set-plan-templates (batch soft delete)
-        set_plan_templates_resource.add_method(
+        # Add DELETE method for set-plans (batch soft delete)
+        set_plans_resource.add_method(
             "DELETE",
             checkin_integration,
             api_key_required=True,

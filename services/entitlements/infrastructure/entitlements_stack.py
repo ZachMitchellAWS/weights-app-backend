@@ -287,7 +287,7 @@ class EntitlementsStack(Stack):
             "DependenciesLayer",
             layer_version_name=f"{self.project_name}-{self.env_name}-entitlements-deps",
             code=lambda_.Code.from_asset(str(layer_path)),
-            compatible_runtimes=[lambda_.Runtime.PYTHON_3_12],
+            compatible_runtimes=[lambda_.Runtime.PYTHON_3_13],
             description="Python dependencies for entitlements service (app-store-server-library)",
         )
 
@@ -314,7 +314,7 @@ class EntitlementsStack(Stack):
             self,
             "EntitlementsFunction",
             function_name=f"{self.project_name}-{self.env_name}-entitlements",
-            runtime=lambda_.Runtime.PYTHON_3_12,
+            runtime=lambda_.Runtime.PYTHON_3_13,
             handler="handlers.entitlements.handler",
             code=lambda_.Code.from_asset(str(lambda_code_path)),
             layers=[self.dependencies_layer],

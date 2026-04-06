@@ -137,14 +137,14 @@ def curate_training_data(
         exercises_future = executor.submit(_query_exercises, user_id)
         e1rm_future = executor.submit(_query_estimated_1rm, user_id, window_start_iso, window_end_iso)
         user_props_future = executor.submit(_query_user_properties, user_id)
-        templates_future = executor.submit(_query_set_plan_templates, user_id)
+        plans_future = executor.submit(_query_set_plans, user_id)
         groups_future = executor.submit(_query_groups, user_id)
 
     lift_sets = lift_sets_future.result()
     exercises = exercises_future.result()
     e1rm_records = e1rm_future.result()
     user_properties = user_props_future.result()
-    templates = templates_future.result()
+    plans = plans_future.result()
     groups = groups_future.result()
 
     # Resolve timezone from user properties (falls back to UTC)
@@ -175,7 +175,7 @@ def curate_training_data(
     prior_summaries = _build_prior_weeks_summaries(prior_weeks_sets, exercise_map, focus_start, tz)
 
     # Format user context
-    user_context = _format_user_context(user_properties, templates, focus_start, prior_weeks_sets, groups)
+    user_context = _format_user_context(user_properties, plans, focus_start, prior_weeks_sets, groups)
 
     # Format strength status
     strength_status = _format_strength_status(user_properties, exercise_map, all_time_e1rm)
@@ -278,9 +278,9 @@ def _query_user_properties(user_id: str) -> dict | None:
     return response.get('Item')
 
 
-def _query_set_plan_templates(user_id: str) -> list[dict]:
-    """Query all non-deleted set plan templates for a user."""
-    table_name = os.environ.get('SET_PLAN_TEMPLATES_TABLE_NAME')
+def _query_set_plans(user_id: str) -> list[dict]:
+    """Query all non-deleted set plans for a user."""
+    table_name = os.environ.get('SET_PLANS_TABLE_NAME')
     table = dynamodb.Table(table_name)
 
     items = []
@@ -697,7 +697,7 @@ def _format_strength_status(
 
 def _format_user_context(
     user_properties: dict | None,
-    templates: list[dict],
+    plans: list[dict],
     focus_start: date,
     prior_sets: list[dict],
     groups: list[dict] | None = None,
@@ -715,10 +715,10 @@ def _format_user_context(
         if min_reps or max_reps:
             lines.append(f"- Rep range preference: {min_reps}-{max_reps}")
 
-    # Active templates
-    if templates:
-        template_names = [t.get('name', 'Unnamed') for t in templates]
-        lines.append(f"- Set plan templates: {', '.join(template_names)}")
+    # Active set plans
+    if plans:
+        plan_names = [p.get('name', 'Unnamed') for p in plans]
+        lines.append(f"- Set plans: {', '.join(plan_names)}")
 
     # Exercise groups
     if groups:

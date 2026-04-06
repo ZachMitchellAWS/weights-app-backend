@@ -78,37 +78,37 @@ install-dev:
 build-layer:
 	@echo "Building Lambda layer for auth service..."
 	cd services/auth && rm -rf layer/python && mkdir -p layer/python
-	cd services/auth && pip3 install -r requirements.txt -t layer/python/ --upgrade --platform manylinux2014_x86_64 --python-version 3.12 --only-binary=:all:
+	cd services/auth && pip3 install -r requirements.txt -t layer/python/ --upgrade --platform manylinux2014_x86_64 --python-version 3.13 --only-binary=:all:
 	@echo "Lambda layer built successfully at services/auth/layer/"
 	@echo ""
 	@echo "Building Lambda layer for entitlements service..."
 	cd services/entitlements && rm -rf layer/python && mkdir -p layer/python
-	cd services/entitlements && pip3 install -r requirements.txt -t layer/python/ --upgrade --platform manylinux2014_x86_64 --python-version 3.12 --only-binary=:all:
+	cd services/entitlements && pip3 install -r requirements.txt -t layer/python/ --upgrade --platform manylinux2014_x86_64 --python-version 3.13 --only-binary=:all:
 	@echo "Lambda layer built successfully at services/entitlements/layer/"
 	@echo ""
 	@echo "Building Lambda layer for insights service..."
 	cd services/insights && rm -rf layer/python && mkdir -p layer/python
-	cd services/insights && pip3 install -r requirements.txt -t layer/python/ --upgrade --platform manylinux2014_x86_64 --python-version 3.12 --only-binary=:all:
+	cd services/insights && pip3 install -r requirements.txt -t layer/python/ --upgrade --platform manylinux2014_x86_64 --python-version 3.13 --only-binary=:all:
 	@echo "Lambda layer built successfully at services/insights/layer/"
 	@echo ""
 	@echo "Building Lambda layer for user service..."
 	cd services/user && rm -rf layer/python && mkdir -p layer/python
-	cd services/user && pip3 install -r requirements.txt -t layer/python/ --upgrade --platform manylinux2014_x86_64 --python-version 3.12 --only-binary=:all:
+	cd services/user && pip3 install -r requirements.txt -t layer/python/ --upgrade --platform manylinux2014_x86_64 --python-version 3.13 --only-binary=:all:
 	@echo "Lambda layer built successfully at services/user/layer/"
 	@echo ""
 	@echo "Building Lambda layer for checkin service..."
 	cd services/checkin && rm -rf layer/python && mkdir -p layer/python
-	cd services/checkin && pip3 install -r requirements.txt -t layer/python/ --upgrade --platform manylinux2014_x86_64 --python-version 3.12 --only-binary=:all:
+	cd services/checkin && pip3 install -r requirements.txt -t layer/python/ --upgrade --platform manylinux2014_x86_64 --python-version 3.13 --only-binary=:all:
 	@echo "Lambda layer built successfully at services/checkin/layer/"
 	@echo ""
 	@echo "Building Lambda layer for email service..."
 	cd services/email && rm -rf layer/python && mkdir -p layer/python
-	cd services/email && pip3 install -r requirements.txt -t layer/python/ --upgrade --platform manylinux2014_x86_64 --python-version 3.12 --only-binary=:all:
+	cd services/email && pip3 install -r requirements.txt -t layer/python/ --upgrade --platform manylinux2014_x86_64 --python-version 3.13 --only-binary=:all:
 	@echo "Lambda layer built successfully at services/email/layer/"
 	@echo ""
 	@echo "Building Lambda layer for website service..."
 	cd services/website && rm -rf layer/python && mkdir -p layer/python
-	cd services/website && pip3 install -r requirements.txt -t layer/python/ --upgrade --platform manylinux2014_x86_64 --python-version 3.12 --only-binary=:all:
+	cd services/website && pip3 install -r requirements.txt -t layer/python/ --upgrade --platform manylinux2014_x86_64 --python-version 3.13 --only-binary=:all:
 	@echo "Lambda layer built successfully at services/website/layer/"
 
 # Upload email templates to staging S3 bucket
@@ -207,7 +207,7 @@ destroy-production:
 # WARNING: This deletes ALL data from staging tables
 clear-staging-db:
 	@echo "WARNING: This will delete ALL items from staging DynamoDB tables!"
-	@echo "Tables: users, user-properties, password-reset-codes, exercises, lift-sets, estimated-1rm, splits, set-plan-templates, accessory-goal-checkins, entitlement-grants, subscription-events, insight-tasks, insights-cache"
+	@echo "Tables: users, user-properties, password-reset-codes, exercises, lift-sets, estimated-1rm, splits, set-plans, accessory-goal-checkins, entitlement-grants, subscription-events, insight-tasks, insights-cache"
 	@echo "Press Ctrl+C to cancel, or Enter to continue..."
 	@read confirm
 	$(PYTHON) scripts/clear_staging_db.py
@@ -216,7 +216,7 @@ clear-staging-db:
 # WARNING: This deletes ALL data from production tables
 clear-production-db:
 	@echo "WARNING: This will delete ALL items from PRODUCTION DynamoDB tables!"
-	@echo "Tables: users, user-properties, password-reset-codes, exercises, lift-sets, estimated-1rm, splits, set-plan-templates, accessory-goal-checkins, entitlement-grants, subscription-events, insight-tasks, insights-cache"
+	@echo "Tables: users, user-properties, password-reset-codes, exercises, lift-sets, estimated-1rm, splits, set-plans, accessory-goal-checkins, entitlement-grants, subscription-events, insight-tasks, insights-cache"
 	@echo "This action cannot be undone. Press Ctrl+C to cancel, or Enter to continue..."
 	@read confirm
 	$(PYTHON) scripts/clear_production_db.py

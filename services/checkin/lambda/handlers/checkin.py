@@ -16,10 +16,10 @@ Handles estimated 1RM operations:
 - GET /checkin/estimated-1rm: Get paginated estimated 1RM records (most recent first)
 - DELETE /checkin/estimated-1rm: Soft delete estimated 1RM records (batch support)
 
-Handles set plan template operations:
-- POST /checkin/set-plan-templates: Create or update set plan templates (upsert with batch support)
-- GET /checkin/set-plan-templates: Get all non-deleted set plan templates
-- DELETE /checkin/set-plan-templates: Soft delete set plan templates (batch support)
+Handles set plan operations:
+- POST /checkin/set-plans: Create or update set plans (upsert with batch support)
+- GET /checkin/set-plans: Get all non-deleted set plans
+- DELETE /checkin/set-plans: Soft delete set plans (batch support)
 
 Handles accessory goal checkin operations (steps, protein, bodyweight):
 - POST /checkin/accessory-goal-checkins: Create accessory goal checkins (batch support)
@@ -108,13 +108,13 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             return get_estimated_1rm(event, user_id)
         elif http_method == 'DELETE' and path.endswith('/checkin/estimated-1rm'):
             return delete_estimated_1rm(event, user_id)
-        # Set plan template routes
-        elif http_method == 'POST' and path.endswith('/checkin/set-plan-templates'):
-            return upsert_set_plan_templates(event, user_id)
-        elif http_method == 'GET' and path.endswith('/checkin/set-plan-templates'):
-            return get_set_plan_templates(event, user_id)
-        elif http_method == 'DELETE' and path.endswith('/checkin/set-plan-templates'):
-            return delete_set_plan_templates(event, user_id)
+        # Set plan routes
+        elif http_method == 'POST' and path.endswith('/checkin/set-plans'):
+            return upsert_set_plans(event, user_id)
+        elif http_method == 'GET' and path.endswith('/checkin/set-plans'):
+            return get_set_plans(event, user_id)
+        elif http_method == 'DELETE' and path.endswith('/checkin/set-plans'):
+            return delete_set_plans(event, user_id)
         # Accessory goal checkin routes
         elif http_method == 'POST' and path.endswith('/checkin/accessory-goal-checkins'):
             return create_accessory_goal_checkins(event, user_id)
@@ -1633,73 +1633,73 @@ def delete_estimated_1rm(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
         )
 
 
-def upsert_set_plan_templates(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
-    """Create or update set plan templates (upsert with batch support)."""
+def upsert_set_plans(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
+    """Create or update set plans (upsert with batch support)."""
     try:
         body = json.loads(event.get('body', '{}'))
 
-        if 'templates' not in body:
+        if 'plans' not in body:
             return create_response(
                 status_code=400,
                 body={
                     "error": "Missing required field",
-                    "message": "Request body must contain 'templates' array"
+                    "message": "Request body must contain 'plans' array"
                 }
             )
 
-        templates_input = body['templates']
+        plans_input = body['plans']
 
-        if not isinstance(templates_input, list):
+        if not isinstance(plans_input, list):
             return create_response(
                 status_code=400,
                 body={
                     "error": "Invalid format",
-                    "message": "'templates' must be an array"
+                    "message": "'plans' must be an array"
                 }
             )
 
-        if len(templates_input) == 0:
+        if len(plans_input) == 0:
             return create_response(
                 status_code=400,
                 body={
-                    "error": "Empty templates array",
-                    "message": "At least one template is required"
+                    "error": "Empty plans array",
+                    "message": "At least one plan is required"
                 }
             )
 
         # Validate
-        required_fields = ['templateId', 'name', 'effortSequence', 'isCustom', 'createdTimezone', 'createdDatetime']
+        required_fields = ['planId', 'name', 'effortSequence', 'isCustom', 'createdTimezone', 'createdDatetime']
         valid_effort_levels = ['easy', 'moderate', 'hard', 'redline', 'pr']
         validation_errors = []
 
-        for idx, template in enumerate(templates_input):
-            missing_fields = [field for field in required_fields if field not in template]
+        for idx, plan in enumerate(plans_input):
+            missing_fields = [field for field in required_fields if field not in plan]
             if missing_fields:
                 validation_errors.append(
-                    f"Template at index {idx}: missing fields: {', '.join(missing_fields)}"
+                    f"Plan at index {idx}: missing fields: {', '.join(missing_fields)}"
                 )
                 continue
 
-            if not isinstance(template['name'], str) or not template['name'].strip():
+            if not isinstance(plan['name'], str) or not plan['name'].strip():
                 validation_errors.append(
-                    f"Template at index {idx}: name must be a non-empty string"
+                    f"Plan at index {idx}: name must be a non-empty string"
                 )
 
-            if not isinstance(template['effortSequence'], list):
+            if not isinstance(plan['effortSequence'], list):
                 validation_errors.append(
-                    f"Template at index {idx}: effortSequence must be an array"
+                    f"Plan at index {idx}: effortSequence must be an array"
                 )
             else:
-                for i, level in enumerate(template['effortSequence']):
+                for i, level in enumerate(plan['effortSequence']):
                     if level not in valid_effort_levels:
                         validation_errors.append(
-                            f"Template at index {idx}: effortSequence[{i}] must be one of: {', '.join(valid_effort_levels)}"
+                            f"Plan at index {idx}: effortSequence[{i}] must be one of: {', '.join(valid_effort_levels)}"
                         )
                         break
 
-            if 'templateDescription' in template and template['templateDescription'] is not None and not isinstance(template['templateDescription'], str):
+            if 'planDescription' in plan and plan['planDescription'] is not None and not isinstance(plan['planDescription'], str):
                 validation_errors.append(
-                    f"Template at index {idx}: templateDescription must be a string or null"
+                    f"Plan at index {idx}: planDescription must be a string or null"
                 )
 
         if validation_errors:
@@ -1707,24 +1707,24 @@ def upsert_set_plan_templates(event: Dict[str, Any], user_id: str) -> Dict[str, 
                 status_code=400,
                 body={
                     "error": "Validation failed",
-                    "message": "One or more templates have validation errors",
+                    "message": "One or more plans have validation errors",
                     "errors": validation_errors
                 }
             )
 
-        table_name = os.environ.get('SET_PLAN_TEMPLATES_TABLE_NAME')
+        table_name = os.environ.get('SET_PLANS_TABLE_NAME')
         if not table_name:
-            raise ValueError("SET_PLAN_TEMPLATES_TABLE_NAME environment variable not set")
+            raise ValueError("SET_PLANS_TABLE_NAME environment variable not set")
 
         table = dynamodb.Table(table_name)
         current_datetime = get_current_datetime_iso()
 
         # Batch get existing items
-        template_ids = [t['templateId'] for t in templates_input]
+        plan_ids = [p['planId'] for p in plans_input]
         existing_items = {}
-        for i in range(0, len(template_ids), 100):
-            batch_ids = template_ids[i:i + 100]
-            keys = [{'userId': user_id, 'templateId': tid} for tid in batch_ids]
+        for i in range(0, len(plan_ids), 100):
+            batch_ids = plan_ids[i:i + 100]
+            keys = [{'userId': user_id, 'planId': pid} for pid in batch_ids]
 
             response = dynamodb.batch_get_item(
                 RequestItems={
@@ -1735,37 +1735,37 @@ def upsert_set_plan_templates(event: Dict[str, Any], user_id: str) -> Dict[str, 
             )
 
             for item in response.get('Responses', {}).get(table_name, []):
-                existing_items[item['templateId']] = item
+                existing_items[item['planId']] = item
 
-        result_templates = []
+        result_plans = []
         created_count = 0
         updated_count = 0
 
-        for template in templates_input:
-            template_id = template['templateId']
-            existing = existing_items.get(template_id)
+        for plan in plans_input:
+            plan_id = plan['planId']
+            existing = existing_items.get(plan_id)
 
             if existing:
                 update_expression = 'SET #name = :name, effortSequence = :effortSequence, isCustom = :isCustom, lastModifiedDatetime = :lastModified'
                 expression_attr_names = {'#name': 'name'}
                 expression_attr_values = {
-                    ':name': template['name'],
-                    ':effortSequence': template['effortSequence'],
-                    ':isCustom': template['isCustom'],
+                    ':name': plan['name'],
+                    ':effortSequence': plan['effortSequence'],
+                    ':isCustom': plan['isCustom'],
                     ':lastModified': current_datetime
                 }
 
-                if 'templateDescription' in template:
-                    if template['templateDescription']:
-                        update_expression += ', templateDescription = :templateDescription'
-                        expression_attr_values[':templateDescription'] = template['templateDescription']
+                if 'planDescription' in plan:
+                    if plan['planDescription']:
+                        update_expression += ', planDescription = :planDescription'
+                        expression_attr_values[':planDescription'] = plan['planDescription']
                     else:
-                        update_expression += ' REMOVE templateDescription'
+                        update_expression += ' REMOVE planDescription'
 
                 response = table.update_item(
                     Key={
                         'userId': user_id,
-                        'templateId': template_id
+                        'planId': plan_id
                     },
                     UpdateExpression=update_expression,
                     ExpressionAttributeNames=expression_attr_names,
@@ -1773,33 +1773,33 @@ def upsert_set_plan_templates(event: Dict[str, Any], user_id: str) -> Dict[str, 
                     ReturnValues='ALL_NEW'
                 )
 
-                result_templates.append(response.get('Attributes', {}))
+                result_plans.append(response.get('Attributes', {}))
                 updated_count += 1
             else:
-                template_item = {
+                plan_item = {
                     'userId': user_id,
-                    'templateId': template_id,
-                    'name': template['name'],
-                    'effortSequence': template['effortSequence'],
-                    'isCustom': template['isCustom'],
-                    'createdTimezone': template['createdTimezone'],
-                    'createdDatetime': template['createdDatetime'],
+                    'planId': plan_id,
+                    'name': plan['name'],
+                    'effortSequence': plan['effortSequence'],
+                    'isCustom': plan['isCustom'],
+                    'createdTimezone': plan['createdTimezone'],
+                    'createdDatetime': plan['createdDatetime'],
                     'lastModifiedDatetime': current_datetime,
                 }
 
-                if 'templateDescription' in template and template['templateDescription']:
-                    template_item['templateDescription'] = template['templateDescription']
+                if 'planDescription' in plan and plan['planDescription']:
+                    plan_item['planDescription'] = plan['planDescription']
 
-                table.put_item(Item=template_item)
-                result_templates.append(template_item)
+                table.put_item(Item=plan_item)
+                result_plans.append(plan_item)
                 created_count += 1
 
-        print(f"Upserted set plan templates for user {user_id}: {created_count} created, {updated_count} updated")
+        print(f"Upserted set plans for user {user_id}: {created_count} created, {updated_count} updated")
 
         return create_response(
             status_code=200 if updated_count > 0 else 201,
             body={
-                "templates": result_templates,
+                "plans": result_plans,
                 "created": created_count,
                 "updated": updated_count
             }
@@ -1814,7 +1814,7 @@ def upsert_set_plan_templates(event: Dict[str, Any], user_id: str) -> Dict[str, 
             }
         )
     except Exception as e:
-        print(f"Error upserting set plan templates: {str(e)}")
+        print(f"Error upserting set plans: {str(e)}")
         import traceback
         traceback.print_exc()
         return create_response(
@@ -1823,39 +1823,39 @@ def upsert_set_plan_templates(event: Dict[str, Any], user_id: str) -> Dict[str, 
         )
 
 
-def get_set_plan_templates(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
-    """Get all non-deleted set plan templates for a user."""
+def get_set_plans(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
+    """Get all non-deleted set plans for a user."""
     try:
-        table_name = os.environ.get('SET_PLAN_TEMPLATES_TABLE_NAME')
+        table_name = os.environ.get('SET_PLANS_TABLE_NAME')
         if not table_name:
-            raise ValueError("SET_PLAN_TEMPLATES_TABLE_NAME environment variable not set")
+            raise ValueError("SET_PLANS_TABLE_NAME environment variable not set")
 
         table = dynamodb.Table(table_name)
 
-        templates = []
+        plans = []
         kwargs = {'KeyConditionExpression': Key('userId').eq(user_id)}
 
         while True:
             response = table.query(**kwargs)
-            templates.extend(response.get('Items', []))
+            plans.extend(response.get('Items', []))
             if 'LastEvaluatedKey' not in response:
                 break
             kwargs['ExclusiveStartKey'] = response['LastEvaluatedKey']
 
-        non_deleted_templates = [
-            t for t in templates
-            if not t.get('deleted', False)
+        non_deleted_plans = [
+            p for p in plans
+            if not p.get('deleted', False)
         ]
 
-        print(f"Retrieved {len(non_deleted_templates)} non-deleted set plan templates for user: {user_id}")
+        print(f"Retrieved {len(non_deleted_plans)} non-deleted set plans for user: {user_id}")
 
         return create_response(
             status_code=200,
-            body={"templates": non_deleted_templates}
+            body={"plans": non_deleted_plans}
         )
 
     except Exception as e:
-        print(f"Error getting set plan templates: {str(e)}")
+        print(f"Error getting set plans: {str(e)}")
         import traceback
         traceback.print_exc()
         return create_response(
@@ -1864,51 +1864,51 @@ def get_set_plan_templates(event: Dict[str, Any], user_id: str) -> Dict[str, Any
         )
 
 
-def delete_set_plan_templates(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
-    """Soft delete set plan templates (batch support). Built-in templates cannot be deleted."""
+def delete_set_plans(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
+    """Soft delete set plans (batch support). Built-in plans cannot be deleted."""
     try:
         body = json.loads(event.get('body', '{}'))
 
-        if 'templateIds' not in body:
+        if 'planIds' not in body:
             return create_response(
                 status_code=400,
                 body={
                     "error": "Missing required field",
-                    "message": "Request body must contain 'templateIds' array"
+                    "message": "Request body must contain 'planIds' array"
                 }
             )
 
-        template_ids = body['templateIds']
+        plan_ids = body['planIds']
 
-        if not isinstance(template_ids, list):
+        if not isinstance(plan_ids, list):
             return create_response(
                 status_code=400,
                 body={
                     "error": "Invalid format",
-                    "message": "'templateIds' must be an array"
+                    "message": "'planIds' must be an array"
                 }
             )
 
-        if len(template_ids) == 0:
+        if len(plan_ids) == 0:
             return create_response(
                 status_code=400,
                 body={
-                    "error": "Empty templateIds array",
-                    "message": "At least one templateId is required"
+                    "error": "Empty planIds array",
+                    "message": "At least one planId is required"
                 }
             )
 
-        table_name = os.environ.get('SET_PLAN_TEMPLATES_TABLE_NAME')
+        table_name = os.environ.get('SET_PLANS_TABLE_NAME')
         if not table_name:
-            raise ValueError("SET_PLAN_TEMPLATES_TABLE_NAME environment variable not set")
+            raise ValueError("SET_PLANS_TABLE_NAME environment variable not set")
 
         table = dynamodb.Table(table_name)
 
         # Verify which items exist
         existing_items = {}
-        for i in range(0, len(template_ids), 100):
-            batch_ids = template_ids[i:i + 100]
-            keys = [{'userId': user_id, 'templateId': tid} for tid in batch_ids]
+        for i in range(0, len(plan_ids), 100):
+            batch_ids = plan_ids[i:i + 100]
+            keys = [{'userId': user_id, 'planId': pid} for pid in batch_ids]
 
             response = dynamodb.batch_get_item(
                 RequestItems={
@@ -1919,30 +1919,30 @@ def delete_set_plan_templates(event: Dict[str, Any], user_id: str) -> Dict[str, 
             )
 
             for item in response.get('Responses', {}).get(table_name, []):
-                existing_items[item['templateId']] = item
+                existing_items[item['planId']] = item
 
-        # Reject deletion of built-in templates
-        built_in_ids = [tid for tid in template_ids if tid in existing_items and not existing_items[tid].get('isCustom', True)]
+        # Reject deletion of built-in plans
+        built_in_ids = [pid for pid in plan_ids if pid in existing_items and not existing_items[pid].get('isCustom', True)]
         if built_in_ids:
             return create_response(
                 status_code=400,
                 body={
-                    "error": "Cannot delete built-in templates",
-                    "message": f"The following template IDs are built-in and cannot be deleted: {built_in_ids}"
+                    "error": "Cannot delete built-in plans",
+                    "message": f"The following plan IDs are built-in and cannot be deleted: {built_in_ids}"
                 }
             )
 
         current_datetime = get_current_datetime_iso()
-        deleted_templates = []
+        deleted_plans = []
 
-        for template_id in template_ids:
-            if template_id not in existing_items:
+        for plan_id in plan_ids:
+            if plan_id not in existing_items:
                 continue
 
             response = table.update_item(
                 Key={
                     'userId': user_id,
-                    'templateId': template_id
+                    'planId': plan_id
                 },
                 UpdateExpression='SET deleted = :deleted, lastModifiedDatetime = :lastModified',
                 ExpressionAttributeValues={
@@ -1952,15 +1952,15 @@ def delete_set_plan_templates(event: Dict[str, Any], user_id: str) -> Dict[str, 
                 ReturnValues='ALL_NEW'
             )
 
-            deleted_templates.append(response.get('Attributes', {}))
+            deleted_plans.append(response.get('Attributes', {}))
 
-        print(f"Soft deleted {len(deleted_templates)} set plan templates for user: {user_id}")
+        print(f"Soft deleted {len(deleted_plans)} set plans for user: {user_id}")
 
         return create_response(
             status_code=200,
             body={
-                "message": f"Successfully deleted {len(deleted_templates)} template(s)",
-                "deletedTemplates": deleted_templates
+                "message": f"Successfully deleted {len(deleted_plans)} plan(s)",
+                "deletedPlans": deleted_plans
             }
         )
 
@@ -1973,7 +1973,7 @@ def delete_set_plan_templates(event: Dict[str, Any], user_id: str) -> Dict[str, 
             }
         )
     except Exception as e:
-        print(f"Error deleting set plan templates: {str(e)}")
+        print(f"Error deleting set plans: {str(e)}")
         import traceback
         traceback.print_exc()
         return create_response(

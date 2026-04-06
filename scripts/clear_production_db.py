@@ -26,7 +26,7 @@ TABLES = [
     ("estimated-1rm", "userId", "liftSetId"),
     ("entitlement-grants", "userId", "startUtc"),
     ("subscription-events", "userId", "eventTimestamp"),
-    ("set-plan-templates", "userId", "templateId"),
+    ("set-plans", "userId", "planId"),
     ("accessory-goal-checkins", "userId", "checkinId"),
     ("groups", "userId", "groupId"),
     ("insight-tasks", "userId", "insightWeek"),

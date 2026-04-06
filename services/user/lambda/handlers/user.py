@@ -318,20 +318,20 @@ def handle_update_properties(event: Dict[str, Any]) -> Dict[str, Any]:
             update_parts.append("maxReps = :maxReps")
             expression_values[":maxReps"] = max_reps
 
-        # Handle activeSetPlanTemplateId (nullable string - can be set or removed)
-        if "activeSetPlanTemplateId" in body:
-            active_set_plan = body.get("activeSetPlanTemplateId")
+        # Handle activeSetPlanId (nullable string - can be set or removed)
+        if "activeSetPlanId" in body:
+            active_set_plan = body.get("activeSetPlanId")
             if active_set_plan is None:
-                remove_parts.append("activeSetPlanTemplateId")
+                remove_parts.append("activeSetPlanId")
             elif isinstance(active_set_plan, str):
-                update_parts.append("activeSetPlanTemplateId = :activeSetPlanTemplateId")
-                expression_values[":activeSetPlanTemplateId"] = active_set_plan
+                update_parts.append("activeSetPlanId = :activeSetPlanId")
+                expression_values[":activeSetPlanId"] = active_set_plan
             else:
                 return create_response(
                     status_code=400,
                     body={
                         "error": "Invalid field type",
-                        "message": "activeSetPlanTemplateId must be a string or null"
+                        "message": "activeSetPlanId must be a string or null"
                     }
                 )
 

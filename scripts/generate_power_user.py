@@ -7,8 +7,9 @@ deload weeks). Data is deterministic via uuid5 and seeded random, making re-runs
 idempotent (put_item is an upsert).
 
 Usage:
-    python scripts/generate_power_user.py                # default 12 months
-    python scripts/generate_power_user.py --months 6     # 6 months of history
+    python scripts/generate_power_user.py                          # default 12 months ending today
+    python scripts/generate_power_user.py --months 6               # 6 months ending today
+    python scripts/generate_power_user.py --months 24 --stale 6    # 24 months ending 6 months ago
 """
 
 import argparse
@@ -396,10 +397,10 @@ EXERCISE_CATALOG = [
 ]
 
 
-# ─── Set Plan Templates ──────────────────────────────────────────────────────
+# ─── Set Plans ───────────────────────────────────────────────────────────────
 
-# Matches SetPlan.builtInTemplates exactly (16 plans with deterministic UUIDs)
-SET_PLAN_TEMPLATES = [
+# Matches SetPlan.builtInPlans exactly (16 plans with deterministic UUIDs)
+SET_PLANS = [
     ("00000000-0000-0000-0000-000000000101", "Standard",            ["easy", "easy", "moderate", "moderate", "hard", "pr"],                        "Progressive warmup to PR attempt"),
     ("00000000-0000-0000-0000-000000000102", "Grease the Groove",   ["easy", "easy", "easy", "easy", "moderate", "moderate", "moderate", "hard"],  "High volume, low intensity"),
     ("00000000-0000-0000-0000-000000000103", "Maintenance",         ["moderate", "moderate", "hard"],                                              "Moderate volume, hold strength"),
@@ -638,7 +639,7 @@ def generate_exercises(training_start):
     return exercises, exercise_map
 
 
-def generate_training_calendar(training_start):
+def generate_training_calendar(training_start, training_end):
     """Generate training session dates across 3 phases.
 
     Phase boundaries scale proportionally to the total training window:
@@ -649,12 +650,12 @@ def generate_training_calendar(training_start):
     sessions = []
     current = training_start
 
-    total_weeks = max(1, (TRAINING_END - training_start).days // 7)
+    total_weeks = max(1, (training_end - training_start).days // 7)
     phase1_end = max(4, total_weeks // 6)
     phase2_end = max(phase1_end + 4, total_weeks // 2)
 
     week_num = 0
-    while current < TRAINING_END:
+    while current < training_end:
         week_start = current
         week_num += 1
         is_deload = (week_num % 4 == 0)
@@ -679,7 +680,7 @@ def generate_training_calendar(training_start):
 
         for day_offset in days:
             session_date = week_start + timedelta(days=day_offset)
-            if session_date >= TRAINING_END:
+            if session_date >= training_end:
                 break
             # Session time: 6:00-7:30 AM with some variance
             hour = 6
@@ -744,7 +745,7 @@ def pick_session_exercises(session, exercise_map, rng):
     return chosen[:12]  # Cap at 12 exercises per session
 
 
-def generate_lift_sets_and_e1rms(sessions, exercise_map, training_start):
+def generate_lift_sets_and_e1rms(sessions, exercise_map, training_start, training_end):
     """Generate lift sets and corresponding estimated 1RMs.
 
     Each training day gets exactly 28 sets (16 on deload weeks), distributed
@@ -758,7 +759,7 @@ def generate_lift_sets_and_e1rms(sessions, exercise_map, training_start):
     print(f"  Training sessions: {len(sessions)}")
     print(f"  Sets per day: {SETS_PER_DAY} (deload: {DELOAD_SETS_PER_DAY})")
 
-    total_days = (TRAINING_END - training_start).days
+    total_days = (training_end - training_start).days
     lift_sets = []
     e1rms = []
 
@@ -873,17 +874,17 @@ def generate_lift_sets_and_e1rms(sessions, exercise_map, training_start):
 
 
 def generate_set_plans():
-    """Generate all 16 built-in set plan templates matching the app."""
+    """Generate all 16 built-in set plans matching the app."""
     now = ts_z(datetime.now())
     set_plans = []
 
-    for template_id, name, sequence, description in SET_PLAN_TEMPLATES:
+    for plan_id, name, sequence, description in SET_PLANS:
         set_plans.append({
             "userId": POWER_USER_ID,
-            "templateId": template_id,
+            "planId": plan_id,
             "name": name,
             "effortSequence": sequence,
-            "templateDescription": description,
+            "planDescription": description,
             "isCustom": False,
             "createdTimezone": TIMEZONE,
             "createdDatetime": now,
@@ -916,7 +917,7 @@ def generate_exercise_groups():
     return groups
 
 
-def generate_static_records():
+def generate_static_records(training_end):
     """Generate user, user-properties, entitlement-grant, subscription-event."""
     created_str = ts_no_z(USER_CREATED)
 
@@ -941,7 +942,7 @@ def generate_static_records():
         "lastModifiedDatetime": created_str,
     }
 
-    entitlement_end = TRAINING_END + timedelta(days=365)
+    entitlement_end = training_end + timedelta(days=365)
     entitlement = {
         "userId": POWER_USER_ID,
         "startUtc": "2024-02-20T00:00:00Z",
@@ -1005,13 +1006,22 @@ def main():
         default=12,
         help="Number of months of training history to generate (default: 12)",
     )
+    parser.add_argument(
+        "--stale",
+        type=int,
+        default=0,
+        help="Months of staleness — shifts training end date back by N months (default: 0, meaning data ends today)",
+    )
     args = parser.parse_args()
 
-    training_start = TRAINING_END - timedelta(days=args.months * 30)
+    training_end = TRAINING_END - timedelta(days=args.stale * 30)
+    training_start = training_end - timedelta(days=args.months * 30)
 
     print(f"Generating power user data ({args.months} months of history)...")
     print(f"  User: {EMAIL} ({POWER_USER_ID})")
-    print(f"  Training window: {training_start.date()} to {TRAINING_END.date()} ({args.months * 30} days)")
+    print(f"  Training window: {training_start.date()} to {training_end.date()} ({args.months * 30} days)")
+    if args.stale > 0:
+        print(f"  Stale period: last {args.stale} months have no data")
     print()
 
     # Seed for deterministic exercise selection in sessions
@@ -1023,42 +1033,38 @@ def main():
     print(f"  {len(exercises)} exercises")
 
     print("Generating training calendar...")
-    sessions = generate_training_calendar(training_start)
+    sessions = generate_training_calendar(training_start, training_end)
     print(f"  {len(sessions)} training sessions")
 
     print("Generating lift sets and estimated 1RMs...")
-    lift_sets, e1rms = generate_lift_sets_and_e1rms(sessions, exercise_map, training_start)
+    lift_sets, e1rms = generate_lift_sets_and_e1rms(sessions, exercise_map, training_start, training_end)
     print(f"  {len(lift_sets)} lift sets")
     print(f"  {len(e1rms)} estimated 1RMs")
 
-    # Compute currentE1RM per exercise from generated e1RM data
-    print("Computing currentE1RM per exercise...")
-    max_e1rm_by_eid = {}  # exerciseId -> (value, datetime_str)
-    for e1rm in e1rms:
-        eid = e1rm["exerciseId"]
-        val = e1rm["value"]
-        dt = e1rm["createdDatetime"]
-        if eid not in max_e1rm_by_eid or val > max_e1rm_by_eid[eid][0]:
-            max_e1rm_by_eid[eid] = (val, dt)
-    updated_count = 0
-    for ex in exercises:
-        eid = ex["exerciseItemId"]
-        if eid in max_e1rm_by_eid:
-            ex["currentE1RM"] = max_e1rm_by_eid[eid][0]
-            ex["currentE1RMDate"] = max_e1rm_by_eid[eid][1]
-            updated_count += 1
-    print(f"  {updated_count} exercises have currentE1RM")
+    # Create a "stale exercise" test case: Incline Bench Press has lots of data
+    # but nothing in the last 4 months. Tests that currentE1RMLocalCache fallback works.
+    stale_exercise_name = "Incline Bench Press"
+    if stale_exercise_name in exercise_map:
+        stale_eid = exercise_map[stale_exercise_name]["exerciseItemId"]
+        four_months_ago = training_end - timedelta(days=120)
+        before = len(lift_sets)
+        lift_sets = [s for s in lift_sets if not (s["exerciseId"] == stale_eid and
+                     datetime.fromisoformat(s["createdDatetime"].replace("Z", "")) >= four_months_ago)]
+        e1rms = [e for e in e1rms if not (e["exerciseId"] == stale_eid and
+                 datetime.fromisoformat(e["createdDatetime"].replace("Z", "")) >= four_months_ago)]
+        removed = before - len(lift_sets)
+        print(f"  Removed {removed} recent sets for '{stale_exercise_name}' (stale exercise test)")
 
-    print("Generating set plan templates...")
+    print("Generating set plans...")
     set_plans = generate_set_plans()
-    print(f"  {len(set_plans)} set plan templates")
+    print(f"  {len(set_plans)} set plans")
 
     print("Generating exercise groups...")
     exercise_groups = generate_exercise_groups()
     print(f"  {len(exercise_groups)} exercise groups")
 
     print("Generating static records...")
-    user, user_props, entitlement, sub_event = generate_static_records()
+    user, user_props, entitlement, sub_event = generate_static_records(training_end)
 
     print()
     print("=" * 60)
@@ -1075,7 +1081,7 @@ def main():
     write_items("exercises", exercises, "exercises")
     write_items("lift-sets", lift_sets, "lift sets")
     write_items("estimated-1rm", e1rms, "estimated 1RMs")
-    write_items("set-plan-templates", set_plans, "set plan templates")
+    write_items("set-plans", set_plans, "set plans")
     # exercise-groups are client-side only (seeded by SeedService into SwiftData)
     write_items("entitlement-grants", [entitlement], "entitlement grant")
     write_items("subscription-events", [sub_event], "subscription event")

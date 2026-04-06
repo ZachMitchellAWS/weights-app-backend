@@ -10,7 +10,7 @@
 | Checkin | exercises | userId | exerciseItemId | - | - | Yes |
 | Checkin | lift-sets | userId | liftSetId | userId-createdDatetime-index | - | Yes |
 | Checkin | estimated-1rm | userId | liftSetId | userId-createdDatetime-index | - | Yes |
-| Checkin | set-plan-templates | userId | templateId | - | - | Yes |
+| Checkin | set-plans | userId | planId | - | - | Yes |
 | Checkin | recovery-checkins | userId | recoveryCheckinId | userId-checkinDate-index | - | Yes |
 | Checkin | groups | userId | groupId | - | - | Yes |
 | Entitlements | entitlement-grants | userId | startUtc | userId-endUtc-index | - | No |
@@ -52,7 +52,7 @@
 | bodyweight | Number | No | Nullable -- can be removed via null in POST |
 | minReps | Number | No | Global minimum reps target |
 | maxReps | Number | No | Global maximum reps target |
-| activeSetPlanTemplateId | String | No | Nullable -- UUID of active set plan template |
+| activeSetPlanId | String | No | Nullable -- UUID of active set plan |
 | hasMetStrengthTierConditions | Boolean | No | Default false -- set true when user completes strength tier journey |
 | createdDatetime | String | Yes | ISO 8601 |
 | lastModifiedDatetime | String | Yes | ISO 8601 |
@@ -114,16 +114,16 @@ Auto-created when a user registers.
 
 **GSI:** `userId-createdDatetime-index` -- enables "most recent first" pagination.
 
-### set-plan-templates
+### set-plans
 
 | Field | Type | Required | Notes |
 |-------|------|----------|-------|
 | userId | String | Yes | Partition key |
-| templateId | String | Yes | Sort key (UUID) |
-| name | String | Yes | Template name |
+| planId | String | Yes | Sort key (UUID) |
+| name | String | Yes | Plan name |
 | effortSequence | List\<String\> | Yes | Ordered list of effort levels (easy, moderate, hard, redline, pr) |
-| isCustom | Boolean | Yes | Whether template is user-created or built-in |
-| templateDescription | String | No | Optional description |
+| isCustom | Boolean | Yes | Whether plan is user-created or built-in |
+| planDescription | String | No | Optional description |
 | createdTimezone | String | Yes | e.g. "America/Los_Angeles" |
 | createdDatetime | String | Yes | ISO 8601 |
 | lastModifiedDatetime | String | Yes | ISO 8601 |
@@ -197,7 +197,7 @@ users ──── user-properties     (userId)
   │         │
   │         └── estimated-1rm  (exerciseId → exerciseItemId)
   │
-  ├────── set-plan-templates   (userId, activeSetPlanTemplateId in user-properties)
+  ├────── set-plans            (userId, activeSetPlanId in user-properties)
   │
   ├────── groups               (userId)
   │

@@ -12,7 +12,7 @@
     ],
     "user-properties": [
       {
-        "activeSetPlanTemplateId": "00000000-0000-0000-0000-000000000101",
+        "activeSetPlanId": "00000000-0000-0000-0000-000000000101",
         "activeSplitId": "00000000-0000-0000-0002-000000000001",
         "availableChangePlates": [
           0.25,
@@ -3832,10 +3832,10 @@
       }
     ],
     "subscription-events": [],
-    "set-plan-templates": [
+    "set-plans": [
       {
         "createdTimezone": "America/Los_Angeles",
-        "templateDescription": "Progressive warmup to PR attempt",
+        "planDescription": "Progressive warmup to PR attempt",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "createdDatetime": "2026-03-02T20:18:17Z",
         "lastModifiedDatetime": "2026-03-02T20:18:29.136101+00:00",
@@ -3849,11 +3849,11 @@
           "pr"
         ],
         "name": "Standard",
-        "templateId": "00000000-0000-0000-0000-000000000101"
+        "planId": "00000000-0000-0000-0000-000000000101"
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "templateDescription": "High volume, low intensity",
+        "planDescription": "High volume, low intensity",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "createdDatetime": "2026-03-02T20:18:17Z",
         "lastModifiedDatetime": "2026-03-02T20:18:29.136101+00:00",
@@ -3869,11 +3869,11 @@
           "hard"
         ],
         "name": "Grease the Groove",
-        "templateId": "00000000-0000-0000-0000-000000000102"
+        "planId": "00000000-0000-0000-0000-000000000102"
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "templateDescription": "Moderate volume, hold strength",
+        "planDescription": "Moderate volume, hold strength",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "createdDatetime": "2026-03-02T20:18:17Z",
         "lastModifiedDatetime": "2026-03-02T20:18:29.136101+00:00",
@@ -3884,11 +3884,11 @@
           "hard"
         ],
         "name": "Maintenance",
-        "templateId": "00000000-0000-0000-0000-000000000103"
+        "planId": "00000000-0000-0000-0000-000000000103"
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "templateDescription": "Recovery phase",
+        "planDescription": "Recovery phase",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "createdDatetime": "2026-03-02T20:18:17Z",
         "lastModifiedDatetime": "2026-03-02T20:18:29.136101+00:00",
@@ -3899,11 +3899,11 @@
           "easy"
         ],
         "name": "Deload",
-        "templateId": "00000000-0000-0000-0000-000000000104"
+        "planId": "00000000-0000-0000-0000-000000000104"
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "templateDescription": "Build up then back off",
+        "planDescription": "Build up then back off",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "createdDatetime": "2026-03-02T20:18:17Z",
         "lastModifiedDatetime": "2026-03-02T20:18:29.136101+00:00",
@@ -3917,11 +3917,11 @@
           "moderate"
         ],
         "name": "Pyramid",
-        "templateId": "00000000-0000-0000-0000-000000000105"
+        "planId": "00000000-0000-0000-0000-000000000105"
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "templateDescription": "Work up to max, drop intensity",
+        "planDescription": "Work up to max, drop intensity",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "createdDatetime": "2026-03-02T20:18:17Z",
         "lastModifiedDatetime": "2026-03-02T20:18:29.136101+00:00",
@@ -3935,7 +3935,7 @@
           "moderate"
         ],
         "name": "Top Set + Backoff",
-        "templateId": "00000000-0000-0000-0000-000000000106"
+        "planId": "00000000-0000-0000-0000-000000000106"
       }
     ],
     "accessory-goal-checkins": [
