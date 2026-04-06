@@ -309,6 +309,61 @@
 						"description": "Confirms password reset by validating the code and updating the password.\n\n**Request Body:**\n- `emailAddress` (string, required): User's email address\n- `code` (string, required): 6-digit code from email\n- `newPassword` (string, required): New password to set\n\n**Response (200 OK):**\n- `message`: \"Password reset successfully\"\n\n**Error (400 Bad Request):**\n- Missing required fields\n- Invalid email format\n- Code is not 6 digits\n\n**Error (401 Unauthorized):**\n- Invalid or expired reset code\n- Code doesn't match stored code\n- User not found\n\n**What happens:**\n1. Validates email format and code format\n2. Looks up user by email\n3. Verifies reset code matches and hasn't expired\n4. Hashes new password\n5. Updates user's password in database\n6. Deletes reset code (single-use)\n7. Updates lastModifiedDatetime\n\n**Security Notes:**\n- Code must be exactly 6 digits\n- Code expires after 1 hour\n- Code is deleted after successful use (single-use)\n- Password is hashed with SHA256 + pepper before storage\n\n**After Reset:**\n- User can immediately login with new password\n- Old password no longer works\n- All existing sessions remain valid until tokens expire"
 					},
 					"response": []
+				},
+				{
+					"name": "Apple Sign In",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Save tokens to environment variables for use in ALL other requests",
+									"if (pm.response.code === 200 || pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('accessToken', response.accessToken);",
+									"    pm.environment.set('refreshToken', response.refreshToken);",
+									"    pm.environment.set('userId', response.userId);",
+									"    pm.environment.set('userEmail', response.emailAddress);",
+									"    console.log('✓ Apple Sign In successful');",
+									"    console.log('✓ Access token saved (expires in 15 min)');",
+									"    console.log('✓ Refresh token saved (expires in 30 days)');",
+									"    console.log('✓ User ID:', response.userId);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-api-key",
+								"value": "{{apiKey}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"identityToken\": \"apple-jwt-token\",\n  \"email\": \"user@example.com\",\n  \"fullName\": \"John Doe\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/apple-signin",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"apple-signin"
+							]
+						},
+						"description": "Sign in with Apple identity token. Creates a new account if user doesn't exist, or logs in existing user.\n\n**Request Body:**\n- `identityToken` (string, required): JWT identity token from Apple Sign In\n- `email` (string, optional): User's email address from Apple\n- `fullName` (string, optional): User's full name from Apple\n\n**Response (200 OK / 201 Created):**\n- `userId` (string): User's unique ID\n- `emailAddress` (string): User's email\n- `accessToken` (string): JWT access token (15 min expiry)\n- `refreshToken` (string): JWT refresh token (30 day expiry)\n- `accessTokenExpiresIn` (number): Access token expiration in seconds (900)\n- `refreshTokenExpiresIn` (number): Refresh token expiration in seconds (2592000)\n\n**Automatic Actions:**\n- Saves `accessToken` for use in protected endpoints\n- Saves `refreshToken` for token refresh\n- Saves `userId` and `userEmail` for reference"
+					},
+					"response": []
 				}
 			],
 			"description": "Authentication endpoints for user management and JWT token operations.\n\n**Authentication Flow:**\n1. Create User or Login → Get tokens\n2. Use `accessToken` in Authorization header for protected endpoints\n3. When token expires (15 min), use Refresh Token endpoint\n4. Repeat step 2 with new token\n5. Use Logout to invalidate refresh token\n\n**Password Reset Flow:**\n1. Initiate Password Reset → Get 6-digit code via email\n2. Check email for code (expires in 1 hour)\n3. Confirm Password Reset with code and new password\n4. Login with new password\n\n**Token Storage:**\nAll tokens are automatically saved to environment variables:\n- `accessToken` - Used in Authorization headers\n- `refreshToken` - Used to get new access tokens\n- `userId` - Current user's ID\n- `userEmail` - Current user's email"
@@ -391,6 +446,88 @@
 							]
 						},
 						"description": "Updates user properties for the authenticated user. Partial updates supported - only include fields you want to change.\n\n**Authentication:**\n- Requires API key in x-api-key header\n- Requires valid access token in Authorization header\n- User ID is extracted from the JWT token\n\n**Request Body (all fields optional, at least one required):**\n- `bodyweight` (number or null): User's bodyweight. Send null to remove.\n- `availableChangePlates` (array of numbers): List of available change plate weights\n\n**Response (200 OK):**\n- `userId` (string): User's unique ID\n- `bodyweight` (number, optional): Current bodyweight if set\n- `availableChangePlates` (array): Current list of change plates\n- `createdDatetime` (string): When user properties were created (unchanged)\n- `lastModifiedDatetime` (string): Updated to current datetime\n\n**Error (400 Bad Request):**\n- No fields provided\n- Invalid field type (bodyweight must be number or null, availableChangePlates must be array of numbers)\n\n**Error (401 Unauthorized):**\n- Invalid or expired access token\n- Missing Authorization header\n\n**Error (403 Forbidden):**\n- Missing or invalid API key"
+					},
+					"response": []
+				},
+				{
+					"name": "Submit Feedback",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-api-key",
+								"value": "{{apiKey}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"message\": \"Great app!\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/user/feedback",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"user",
+								"feedback"
+							]
+						},
+						"description": "Submits user feedback for the authenticated user.\n\n**Authentication:**\n- Requires API key in x-api-key header\n- Requires valid access token in Authorization header\n- User ID is extracted from the JWT token\n\n**Request Body:**\n- `message` (string, required): Feedback message from the user\n\n**Response (200 OK):**\n- `message`: Confirmation that feedback was submitted\n\n**Error (400 Bad Request):**\n- Missing message field\n\n**Error (401 Unauthorized):**\n- Invalid or expired access token\n\n**Error (403 Forbidden):**\n- Missing or invalid API key"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Account",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-api-key",
+								"value": "{{apiKey}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{baseUrl}}/user/delete-account",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"user",
+								"delete-account"
+							]
+						},
+						"description": "Deletes the authenticated user's account and all associated data.\n\n**Authentication:**\n- Requires API key in x-api-key header\n- Requires valid access token in Authorization header\n- User ID is extracted from the JWT token\n\n**Request:**\n- No request body needed\n- User ID is extracted from the access token\n\n**Response (200 OK):**\n- `message`: Confirmation that account was deleted\n\n**Error (401 Unauthorized):**\n- Invalid or expired access token\n\n**Error (403 Forbidden):**\n- Missing or invalid API key\n\n**What happens:**\n- User account and all associated data are permanently deleted\n- All tokens are invalidated\n- This action is irreversible"
 					},
 					"response": []
 				}
@@ -788,6 +925,388 @@
 						"description": "Soft deletes one or more estimated 1RM records by setting deleted=true (batch support).\n\n**Authentication:**\n- Requires API key in x-api-key header\n- Requires valid access token in Authorization header\n- User ID is extracted from the JWT token\n\n**Request Body:**\n```json\n{\n  \"liftSetIds\": [\"lift-set-uuid-1\", \"lift-set-uuid-2\", ...]\n}\n```\n\nNote: We use `liftSetIds` because `liftSetId` is the sort key for this table.\n\n**Response (200 OK):**\n```json\n{\n  \"message\": \"Deleted 2 estimated 1RM record(s)\",\n  \"deletedEstimated1RMs\": [\n    {\n      \"userId\": \"user-uuid\",\n      \"liftSetId\": \"lift-set-uuid\",\n      \"estimated1RMId\": \"e1rm-uuid\",\n      \"exerciseId\": \"exercise-uuid\",\n      \"value\": 225.5,\n      \"createdTimezone\": \"America/Los_Angeles\",\n      \"createdDatetime\": \"2026-01-27T10:30:00.000Z\",\n      \"lastModifiedDatetime\": \"2026-01-27T15:00:00.000Z\",\n      \"deleted\": true\n    }\n  ],\n  \"notFoundIds\": [\"uuid-that-didnt-exist\"]\n}\n```\n\n**What happens:**\n- Sets `deleted` attribute to `true` for each estimated 1RM\n- Updates `lastModifiedDatetime` to current time\n- Records no longer appear in GET /checkin/estimated-1rm results\n- Data is preserved in database (soft delete)\n- Returns list of successfully deleted records and any IDs not found\n\n**Error (400 Bad Request):**\n- Missing liftSetIds field\n- Empty liftSetIds array\n- liftSetIds is not an array\n\n**Error (401 Unauthorized):**\n- Invalid or expired access token\n\n**Error (403 Forbidden):**\n- Missing or invalid API key"
 					},
 					"response": []
+				},
+				{
+					"name": "Upsert Set Plans",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-api-key",
+								"value": "{{apiKey}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"plans\": [\n    {\n      \"planId\": \"uuid\",\n      \"name\": \"My Plan\",\n      \"effortSequence\": [\"easy\", \"moderate\", \"hard\", \"pr\"],\n      \"isCustom\": true,\n      \"createdTimezone\": \"America/Los_Angeles\",\n      \"createdDatetime\": \"2026-01-15T10:30:00.000Z\",\n      \"planDescription\": \"Progressive warmup\"\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/checkin/set-plans",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"checkin",
+								"set-plans"
+							]
+						},
+						"description": "Creates or updates set plans for the authenticated user.\n\n**Authentication:**\n- Requires API key in x-api-key header\n- Requires valid access token in Authorization header\n- User ID is extracted from the JWT token\n\n**Request Body:**\n- `plans` (array, required): Array of set plan objects\n  - `planId` (string, required): Unique ID for this plan\n  - `name` (string, required): Plan name\n  - `effortSequence` (array of strings, required): Ordered effort levels\n  - `isCustom` (boolean, required): Whether this is a custom plan\n  - `createdTimezone` (string, required): Timezone identifier\n  - `createdDatetime` (string, required): ISO 8601 creation timestamp\n  - `planDescription` (string, optional): Description of the plan\n\n**Error (400 Bad Request):**\n- Missing required fields\n- Empty plans array\n\n**Error (401 Unauthorized):**\n- Invalid or expired access token\n\n**Error (403 Forbidden):**\n- Missing or invalid API key"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Set Plans",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-api-key",
+								"value": "{{apiKey}}",
+								"type": "default"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/checkin/set-plans",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"checkin",
+								"set-plans"
+							]
+						},
+						"description": "Retrieves all set plans for the authenticated user.\n\n**Authentication:**\n- Requires API key in x-api-key header\n- Requires valid access token in Authorization header\n- User ID is extracted from the JWT token\n\n**Response (200 OK):**\n- Array of set plan objects for the authenticated user\n\n**Error (401 Unauthorized):**\n- Invalid or expired access token\n\n**Error (403 Forbidden):**\n- Missing or invalid API key"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Set Plans",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-api-key",
+								"value": "{{apiKey}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"planIds\": [\"uuid-to-delete\"]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/checkin/set-plans",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"checkin",
+								"set-plans"
+							]
+						},
+						"description": "Deletes one or more set plans for the authenticated user.\n\n**Authentication:**\n- Requires API key in x-api-key header\n- Requires valid access token in Authorization header\n- User ID is extracted from the JWT token\n\n**Request Body:**\n- `planIds` (array of strings, required): IDs of plans to delete\n\n**Error (400 Bad Request):**\n- Missing planIds field\n- Empty planIds array\n\n**Error (401 Unauthorized):**\n- Invalid or expired access token\n\n**Error (403 Forbidden):**\n- Missing or invalid API key"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Accessory Goal Checkins",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-api-key",
+								"value": "{{apiKey}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"checkins\": [\n    {\n      \"checkinId\": \"uuid\",\n      \"metricType\": \"steps\",\n      \"value\": 10000,\n      \"createdTimezone\": \"America/Los_Angeles\",\n      \"createdDatetime\": \"2026-01-15T10:30:00.000Z\"\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/checkin/accessory-goal-checkins",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"checkin",
+								"accessory-goal-checkins"
+							]
+						},
+						"description": "Creates one or more accessory goal checkins for the authenticated user.\n\n**Authentication:**\n- Requires API key in x-api-key header\n- Requires valid access token in Authorization header\n- User ID is extracted from the JWT token\n\n**Request Body:**\n- `checkins` (array, required): Array of checkin objects\n  - `checkinId` (string, required): Unique ID for this checkin\n  - `metricType` (string, required): Type of metric (e.g., \"steps\")\n  - `value` (number, required): Metric value\n  - `createdTimezone` (string, required): Timezone identifier\n  - `createdDatetime` (string, required): ISO 8601 creation timestamp\n\n**Error (400 Bad Request):**\n- Missing required fields\n- Empty checkins array\n\n**Error (401 Unauthorized):**\n- Invalid or expired access token\n\n**Error (403 Forbidden):**\n- Missing or invalid API key"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Accessory Goal Checkins",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-api-key",
+								"value": "{{apiKey}}",
+								"type": "default"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/checkin/accessory-goal-checkins?limit=100",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"checkin",
+								"accessory-goal-checkins"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "100",
+									"description": "Number of items per page (optional)"
+								},
+								{
+									"key": "pageToken",
+									"value": "",
+									"description": "Token from previous response for next page",
+									"disabled": true
+								},
+								{
+									"key": "metricType",
+									"value": "",
+									"description": "Filter by metric type (optional)",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Retrieves paginated accessory goal checkins for the authenticated user.\n\n**Authentication:**\n- Requires API key in x-api-key header\n- Requires valid access token in Authorization header\n- User ID is extracted from the JWT token\n\n**Query Parameters:**\n- `limit` (optional): Number of items per page\n- `pageToken` (optional): Token from previous response for pagination\n- `metricType` (optional): Filter by metric type\n\n**Response (200 OK):**\n- Array of accessory goal checkin objects\n\n**Error (401 Unauthorized):**\n- Invalid or expired access token\n\n**Error (403 Forbidden):**\n- Missing or invalid API key"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Accessory Goal Checkins",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-api-key",
+								"value": "{{apiKey}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"checkinIds\": [\"uuid-to-delete\"]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/checkin/accessory-goal-checkins",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"checkin",
+								"accessory-goal-checkins"
+							]
+						},
+						"description": "Deletes one or more accessory goal checkins for the authenticated user.\n\n**Authentication:**\n- Requires API key in x-api-key header\n- Requires valid access token in Authorization header\n- User ID is extracted from the JWT token\n\n**Request Body:**\n- `checkinIds` (array of strings, required): IDs of checkins to delete\n\n**Error (400 Bad Request):**\n- Missing checkinIds field\n- Empty checkinIds array\n\n**Error (401 Unauthorized):**\n- Invalid or expired access token\n\n**Error (403 Forbidden):**\n- Missing or invalid API key"
+					},
+					"response": []
+				},
+				{
+					"name": "Upsert Groups",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-api-key",
+								"value": "{{apiKey}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"groups\": [\n    {\n      \"groupId\": \"uuid\",\n      \"name\": \"Push Day\",\n      \"exerciseIds\": [\"ex-uuid-1\", \"ex-uuid-2\"],\n      \"isCustom\": true,\n      \"sortOrder\": 0,\n      \"createdTimezone\": \"America/Los_Angeles\",\n      \"createdDatetime\": \"2026-01-15T10:30:00.000Z\"\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/checkin/groups",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"checkin",
+								"groups"
+							]
+						},
+						"description": "Creates or updates exercise groups for the authenticated user.\n\n**Authentication:**\n- Requires API key in x-api-key header\n- Requires valid access token in Authorization header\n- User ID is extracted from the JWT token\n\n**Request Body:**\n- `groups` (array, required): Array of group objects\n  - `groupId` (string, required): Unique ID for this group\n  - `name` (string, required): Group name\n  - `exerciseIds` (array of strings, required): IDs of exercises in this group\n  - `isCustom` (boolean, required): Whether this is a custom group\n  - `sortOrder` (number, required): Sort order for display\n  - `createdTimezone` (string, required): Timezone identifier\n  - `createdDatetime` (string, required): ISO 8601 creation timestamp\n\n**Error (400 Bad Request):**\n- Missing required fields\n- Empty groups array\n\n**Error (401 Unauthorized):**\n- Invalid or expired access token\n\n**Error (403 Forbidden):**\n- Missing or invalid API key"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Groups",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-api-key",
+								"value": "{{apiKey}}",
+								"type": "default"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/checkin/groups",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"checkin",
+								"groups"
+							]
+						},
+						"description": "Retrieves all exercise groups for the authenticated user.\n\n**Authentication:**\n- Requires API key in x-api-key header\n- Requires valid access token in Authorization header\n- User ID is extracted from the JWT token\n\n**Response (200 OK):**\n- Array of group objects for the authenticated user\n\n**Error (401 Unauthorized):**\n- Invalid or expired access token\n\n**Error (403 Forbidden):**\n- Missing or invalid API key"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Groups",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-api-key",
+								"value": "{{apiKey}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"groupIds\": [\"uuid-to-delete\"]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/checkin/groups",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"checkin",
+								"groups"
+							]
+						},
+						"description": "Deletes one or more exercise groups for the authenticated user.\n\n**Authentication:**\n- Requires API key in x-api-key header\n- Requires valid access token in Authorization header\n- User ID is extracted from the JWT token\n\n**Request Body:**\n- `groupIds` (array of strings, required): IDs of groups to delete\n\n**Error (400 Bad Request):**\n- Missing groupIds field\n- Empty groupIds array\n\n**Error (401 Unauthorized):**\n- Invalid or expired access token\n\n**Error (403 Forbidden):**\n- Missing or invalid API key"
+					},
+					"response": []
 				}
 			],
 			"description": "Checkin service endpoints for managing exercise check-ins, lift sets, and estimated 1RM records.\n\n**All endpoints require authentication** via JWT access token and API key.\n\n**Exercise Endpoints (/checkin/exercises):**\n- POST: Upsert exercises (batch)\n- GET: Get all non-deleted exercises\n- DELETE: Soft delete exercises (batch)\n\n**Lift Set Endpoints (/checkin/lift-sets):**\n- POST: Create lift sets (batch)\n- GET: Get paginated lift sets (most recent first)\n- DELETE: Soft delete lift sets (batch)\n\n**Estimated 1RM Endpoints (/checkin/estimated-1rm):**\n- POST: Create estimated 1RM records (batch)\n- GET: Get paginated estimated 1RM records (most recent first)\n- DELETE: Soft delete estimated 1RM records (batch)\n\n**Exercise Fields:**\n- `exerciseItemId`: Unique identifier (UUID from frontend)\n- `name`: Exercise name\n- `isCustom`: Whether this is a custom exercise (true/false)\n- `loadType`: Type of load - \"Barbell\", \"Bodyweight + Single Load\", or \"Single Load\"\n- `createdTimezone`: Timezone identifier\n- `notes`: Optional notes\n- `createdDatetime`: When exercise was created (ISO 8601)\n- `lastModifiedDatetime`: When exercise was last modified (ISO 8601)\n- `deleted`: Soft delete flag (only present when true)\n\n**Lift Set Fields:**\n- `liftSetId`: Unique identifier (UUID from frontend)\n- `exerciseId`: Associated exercise ID\n- `reps`: Number of repetitions (integer)\n- `weight`: Weight used (decimal)\n- `createdTimezone`: Timezone identifier\n- `createdDatetime`: When lift set was created (ISO 8601)\n- `lastModifiedDatetime`: When lift set was last modified (ISO 8601)\n- `deleted`: Soft delete flag\n\n**Estimated 1RM Fields:**\n- `estimated1RMId`: Unique identifier (UUID from frontend)\n- `liftSetId`: ID of the lift set that achieved this E1RM (also the sort key)\n- `exerciseId`: Associated exercise ID\n- `value`: The estimated 1RM value (decimal)\n- `createdTimezone`: Timezone identifier\n- `createdDatetime`: When E1RM was created (ISO 8601)\n- `lastModifiedDatetime`: When E1RM was last modified (ISO 8601)\n- `deleted`: Soft delete flag\n\n**Batch Operations:**\n- All POST endpoints accept arrays for batch create\n- All DELETE endpoints accept arrays for batch soft delete\n\n**Soft Delete:**\nDeleted items are marked with `deleted=true` and filtered out from GET requests. Data is preserved in the database."
@@ -907,6 +1426,160 @@
 				}
 			],
 			"description": "Entitlements service endpoints for managing subscription entitlements via Apple App Store Server API.\n\n**Endpoints:**\n- GET /entitlements/status: Get current account status (free/premium)\n- POST /entitlements: Process Apple transactions and sync entitlements\n- POST /entitlements/apple-notification: Apple webhook (called by Apple)\n\n**Entitlement Grant Fields:**\n- `userId`: User's unique identifier\n- `startUtc`: Subscription start date (ISO 8601)\n- `endUtc`: Subscription end date (ISO 8601)\n- `entitlementName`: Type of entitlement (e.g., \"premium\")\n- `paymentPlatformSource`: Payment platform (\"apple\")\n- `originalTransactionId`: Apple's original transaction ID\n- `productId`: Apple's product ID\n- `createdDatetime`: When grant was created\n- `lastModifiedDatetime`: When grant was last modified\n\n**Integration Flow:**\n1. iOS app makes in-app purchase with `appAccountToken` set to userId\n2. On purchase success, call POST /entitlements with originalTransactionId\n3. Apple sends notifications to webhook for renewals/cancellations\n4. Call GET /entitlements/status to check current subscription state\n\n**Apple Credentials (SSM Parameters):**\nBefore using, configure these in AWS SSM Parameter Store:\n- `/{project}/{env}/entitlements/apple-private-key`: .p8 file contents\n- `/{project}/{env}/entitlements/apple-key-id`: Key ID from App Store Connect\n- `/{project}/{env}/entitlements/apple-issuer-id`: Issuer ID\n- `/{project}/{env}/entitlements/apple-bundle-id`: App bundle ID"
+		},
+		{
+			"name": "Insights Service",
+			"item": [
+				{
+					"name": "Get Weekly Insights",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-api-key",
+								"value": "{{apiKey}}",
+								"type": "default"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/insights/weekly",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"insights",
+								"weekly"
+							]
+						},
+						"description": "Returns weekly training narrative with audio URLs. Premium-gated.\n\n**Authentication:**\n- Requires API key in x-api-key header\n- Requires valid access token in Authorization header\n- User ID is extracted from the JWT token\n\n**Response (200 OK):**\n- Weekly training insights and narrative with audio URLs\n\n**Error (401 Unauthorized):**\n- Invalid or expired access token\n\n**Error (403 Forbidden):**\n- Missing or invalid API key\n- User does not have premium entitlement"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Starter Insight",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-api-key",
+								"value": "{{apiKey}}",
+								"type": "default"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/insights/starter",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"insights",
+								"starter"
+							]
+						},
+						"description": "Returns the starter insight for the authenticated user.\n\n**Authentication:**\n- Requires API key in x-api-key header\n- Requires valid access token in Authorization header\n- User ID is extracted from the JWT token\n\n**Response (200 OK):**\n- Starter insight data for new users\n\n**Error (401 Unauthorized):**\n- Invalid or expired access token\n\n**Error (403 Forbidden):**\n- Missing or invalid API key"
+					},
+					"response": []
+				},
+				{
+					"name": "Trigger Tier Unlock",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-api-key",
+								"value": "{{apiKey}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"tier\": \"novice\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/insights/tier-unlock",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"insights",
+								"tier-unlock"
+							]
+						},
+						"description": "Triggers a tier unlock for the authenticated user.\n\n**Authentication:**\n- Requires API key in x-api-key header\n- Requires valid access token in Authorization header\n- User ID is extracted from the JWT token\n\n**Request Body:**\n- `tier` (string, required): The tier to unlock (e.g., \"novice\")\n\n**Error (400 Bad Request):**\n- Missing tier field\n- Invalid tier value\n\n**Error (401 Unauthorized):**\n- Invalid or expired access token\n\n**Error (403 Forbidden):**\n- Missing or invalid API key"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Tier Unlocks",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-api-key",
+								"value": "{{apiKey}}",
+								"type": "default"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/insights/tier-unlocks",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"insights",
+								"tier-unlocks"
+							]
+						},
+						"description": "Retrieves all tier unlocks for the authenticated user.\n\n**Authentication:**\n- Requires API key in x-api-key header\n- Requires valid access token in Authorization header\n- User ID is extracted from the JWT token\n\n**Response (200 OK):**\n- Array of tier unlock records for the authenticated user\n\n**Error (401 Unauthorized):**\n- Invalid or expired access token\n\n**Error (403 Forbidden):**\n- Missing or invalid API key"
+					},
+					"response": []
+				}
+			],
+			"description": "Insights service endpoints for training insights, weekly narratives, and tier progression.\n\n**All endpoints require authentication** via JWT access token and API key.\n\n**Endpoints:**\n- GET /insights/weekly: Get weekly training insights (premium-gated)\n- GET /insights/starter: Get starter insight for new users\n- POST /insights/tier-unlock: Trigger a tier unlock\n- GET /insights/tier-unlocks: Get all tier unlocks"
 		}
 	],
 	"auth": {

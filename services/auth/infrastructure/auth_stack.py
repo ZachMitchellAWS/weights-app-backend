@@ -491,6 +491,7 @@ class AuthStack(Stack):
             domain_name=domain_name,
             certificate=certificate,
             endpoint_type=apigateway.EndpointType.REGIONAL,
+            security_policy=apigateway.SecurityPolicy.TLS_1_2,
         )
 
         # Create Route 53 A record alias

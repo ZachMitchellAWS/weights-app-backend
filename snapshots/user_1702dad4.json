@@ -12,11 +12,8 @@
     ],
     "user-properties": [
       {
-        "hardMinReps": 3,
-        "stepsGoal": 5000,
-        "apnsDeviceToken": "50ad5e15ba4f601241d2dc2086d7c805ba70204d43f767092a4ef98a61c29ce4",
-        "easyMaxReps": 12,
-        "easyMinReps": 9,
+        "activeSetPlanId": "00000000-0000-0000-0000-000000000101",
+        "apnsDeviceToken": "1faf016178642a07f76fa742536cb0840fe56bb879503649f161cf52df6a9aa9",
         "availableChangePlates": [
           0.25,
           0.5,
@@ -25,23 +22,25 @@
           1,
           1.25
         ],
-        "maxReps": 10,
-        "createdDatetime": "2026-03-02T20:18:27.814",
-        "hardMaxReps": 6,
-        "minReps": 4,
-        "hasMetStrengthTierConditions": true,
-        "moderateMaxReps": 10,
-        "proteinGoal": 200,
         "biologicalSex": "male",
-        "activeSetPlanId": "00000000-0000-0000-0000-000000000101",
-        "weightUnit": "lbs",
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "moderateMinReps": 6,
-        "bodyweightTarget": 220,
-        "timezone": "America/Los_Angeles",
-        "lastModifiedDatetime": "2026-04-02T20:53:00.585",
         "bodyweight": 242,
-        "activeSetPlanId": "00000000-0000-0000-0000-000000000101"
+        "bodyweightTarget": 220,
+        "createdDatetime": "2026-03-02T20:18:27.814",
+        "easyMaxReps": 12,
+        "easyMinReps": 9,
+        "hardMaxReps": 6,
+        "hardMinReps": 3,
+        "hasMetStrengthTierConditions": true,
+        "lastModifiedDatetime": "2026-04-06T19:07:27.433",
+        "maxReps": 10,
+        "minReps": 4,
+        "moderateMaxReps": 10,
+        "moderateMinReps": 6,
+        "proteinGoal": 200,
+        "stepsGoal": 5000,
+        "timezone": "America/Los_Angeles",
+        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "weightUnit": "lbs"
       }
     ],
     "password-reset-codes": [],
@@ -86,16 +85,16 @@
         "exerciseItemId": "00000000-0000-0000-0001-000000000003"
       },
       {
-        "createdDatetime": "2026-03-02T20:18:28Z",
         "createdTimezone": "America/Los_Angeles",
-        "icon": "OverheadPressIcon",
-        "isCustom": false,
-        "lastModifiedDatetime": "2026-04-03T00:20:17.620269+00:00",
-        "loadType": "Barbell",
         "movementType": "Push",
-        "name": "Overhead Press",
-        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "icon": "OverheadPressIcon",
         "weightIncrement": 5,
+        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "loadType": "Barbell",
+        "createdDatetime": "2026-03-02T20:18:28Z",
+        "lastModifiedDatetime": "2026-04-03T00:20:17.620269+00:00",
+        "isCustom": false,
+        "name": "Overhead Press",
         "exerciseItemId": "00000000-0000-0000-0001-000000000004"
       },
       {
@@ -10659,8 +10658,8 @@
     "set-plans": [
       {
         "createdTimezone": "America/Los_Angeles",
-        "planDescription": "Progressive warmup to PR attempt",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "planDescription": "Progressive warmup to PR attempt",
         "createdDatetime": "2026-03-02T20:18:17Z",
         "lastModifiedDatetime": "2026-03-02T20:18:29.136101+00:00",
         "isCustom": false,
@@ -10677,8 +10676,8 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "planDescription": "High volume, low intensity",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "planDescription": "High volume, low intensity",
         "createdDatetime": "2026-03-02T20:18:17Z",
         "lastModifiedDatetime": "2026-03-02T20:18:29.136101+00:00",
         "isCustom": false,
@@ -10697,8 +10696,8 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "planDescription": "Moderate volume, hold strength",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "planDescription": "Moderate volume, hold strength",
         "createdDatetime": "2026-03-02T20:18:17Z",
         "lastModifiedDatetime": "2026-03-02T20:18:29.136101+00:00",
         "isCustom": false,
@@ -10712,8 +10711,8 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "planDescription": "Recovery phase",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "planDescription": "Recovery phase",
         "createdDatetime": "2026-03-02T20:18:17Z",
         "lastModifiedDatetime": "2026-03-02T20:18:29.136101+00:00",
         "isCustom": false,
@@ -10727,8 +10726,8 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "planDescription": "Build up then back off",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "planDescription": "Build up then back off",
         "createdDatetime": "2026-03-02T20:18:17Z",
         "lastModifiedDatetime": "2026-03-02T20:18:29.136101+00:00",
         "isCustom": false,
@@ -10745,8 +10744,8 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "planDescription": "Work up to max, drop intensity",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "planDescription": "Work up to max, drop intensity",
         "createdDatetime": "2026-03-02T20:18:17Z",
         "lastModifiedDatetime": "2026-03-02T20:18:29.136101+00:00",
         "isCustom": false,
@@ -10763,8 +10762,8 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "planDescription": "Heaviest set first, then reduce",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "planDescription": "Heaviest set first, then reduce",
         "createdDatetime": "2026-04-01T23:00:00Z",
         "lastModifiedDatetime": "2026-04-01T23:00:00.000000+00:00",
         "isCustom": false,
@@ -10781,8 +10780,8 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "planDescription": "Ascending waves of intensity",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "planDescription": "Ascending waves of intensity",
         "createdDatetime": "2026-04-01T23:00:00Z",
         "lastModifiedDatetime": "2026-04-01T23:00:00.000000+00:00",
         "isCustom": false,
@@ -10799,8 +10798,8 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "planDescription": "Short rest between heavy singles/doubles",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "planDescription": "Short rest between heavy singles/doubles",
         "createdDatetime": "2026-04-01T23:00:00Z",
         "lastModifiedDatetime": "2026-04-01T23:00:00.000000+00:00",
         "isCustom": false,
@@ -10816,8 +10815,8 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "planDescription": "Near-failure set, brief rest, continue",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "planDescription": "Near-failure set, brief rest, continue",
         "createdDatetime": "2026-04-01T23:00:00Z",
         "lastModifiedDatetime": "2026-04-01T23:00:00.000000+00:00",
         "isCustom": false,
@@ -10832,8 +10831,8 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "planDescription": "Reduce weight each set, rep to failure",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "planDescription": "Reduce weight each set, rep to failure",
         "createdDatetime": "2026-04-01T23:00:00Z",
         "lastModifiedDatetime": "2026-04-01T23:00:00.000000+00:00",
         "isCustom": false,
@@ -10848,8 +10847,8 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "planDescription": "Ascending rep ladder pattern",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "planDescription": "Ascending rep ladder pattern",
         "createdDatetime": "2026-04-01T23:00:00Z",
         "lastModifiedDatetime": "2026-04-01T23:00:00.000000+00:00",
         "isCustom": false,
@@ -10868,8 +10867,8 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "planDescription": "Paused reps to build positional strength",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "planDescription": "Paused reps to build positional strength",
         "createdDatetime": "2026-04-01T23:00:00Z",
         "lastModifiedDatetime": "2026-04-01T23:00:00.000000+00:00",
         "isCustom": false,
@@ -10884,8 +10883,8 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "planDescription": "Submaximal weight, max velocity",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "planDescription": "Submaximal weight, max velocity",
         "createdDatetime": "2026-04-01T23:00:00Z",
         "lastModifiedDatetime": "2026-04-01T23:00:00.000000+00:00",
         "isCustom": false,
@@ -10904,8 +10903,8 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "planDescription": "Every minute on the minute",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "planDescription": "Every minute on the minute",
         "createdDatetime": "2026-04-01T23:00:00Z",
         "lastModifiedDatetime": "2026-04-01T23:00:00.000000+00:00",
         "isCustom": false,
@@ -10922,8 +10921,8 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
-        "planDescription": "Light load, focus on form",
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "planDescription": "Light load, focus on form",
         "createdDatetime": "2026-04-01T23:00:00Z",
         "lastModifiedDatetime": "2026-04-01T23:00:00.000000+00:00",
         "isCustom": false,
@@ -11082,6 +11081,15 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
+        "value": 1000,
+        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "createdDatetime": "2026-04-06T18:53:44Z",
+        "lastModifiedDatetime": "2026-04-06T18:53:50.151436+00:00",
+        "metricType": "steps",
+        "checkinId": "17301595-A602-4314-A089-BCC490F2A982"
+      },
+      {
+        "createdTimezone": "America/Los_Angeles",
         "value": 75,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "createdDatetime": "2026-03-11T21:40:42Z",
@@ -11133,6 +11141,15 @@
         "lastModifiedDatetime": "2026-03-18T18:48:37.540809+00:00",
         "metricType": "steps",
         "checkinId": "20DEC9C8-A5AF-43CD-BB1B-660404F2A4B3"
+      },
+      {
+        "createdTimezone": "America/Los_Angeles",
+        "value": 300,
+        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "createdDatetime": "2026-04-06T18:33:08Z",
+        "lastModifiedDatetime": "2026-04-06T18:33:10.767069+00:00",
+        "metricType": "steps",
+        "checkinId": "21531125-AAAD-45F8-A5F6-9ABEC4986A09"
       },
       {
         "createdTimezone": "America/Los_Angeles",
@@ -11622,6 +11639,15 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
+        "value": 600,
+        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "createdDatetime": "2026-04-06T20:24:09Z",
+        "lastModifiedDatetime": "2026-04-06T20:24:16.094845+00:00",
+        "metricType": "steps",
+        "checkinId": "99D17706-0FA5-4754-9B28-CE19CFBADDA1"
+      },
+      {
+        "createdTimezone": "America/Los_Angeles",
         "value": 1000,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "createdDatetime": "2026-03-31T16:29:24Z",
@@ -11966,6 +11992,15 @@
       },
       {
         "createdTimezone": "America/Los_Angeles",
+        "value": 1850,
+        "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
+        "createdDatetime": "2026-04-06T18:33:03Z",
+        "lastModifiedDatetime": "2026-04-06T18:33:06.596640+00:00",
+        "metricType": "steps",
+        "checkinId": "FC354579-88DD-4FAF-B199-EF907047BE30"
+      },
+      {
+        "createdTimezone": "America/Los_Angeles",
         "value": 1650,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
         "createdDatetime": "2026-03-04T21:36:33Z",
@@ -11994,9 +12029,9 @@
     ],
     "groups": [
       {
+        "createdTimezone": "America/Los_Angeles",
+        "deleted": false,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "groupId": "00000000-0000-0000-0002-000000000001",
-        "name": "Strength Tier",
         "exerciseIds": [
           "00000000-0000-0000-0001-000000000001",
           "00000000-0000-0000-0001-000000000002",
@@ -12004,103 +12039,103 @@
           "00000000-0000-0000-0001-000000000005",
           "00000000-0000-0000-0001-000000000004"
         ],
-        "sortOrder": 0,
-        "isCustom": false,
-        "createdTimezone": "America/Los_Angeles",
         "createdDatetime": "2026-04-03T00:00:00.000Z",
         "lastModifiedDatetime": "2026-04-03T00:00:00.000Z",
-        "deleted": false,
-        "pendingSync": false
+        "isCustom": false,
+        "pendingSync": false,
+        "name": "Strength Tier",
+        "sortOrder": 0,
+        "groupId": "00000000-0000-0000-0002-000000000001"
       },
       {
+        "createdTimezone": "America/Los_Angeles",
+        "deleted": false,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "groupId": "00000000-0000-0000-0002-000000000002",
-        "name": "Deadlifts+",
         "exerciseIds": [
           "00000000-0000-0000-0001-000000000001",
           "00000000-0000-0000-0001-000000000044",
           "00000000-0000-0000-0001-000000000045",
           "00000000-0000-0000-0001-000000000046"
         ],
-        "sortOrder": 1,
-        "isCustom": false,
-        "createdTimezone": "America/Los_Angeles",
         "createdDatetime": "2026-04-03T00:00:00.000Z",
         "lastModifiedDatetime": "2026-04-03T00:00:00.000Z",
-        "deleted": false,
-        "pendingSync": false
+        "isCustom": false,
+        "pendingSync": false,
+        "name": "Deadlifts+",
+        "sortOrder": 1,
+        "groupId": "00000000-0000-0000-0002-000000000002"
       },
       {
+        "createdTimezone": "America/Los_Angeles",
+        "deleted": false,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "groupId": "00000000-0000-0000-0002-000000000003",
-        "name": "Squats+",
         "exerciseIds": [
           "00000000-0000-0000-0001-000000000002",
           "00000000-0000-0000-0001-000000000035",
           "00000000-0000-0000-0001-000000000009",
           "00000000-0000-0000-0001-000000000039"
         ],
-        "sortOrder": 2,
-        "isCustom": false,
-        "createdTimezone": "America/Los_Angeles",
         "createdDatetime": "2026-04-03T00:00:00.000Z",
         "lastModifiedDatetime": "2026-04-03T00:00:00.000Z",
-        "deleted": false,
-        "pendingSync": false
+        "isCustom": false,
+        "pendingSync": false,
+        "name": "Squats+",
+        "sortOrder": 2,
+        "groupId": "00000000-0000-0000-0002-000000000003"
       },
       {
+        "createdTimezone": "America/Los_Angeles",
+        "deleted": false,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "groupId": "00000000-0000-0000-0002-000000000004",
-        "name": "Bench Press+",
         "exerciseIds": [
           "00000000-0000-0000-0001-000000000003",
           "00000000-0000-0000-0001-000000000007",
           "00000000-0000-0000-0001-000000000033",
           "00000000-0000-0000-0001-000000000032"
         ],
-        "sortOrder": 3,
-        "isCustom": false,
-        "createdTimezone": "America/Los_Angeles",
         "createdDatetime": "2026-04-03T00:00:00.000Z",
         "lastModifiedDatetime": "2026-04-03T00:00:00.000Z",
-        "deleted": false,
-        "pendingSync": false
+        "isCustom": false,
+        "pendingSync": false,
+        "name": "Bench Press+",
+        "sortOrder": 3,
+        "groupId": "00000000-0000-0000-0002-000000000004"
       },
       {
+        "createdTimezone": "America/Los_Angeles",
+        "deleted": false,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "groupId": "00000000-0000-0000-0002-000000000005",
-        "name": "Barbell Rows+",
         "exerciseIds": [
           "00000000-0000-0000-0001-000000000005",
           "00000000-0000-0000-0001-000000000006",
           "00000000-0000-0000-0001-000000000008",
           "00000000-0000-0000-0001-000000000038"
         ],
-        "sortOrder": 4,
-        "isCustom": false,
-        "createdTimezone": "America/Los_Angeles",
         "createdDatetime": "2026-04-03T00:00:00.000Z",
         "lastModifiedDatetime": "2026-04-03T00:00:00.000Z",
-        "deleted": false,
-        "pendingSync": false
+        "isCustom": false,
+        "pendingSync": false,
+        "name": "Barbell Rows+",
+        "sortOrder": 4,
+        "groupId": "00000000-0000-0000-0002-000000000005"
       },
       {
+        "createdTimezone": "America/Los_Angeles",
+        "deleted": false,
         "userId": "1702dad4-e9af-42db-9bfa-7204cd69d54a",
-        "groupId": "00000000-0000-0000-0002-000000000006",
-        "name": "OHP+",
         "exerciseIds": [
           "00000000-0000-0000-0001-000000000004",
           "00000000-0000-0000-0001-000000000041",
           "00000000-0000-0000-0001-000000000042",
           "00000000-0000-0000-0001-000000000043"
         ],
-        "sortOrder": 5,
-        "isCustom": false,
-        "createdTimezone": "America/Los_Angeles",
         "createdDatetime": "2026-04-03T00:00:00.000Z",
         "lastModifiedDatetime": "2026-04-03T00:00:00.000Z",
-        "deleted": false,
-        "pendingSync": false
+        "isCustom": false,
+        "pendingSync": false,
+        "name": "OHP+",
+        "sortOrder": 5,
+        "groupId": "00000000-0000-0000-0002-000000000006"
       }
     ]
   }
