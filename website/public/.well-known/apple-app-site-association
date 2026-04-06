@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "534VUNX426.io.anthroverse.WeightApp",
+        "paths": ["/app", "/app/*"]
+      }
+    ]
+  }
+}

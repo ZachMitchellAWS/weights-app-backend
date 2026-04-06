@@ -5,7 +5,10 @@ Update PROJECT_NAME here to change it across the entire application.
 """
 
 # Project Configuration
-PROJECT_NAME = "project"
+PROJECT_NAME = "liftthebull"
+
+# Domain Configuration
+DOMAIN_NAME = "liftthebull.io"
 
 # AWS Configuration (shared across environments)
 ACCOUNT_ID = "569134947863"

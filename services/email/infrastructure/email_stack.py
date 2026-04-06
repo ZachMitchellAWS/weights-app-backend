@@ -1,5 +1,7 @@
 """Email service CDK stack with S3, Lambda, and SES."""
 
+import os
+
 from aws_cdk import (
     Stack,
     aws_s3 as s3,
@@ -55,6 +57,7 @@ class EmailStack(Stack):
         # Create resources
         self.templates_bucket = self._create_templates_bucket()
         self._create_ses_configuration_sets()
+        self.dependencies_layer = self._create_dependencies_layer()
         self.email_function = self._create_email_lambda()
 
         # Output important values
@@ -111,7 +114,7 @@ class EmailStack(Stack):
             self,
             "SESEventLogGroup",
             log_group_name=f"/aws/ses/{self.project_name}-{self.env_name}",
-            retention=self.config.LOG_RETENTION,
+            retention=logs.RetentionDays.THREE_MONTHS,
             removal_policy=self.config.REMOVAL_POLICY,
         )
 
@@ -201,6 +204,19 @@ class EmailStack(Stack):
             # Explicit dependency: event destination must be created after config set
             event_destination.add_dependency(config_set)
 
+    def _create_dependencies_layer(self) -> lambda_.LayerVersion:
+        """Create Lambda layer with Python dependencies for email service."""
+        layer_path = Path(__file__).parent.parent / "layer"
+        layer = lambda_.LayerVersion(
+            self,
+            "DependenciesLayer",
+            layer_version_name=f"{self.project_name}-{self.env_name}-email-deps",
+            code=lambda_.Code.from_asset(str(layer_path)),
+            compatible_runtimes=[lambda_.Runtime.PYTHON_3_13],
+            description="Python dependencies for email service",
+        )
+        return layer
+
     def _create_email_lambda(self) -> lambda_.Function:
         """
         Create Lambda function for email processing.
@@ -223,20 +239,21 @@ class EmailStack(Stack):
             self,
             "EmailProcessingFunction",
             function_name=f"{self.project_name}-{self.env_name}-email-processing",
-            runtime=lambda_.Runtime.PYTHON_3_12,
+            runtime=lambda_.Runtime.PYTHON_3_13,
             handler="handlers.email_processor.handler",
             code=lambda_.Code.from_asset(str(lambda_code_path)),
+            layers=[self.dependencies_layer],
             memory_size=self.config.LAMBDA_MEMORY_SIZE,
             timeout=self.config.LAMBDA_TIMEOUT,
             environment={
                 "TEMPLATES_BUCKET": self.templates_bucket.bucket_name,
-                "SENDER_EMAIL": "noreply@anthroverse.io",
+                "SENDER_EMAIL": "noreply@liftthebull.io",
                 "PASSWORD_RESET_CONFIG_SET": self.password_reset_config_set_name,
                 "WELCOME_CONFIG_SET": self.welcome_config_set_name,
                 "ENVIRONMENT": self.config.ENVIRONMENT,
+                "SENTRY_DSN": os.environ.get("SENTRY_DSN", ""),
                 "LOG_LEVEL": self.config.LOG_LEVEL,
             },
-            log_retention=self.config.LOG_RETENTION,
         )
 
         # Grant read permissions to S3 templates bucket

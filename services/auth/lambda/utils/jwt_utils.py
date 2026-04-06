@@ -2,7 +2,7 @@
 
 Security best practices implemented:
 - Short-lived access tokens (15 minutes)
-- Long-lived refresh tokens (30 days)
+- Environment-specific refresh tokens (staging: 5 min, production: 30 days)
 - Secret key from SSM Parameter Store
 - Proper JWT claims (sub, exp, iat, type)
 - Signature validation
@@ -16,6 +16,7 @@ Production recommendations:
 """
 
 import jwt
+import os
 from datetime import datetime, timedelta
 from typing import Dict, Optional, Tuple
 
@@ -25,7 +26,9 @@ from utils.ssm import get_jwt_secret_key
 
 # Token expiration times
 ACCESS_TOKEN_EXPIRATION_MINUTES = 15  # Short-lived access tokens
-REFRESH_TOKEN_EXPIRATION_DAYS = 30    # Long-lived refresh tokens
+# Refresh token expiration is environment-specific (set via REFRESH_TOKEN_EXPIRATION_MINUTES env var)
+# Staging: 5 minutes (for testing), Production: 43200 minutes (30 days)
+REFRESH_TOKEN_EXPIRATION_MINUTES = int(os.environ.get("REFRESH_TOKEN_EXPIRATION_MINUTES", 43200))
 
 # JWT Algorithm
 ALGORITHM = "HS256"
@@ -106,7 +109,7 @@ def generate_refresh_token(user_id: str) -> str:
     secret_key = get_secret_key()
 
     now = datetime.utcnow()
-    expiration = now + timedelta(days=REFRESH_TOKEN_EXPIRATION_DAYS)
+    expiration = now + timedelta(minutes=REFRESH_TOKEN_EXPIRATION_MINUTES)
 
     payload = {
         "sub": user_id,                    # Subject: user ID
@@ -231,6 +234,6 @@ def get_token_expiration_time(token_type: str = "access") -> int:
     if token_type == "access":
         return ACCESS_TOKEN_EXPIRATION_MINUTES * 60
     elif token_type == "refresh":
-        return REFRESH_TOKEN_EXPIRATION_DAYS * 24 * 60 * 60
+        return REFRESH_TOKEN_EXPIRATION_MINUTES * 60
     else:
         raise ValueError(f"Unknown token type: {token_type}")

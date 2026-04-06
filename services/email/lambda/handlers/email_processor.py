@@ -18,9 +18,16 @@ Invocation payload format:
 
 import json
 import os
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
 import boto3
 import traceback
 from typing import Dict, Any
+from utils.sentry_init import init_sentry
+import sentry_sdk
+
+init_sentry()
 
 # Initialize AWS clients
 s3_client = boto3.client('s3')
@@ -119,6 +126,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         }
 
     except Exception as e:
+        sentry_sdk.capture_exception(e)
         print(f"Error processing email: {str(e)}")
         print(traceback.format_exc())
 

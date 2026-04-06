@@ -1,0 +1,16 @@
+{
+  "user_id": "18dee8ea-ac11-4b02-ae52-670cb830e44a",
+  "tables": {
+    "users": [],
+    "user-properties": [],
+    "password-reset-codes": [],
+    "exercises": [],
+    "lift-sets": [],
+    "estimated-1rm": [],
+    "entitlement-grants": [],
+    "subscription-events": [],
+    "set-plans": [],
+    "accessory-goal-checkins": [],
+    "groups": []
+  }
+}

@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Test</title>
+</head>
+<body style="background: black; color: white; padding: 20px;">
+  <p id="static">Static HTML works</p>
+  <p id="js-test">JS did NOT run</p>
+  <script>
+    document.getElementById('js-test').textContent = 'Inline JS works!';
+  </script>
+  <p id="module-test">Module JS did NOT run</p>
+  <script type="module">
+    document.getElementById('module-test').textContent = 'Module JS works!';
+  </script>
+</body>
+</html>

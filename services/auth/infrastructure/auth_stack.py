@@ -1,5 +1,6 @@
 """Auth service CDK stack with DynamoDB, Lambda, and API Gateway."""
 
+import os
 from aws_cdk import (
     Stack,
     Duration,
@@ -9,9 +10,13 @@ from aws_cdk import (
     aws_apigateway as apigateway,
     aws_ssm as ssm,
     aws_iam as iam,
+    aws_route53 as route53,
+    aws_route53_targets as targets,
+    aws_certificatemanager as acm,
 )
 from constructs import Construct
 from pathlib import Path
+from config import base
 
 
 class AuthStack(Stack):
@@ -63,6 +68,7 @@ class AuthStack(Stack):
         self.dependencies_layer = self._create_dependencies_layer()
         self.auth_function = self._create_auth_lambda()
         self.api = self._create_api_gateway()
+        self._create_custom_domain()
 
     def _create_dynamodb_table(self) -> dynamodb.Table:
         """
@@ -100,6 +106,16 @@ class AuthStack(Stack):
                 type=dynamodb.AttributeType.STRING
             ),
             projection_type=dynamodb.ProjectionType.ALL,  # Include all attributes in the index
+        )
+
+        # Add Global Secondary Index on appleUserId for Apple Sign In lookups
+        table.add_global_secondary_index(
+            index_name="appleUserId-index",
+            partition_key=dynamodb.Attribute(
+                name="appleUserId",
+                type=dynamodb.AttributeType.STRING
+            ),
+            projection_type=dynamodb.ProjectionType.ALL,
         )
 
         return table
@@ -197,7 +213,7 @@ class AuthStack(Stack):
             "DependenciesLayer",
             layer_version_name=f"{self.project_name}-{self.env_name}-auth-deps",
             code=lambda_.Code.from_asset(str(layer_path)),
-            compatible_runtimes=[lambda_.Runtime.PYTHON_3_12],
+            compatible_runtimes=[lambda_.Runtime.PYTHON_3_13],
             description="Python dependencies for auth service (PyJWT, boto3, pydantic)",
         )
 
@@ -232,7 +248,7 @@ class AuthStack(Stack):
             self,
             "AuthFunction",
             function_name=f"{self.project_name}-{self.env_name}-auth",
-            runtime=lambda_.Runtime.PYTHON_3_12,
+            runtime=lambda_.Runtime.PYTHON_3_13,
             handler="handlers.auth.handler",
             code=lambda_.Code.from_asset(str(lambda_code_path)),
             layers=[self.dependencies_layer],  # Add dependencies layer
@@ -241,15 +257,19 @@ class AuthStack(Stack):
             environment={
                 "USERS_TABLE_NAME": self.users_table.table_name,
                 "EMAIL_INDEX_NAME": "emailAddress-index",
+                "APPLE_USER_ID_INDEX_NAME": "appleUserId-index",
+                "APPLE_BUNDLE_ID": "io.anthroverse.WeightApp",
                 "PASSWORD_RESET_CODES_TABLE_NAME": self.password_reset_codes_table.table_name,
                 "ENVIRONMENT": self.config.ENVIRONMENT,
+                "SENTRY_DSN": os.environ.get("SENTRY_DSN", ""),
                 "LOG_LEVEL": self.config.LOG_LEVEL,
                 # SSM parameter names (Lambda will read values at runtime)
                 "JWT_SECRET_KEY_PARAM": f"/{self.project_name}/{self.env_name}/auth/jwt-secret-key",
                 "PASSWORD_PEPPER_PARAM": f"/{self.project_name}/{self.env_name}/auth/password-pepper",
+                # Token expiration (environment-specific)
+                "REFRESH_TOKEN_EXPIRATION_MINUTES": str(self.config.REFRESH_TOKEN_EXPIRATION_MINUTES),
                 # Email Lambda ARN will be added after email stack is created
             },
-            log_retention=self.config.LOG_RETENTION,
         )
 
         # Grant read/write permissions to DynamoDB tables
@@ -333,7 +353,7 @@ class AuthStack(Stack):
             handler=self.auth_function,  # Same function handles both API and authorizer requests
             identity_source="method.request.header.Authorization",
             authorizer_name=f"{self.project_name}-{self.env_name}-jwt-authorizer",
-            results_cache_ttl=Duration.seconds(0),  # Disable caching for development (enable in production)
+            results_cache_ttl=Duration.seconds(60),  # Cache auth results for 60s
         )
 
         # Create API Key for this environment
@@ -418,6 +438,14 @@ class AuthStack(Stack):
             api_key_required=True,
         )
 
+        # Create /auth/apple-signin endpoint (requires API key, no JWT auth)
+        apple_signin_resource = auth_resource.add_resource("apple-signin")
+        apple_signin_resource.add_method(
+            "POST",
+            auth_integration,
+            api_key_required=True,
+        )
+
         # Store authorizer as instance variable for use by other stacks
         self.authorizer = token_authorizer
 
@@ -430,3 +458,109 @@ class AuthStack(Stack):
         )
 
         return api
+
+    def _create_custom_domain(self) -> None:
+        """
+        Create custom domain name for the API Gateway.
+
+        Sets up:
+        - ACM certificate with DNS validation
+        - Custom domain name on the API Gateway
+        - Route 53 A record alias pointing to the API Gateway domain
+        """
+        domain_name = f"{self.config.API_SUBDOMAIN}.{base.DOMAIN_NAME}"
+
+        # Look up existing hosted zone
+        hosted_zone = route53.HostedZone.from_lookup(
+            self,
+            "HostedZone",
+            domain_name=base.DOMAIN_NAME,
+        )
+
+        # Create ACM certificate with DNS validation
+        certificate = acm.Certificate(
+            self,
+            "ApiCertificate",
+            domain_name=domain_name,
+            validation=acm.CertificateValidation.from_dns(hosted_zone),
+        )
+
+        # Add custom domain to the API Gateway
+        custom_domain = self.api.add_domain_name(
+            "CustomDomain",
+            domain_name=domain_name,
+            certificate=certificate,
+            endpoint_type=apigateway.EndpointType.REGIONAL,
+            security_policy=apigateway.SecurityPolicy.TLS_1_2,
+        )
+
+        # Create Route 53 A record alias
+        route53.ARecord(
+            self,
+            "ApiAliasRecord",
+            zone=hosted_zone,
+            record_name=self.config.API_SUBDOMAIN,
+            target=route53.RecordTarget.from_alias(
+                targets.ApiGatewayDomain(custom_domain)
+            ),
+        )
+
+        CfnOutput(
+            self,
+            "CustomDomainUrl",
+            value=f"https://{domain_name}",
+            description=f"Custom domain URL for {self.env_name} API",
+        )
+
+    def consolidate_auth_permissions(self, all_stacks: list) -> None:
+        """
+        Replace per-route AWS::Lambda::Permission resources with a single broad
+        permission that covers both API route invocations and authorizer invocations.
+
+        Without this, CDK creates an individual Lambda::Permission for every
+        add_method() call, which exceeds the 20KB resource policy size limit.
+
+        Args:
+            all_stacks: All stacks that use the auth Lambda (via authorizer or
+                        direct integration). Their auto-generated permissions
+                        will be suppressed.
+        """
+        import aws_cdk as cdk
+
+        # Single broad permission: arn:.../{api-id}/* matches both route
+        # invocations (/{stage}/{method}/{path}) and authorizer invocations
+        # (/authorizers/{id}). arn_for_execute_api() produces /*/*/*  which
+        # only matches routes, so we construct the ARN manually.
+        lambda_.CfnPermission(
+            self,
+            "AuthFnBroadApiGwPermission",
+            action="lambda:InvokeFunction",
+            function_name=self.auth_function.function_arn,
+            principal="apigateway.amazonaws.com",
+            source_arn=cdk.Stack.of(self).format_arn(
+                service="execute-api",
+                resource=self.api.rest_api_id,
+                resource_name="*",
+                arn_format=cdk.ArnFormat.SLASH_RESOURCE_NAME,
+            ),
+        )
+
+        # Suppress all auto-generated per-route CfnPermission resources
+        # across all stacks that reference the auth Lambda
+        auth_fn_arn = self.auth_function.function_arn
+
+        for stack in all_stacks:
+            never = cdk.CfnCondition(
+                stack, "NeverAuthPermCondition",
+                expression=cdk.Fn.condition_equals("true", "false"),
+            )
+            for construct in stack.node.find_all():
+                if isinstance(construct, lambda_.CfnPermission):
+                    # Skip our broad permission
+                    if construct.node.id == "AuthFnBroadApiGwPermission":
+                        continue
+                    # Only suppress permissions targeting the auth function
+                    fn = getattr(construct, 'function_name', None)
+                    if fn and (fn == auth_fn_arn or str(fn) == str(auth_fn_arn)):
+                        construct.cfn_options.condition = never
+
