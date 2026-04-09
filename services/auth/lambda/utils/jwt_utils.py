@@ -24,11 +24,9 @@ from typing import Dict, Optional, Tuple
 from utils.ssm import get_jwt_secret_key
 
 
-# Token expiration times
-ACCESS_TOKEN_EXPIRATION_MINUTES = 15  # Short-lived access tokens
-# Refresh token expiration is environment-specific (set via REFRESH_TOKEN_EXPIRATION_MINUTES env var)
-# Staging: 5 minutes (for testing), Production: 43200 minutes (30 days)
-REFRESH_TOKEN_EXPIRATION_MINUTES = int(os.environ.get("REFRESH_TOKEN_EXPIRATION_MINUTES", 43200))
+# Token expiration times (environment-specific, set via Lambda env vars)
+ACCESS_TOKEN_EXPIRATION_MINUTES = int(os.environ.get("ACCESS_TOKEN_EXPIRATION_MINUTES", 15))
+REFRESH_TOKEN_EXPIRATION_MINUTES = int(os.environ.get("REFRESH_TOKEN_EXPIRATION_MINUTES", 10080))
 
 # JWT Algorithm
 ALGORITHM = "HS256"

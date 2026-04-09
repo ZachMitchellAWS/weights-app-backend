@@ -267,6 +267,7 @@ class AuthStack(Stack):
                 "JWT_SECRET_KEY_PARAM": f"/{self.project_name}/{self.env_name}/auth/jwt-secret-key",
                 "PASSWORD_PEPPER_PARAM": f"/{self.project_name}/{self.env_name}/auth/password-pepper",
                 # Token expiration (environment-specific)
+                "ACCESS_TOKEN_EXPIRATION_MINUTES": str(self.config.ACCESS_TOKEN_EXPIRATION_MINUTES),
                 "REFRESH_TOKEN_EXPIRATION_MINUTES": str(self.config.REFRESH_TOKEN_EXPIRATION_MINUTES),
                 # Email Lambda ARN will be added after email stack is created
             },

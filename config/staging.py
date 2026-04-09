@@ -31,7 +31,8 @@ LAMBDA_TIMEOUT = Duration.seconds(60)
 LAMBDA_RUNTIME_VERSION = "3.12"
 
 # Auth Token Configuration
-REFRESH_TOKEN_EXPIRATION_MINUTES = 43200  # 30 days (30 * 24 * 60)
+ACCESS_TOKEN_EXPIRATION_MINUTES = 15  # 15 minutes
+REFRESH_TOKEN_EXPIRATION_MINUTES = 10080  # 7 days (7 * 24 * 60)
 
 # Tags applied to all resources
 TAGS = {

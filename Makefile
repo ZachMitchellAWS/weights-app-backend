@@ -42,9 +42,11 @@ help:
 	@echo "  make destroy-staging      - Destroy staging resources"
 	@echo "  make destroy-production   - Destroy production resources (with confirmation)"
 	@echo "  make clear-staging-db     - Delete all items from staging DynamoDB tables"
-	@echo "  make clear-production-db  - Delete all items from production DynamoDB tables"
-	@echo "  make save-user-staging    - Save test user data to snapshot file"
-	@echo "  make load-user-staging    - Load test user data from snapshot file"
+	@echo "  # make clear-production-db  - DISABLED (too dangerous)"
+	@echo "  make save-user-staging    - Save user data from staging to snapshot file"
+	@echo "  make load-user-staging    - Load user data from snapshot into staging"
+	@echo "  make save-user-production - Save user data from production to snapshot file"
+	@echo "  make load-user-production - Load user data from snapshot into production"
 	@echo "  make bootstrap-us-east-1              - Bootstrap CDK for us-east-1 (website cert, first time)"
 	@echo "  make deploy-website-cert-staging       - Deploy website cert stack (us-east-1, first time)"
 	@echo "  make deploy-website-cert-production    - Deploy website cert stack (us-east-1, first time)"
@@ -214,12 +216,13 @@ clear-staging-db:
 
 # Clear all items from production DynamoDB tables
 # WARNING: This deletes ALL data from production tables
-clear-production-db:
-	@echo "WARNING: This will delete ALL items from PRODUCTION DynamoDB tables!"
-	@echo "Tables: users, user-properties, password-reset-codes, exercises, lift-sets, estimated-1rm, splits, set-plans, accessory-goal-checkins, entitlement-grants, subscription-events, insight-tasks, insights-cache"
-	@echo "This action cannot be undone. Press Ctrl+C to cancel, or Enter to continue..."
-	@read confirm
-	$(PYTHON) scripts/clear_production_db.py
+# DISABLED: Too dangerous for production. Uncomment if absolutely needed.
+#clear-production-db:
+#	@echo "WARNING: This will delete ALL items from PRODUCTION DynamoDB tables!"
+#	@echo "Tables: users, user-properties, password-reset-codes, exercises, lift-sets, estimated-1rm, splits, set-plans, accessory-goal-checkins, entitlement-grants, subscription-events, insight-tasks, insights-cache"
+#	@echo "This action cannot be undone. Press Ctrl+C to cancel, or Enter to continue..."
+#	@read confirm
+#	$(PYTHON) scripts/clear_production_db.py
 
 
 # Save test user data from staging DynamoDB to snapshot file
@@ -233,6 +236,31 @@ save-user-staging:
 load-user-staging:
 	@echo "Loading test user data into staging DynamoDB tables..."
 	$(PYTHON) scripts/user_snapshot.py load $(if $(USER_ID),--user-id $(USER_ID))
+
+# Save user data from production DynamoDB to snapshot file
+# Optionally pass USER_ID: make save-user-production USER_ID=1702dad4-...
+save-user-production:
+	@echo "Saving user data from production DynamoDB tables..."
+	$(PYTHON) scripts/user_snapshot.py save --env production $(if $(USER_ID),--user-id $(USER_ID))
+
+# Load user data from snapshot file back into production DynamoDB
+# Optionally pass USER_ID: make load-user-production USER_ID=1702dad4-...
+load-user-production:
+	@echo "Loading user data into production DynamoDB tables..."
+	$(PYTHON) scripts/user_snapshot.py load --env production $(if $(USER_ID),--user-id $(USER_ID))
+
+# Generate and load review user (App Store screenshots / reviewer credentials)
+# Defaults to production: make load-review-user
+# Override: make load-review-user ENV=staging
+load-review-user:
+	@echo "Loading review user data into $(or $(ENV),production) DynamoDB..."
+	$(PYTHON) scripts/generate_review_user.py generate --env $(or $(ENV),production)
+
+# Delete review user data from production (only this user, nothing else)
+# Override: make delete-review-user ENV=staging
+delete-review-user:
+	@echo "Deleting review user from $(or $(ENV),production) DynamoDB..."
+	$(PYTHON) scripts/generate_review_user.py delete --env $(or $(ENV),production)
 
 # Generate and load power user data (large dataset) into staging DynamoDB
 # MONTHS defaults to 12 but can be overridden: make load-power-user-staging MONTHS=6

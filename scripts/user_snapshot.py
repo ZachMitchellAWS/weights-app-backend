@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Save and load user data snapshots from DynamoDB staging tables.
+"""Save and load user data snapshots from DynamoDB tables.
 
 This script allows saving all data for a specific user across all DynamoDB tables
 to a JSON file, and loading it back. Useful for preserving test user state.
@@ -10,8 +10,8 @@ taken before a schema change will load correctly.
 Usage:
     python scripts/user_snapshot.py save
     python scripts/user_snapshot.py load
-    python scripts/user_snapshot.py save --user-id 1702dad4-e9af-42db-9bfa-7204cd69d54a
-    python scripts/user_snapshot.py load --user-id 1702dad4-e9af-42db-9bfa-7204cd69d54a
+    python scripts/user_snapshot.py save --user-id 1702dad4-... --env production
+    python scripts/user_snapshot.py load --user-id 1702dad4-... --env production
 """
 
 import argparse
@@ -28,7 +28,7 @@ from botocore.exceptions import ClientError
 # Configuration
 DEFAULT_USER_ID = "18dee8ea-ac11-4b02-ae52-670cb830e44a"
 REGION = "us-west-1"
-ENV = "staging"
+ENV = "staging"  # default, overridden by --env
 PROJECT = "liftthebull"
 
 # Output file location
@@ -112,7 +112,7 @@ def convert_floats_to_decimal(obj):
 
 
 def get_table_name(suffix: str) -> str:
-    """Get full table name for staging environment."""
+    """Get full table name for the active environment."""
     return f"{PROJECT}-{ENV}-{suffix}"
 
 
@@ -255,7 +255,7 @@ def load_user_data(user_id: str):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Save and load user data snapshots from DynamoDB staging tables."
+        description="Save and load user data snapshots from DynamoDB tables."
     )
     parser.add_argument(
         "action",
@@ -267,8 +267,17 @@ def main():
         default=DEFAULT_USER_ID,
         help=f"User ID to save/load (default: {DEFAULT_USER_ID})"
     )
+    parser.add_argument(
+        "--env",
+        default="staging",
+        choices=["staging", "production"],
+        help="Target environment (default: staging)",
+    )
 
     args = parser.parse_args()
+
+    global ENV
+    ENV = args.env
 
     if args.action == "save":
         save_user_data(args.user_id)
