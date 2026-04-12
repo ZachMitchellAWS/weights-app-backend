@@ -47,6 +47,7 @@ help:
 	@echo "  make load-user-staging    - Load user data from snapshot into staging"
 	@echo "  make save-user-production - Save user data from production to snapshot file"
 	@echo "  make load-user-production - Load user data from snapshot into production"
+	@echo "  make system-snapshot      - Capture system health snapshot (ENV=production HOURS=24)"
 	@echo "  make bootstrap-us-east-1              - Bootstrap CDK for us-east-1 (website cert, first time)"
 	@echo "  make deploy-website-cert-staging       - Deploy website cert stack (us-east-1, first time)"
 	@echo "  make deploy-website-cert-production    - Deploy website cert stack (us-east-1, first time)"
@@ -255,6 +256,13 @@ load-user-production:
 load-review-user:
 	@echo "Loading review user data into $(or $(ENV),production) DynamoDB..."
 	$(PYTHON) scripts/generate_review_user.py generate --env $(or $(ENV),production)
+
+# Capture system health snapshot
+# Defaults to production, last 24h: make system-snapshot
+# Override: make system-snapshot ENV=staging HOURS=168
+system-snapshot:
+	@echo "Capturing system snapshot for $(or $(ENV),production) ($(or $(HOURS),24)h window)..."
+	$(PYTHON) scripts/system_snapshot.py --env $(or $(ENV),production) --hours $(or $(HOURS),24)
 
 # Delete review user data from production (only this user, nothing else)
 # Override: make delete-review-user ENV=staging

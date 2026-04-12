@@ -35,6 +35,7 @@ from services.entitlements.infrastructure.entitlements_stack import Entitlements
 from services.insights.infrastructure.insights_stack import InsightsStack
 from services.website.infrastructure.website_cert_stack import WebsiteCertStack
 from services.website.infrastructure.website_stack import WebsiteStack
+from services.monitoring.infrastructure.monitoring_stack import MonitoringStack
 
 
 def main():
@@ -287,6 +288,21 @@ def main():
     for key, value in config.TAGS.items():
         Tags.of(website_stack).add(key, value)
     Tags.of(website_stack).add("Service", "website")
+
+    # Monitoring dashboard (CloudWatch)
+    monitoring_stack = MonitoringStack(
+        app,
+        f"{project_name}-{env_name}-monitoring",
+        project_name=project_name,
+        env_name=env_name,
+        config=config,
+        env=env,
+        description=f"CloudWatch monitoring dashboard for {env_name} environment",
+    )
+
+    for key, value in config.TAGS.items():
+        Tags.of(monitoring_stack).add(key, value)
+    Tags.of(monitoring_stack).add("Service", "monitoring")
 
     # Consolidate auth Lambda permissions to avoid 20KB resource policy limit.
     auth_stack.consolidate_auth_permissions(all_stacks=[

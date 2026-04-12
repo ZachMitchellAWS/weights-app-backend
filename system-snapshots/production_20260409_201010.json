@@ -1,0 +1,171 @@
+{
+  "metadata": {
+    "environment": "production",
+    "captured_at": "2026-04-09T20:10:10.984357+00:00",
+    "window_hours": 24,
+    "window_start": "2026-04-08T20:10:10.984357+00:00",
+    "window_end": "2026-04-09T20:10:10.984357+00:00",
+    "previous_snapshot": null
+  },
+  "api_gateway": {
+    "total_requests": 127,
+    "4xx_errors": 21,
+    "5xx_errors": 0,
+    "latency_ms": {
+      "p50": 132.2,
+      "p90": 2285.7,
+      "p99": 4094.3
+    }
+  },
+  "lambda": {
+    "auth": {
+      "invocations": 37,
+      "errors": 0,
+      "error_rate": 0.0,
+      "throttles": 0,
+      "duration_ms": {
+        "p50": 47.5,
+        "p99": 561.0,
+        "max": 574.1
+      }
+    },
+    "checkin": {
+      "invocations": 41,
+      "errors": 0,
+      "error_rate": 0.0,
+      "throttles": 0,
+      "duration_ms": {
+        "p50": 90.3,
+        "p99": 1010.2,
+        "max": 1050.0
+      }
+    },
+    "user": {
+      "invocations": 18,
+      "errors": 0,
+      "error_rate": 0.0,
+      "throttles": 0,
+      "duration_ms": {
+        "p50": 64.2,
+        "p99": 244.6,
+        "max": 248.2
+      }
+    },
+    "entitlements": {
+      "invocations": 10,
+      "errors": 0,
+      "error_rate": 0.0,
+      "throttles": 0,
+      "duration_ms": {
+        "p50": 171.9,
+        "p99": 370.1,
+        "max": 370.3
+      }
+    },
+    "insights": {
+      "invocations": 117,
+      "errors": 0,
+      "error_rate": 0.0,
+      "throttles": 0,
+      "duration_ms": {
+        "p50": 182.1,
+        "p99": 444.0,
+        "max": 465.8
+      }
+    },
+    "email-processing": {
+      "invocations": 1,
+      "errors": 0,
+      "error_rate": 0.0,
+      "throttles": 0,
+      "duration_ms": {
+        "p50": 361.8,
+        "p99": 361.8,
+        "max": 361.8
+      }
+    }
+  },
+  "dynamodb": {
+    "users": {
+      "item_count": 6,
+      "size_bytes": 1400,
+      "size_mb": 0.0,
+      "status": "ACTIVE"
+    },
+    "user-properties": {
+      "item_count": 6,
+      "size_bytes": 2020,
+      "size_mb": 0.0,
+      "status": "ACTIVE"
+    },
+    "exercises": {
+      "item_count": 528,
+      "size_bytes": 159238,
+      "size_mb": 0.15,
+      "status": "ACTIVE"
+    },
+    "lift-sets": {
+      "item_count": 1584,
+      "size_bytes": 412223,
+      "size_mb": 0.39,
+      "status": "ACTIVE"
+    },
+    "estimated-1rm": {
+      "item_count": 1762,
+      "size_bytes": 539695,
+      "size_mb": 0.51,
+      "status": "ACTIVE"
+    },
+    "set-plans": {
+      "item_count": 64,
+      "size_bytes": 20680,
+      "size_mb": 0.02,
+      "status": "ACTIVE"
+    },
+    "accessory-goal-checkins": {
+      "item_count": 125,
+      "size_bytes": 28919,
+      "size_mb": 0.03,
+      "status": "ACTIVE"
+    },
+    "groups": {
+      "item_count": 24,
+      "size_bytes": 9950,
+      "size_mb": 0.01,
+      "status": "ACTIVE"
+    },
+    "entitlement-grants": {
+      "item_count": 2,
+      "size_bytes": 708,
+      "size_mb": 0.0,
+      "status": "ACTIVE"
+    },
+    "subscription-events": {
+      "item_count": 0,
+      "size_bytes": 0,
+      "size_mb": 0.0,
+      "status": "ACTIVE"
+    },
+    "insight-tasks": {
+      "item_count": 2,
+      "size_bytes": 348,
+      "size_mb": 0.0,
+      "status": "ACTIVE"
+    },
+    "insights-cache": {
+      "item_count": 3,
+      "size_bytes": 8133,
+      "size_mb": 0.01,
+      "status": "ACTIVE"
+    }
+  },
+  "ses": {
+    "send": 3,
+    "delivery": 3,
+    "bounce": 0,
+    "complaint": 0,
+    "reject": 0,
+    "bounce_rate": 0.0,
+    "complaint_rate": 0.0
+  }
+}

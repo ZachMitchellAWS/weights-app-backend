@@ -27,7 +27,7 @@ DYNAMODB_POINT_IN_TIME_RECOVERY = True  # Enable PITR for production data protec
 
 # Lambda Configuration
 LAMBDA_MEMORY_SIZE = 512  # MB
-LAMBDA_TIMEOUT = Duration.seconds(60)
+LAMBDA_TIMEOUT = Duration.seconds(29)  # Match API Gateway timeout
 LAMBDA_RUNTIME_VERSION = "3.12"
 
 # Auth Token Configuration

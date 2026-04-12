@@ -3,6 +3,7 @@
 import os
 
 from aws_cdk import (
+    Duration,
     Stack,
     aws_s3 as s3,
     aws_lambda as lambda_,
@@ -244,7 +245,7 @@ class EmailStack(Stack):
             code=lambda_.Code.from_asset(str(lambda_code_path)),
             layers=[self.dependencies_layer],
             memory_size=self.config.LAMBDA_MEMORY_SIZE,
-            timeout=self.config.LAMBDA_TIMEOUT,
+            timeout=Duration.seconds(180),  # Async invocation, not API-bound
             environment={
                 "TEMPLATES_BUCKET": self.templates_bucket.bucket_name,
                 "SENDER_EMAIL": "noreply@liftthebull.io",
