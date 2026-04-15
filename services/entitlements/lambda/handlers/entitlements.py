@@ -28,6 +28,7 @@ from utils.apple_api import (
     fetch_transaction_history,
     parse_notification,
     convert_apple_timestamp_to_iso,
+    resolve_environment_override,
 )
 
 # Initialize DynamoDB client
@@ -199,7 +200,7 @@ def process_transactions(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     try:
         body = json.loads(event.get('body', '{}'))
 
-        # Extract transaction IDs if provided
+        # Extract transaction IDs and optional environment override
         original_transaction_ids = []
         apple_data = body.get('apple', {})
         if apple_data:
@@ -207,16 +208,30 @@ def process_transactions(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
             if isinstance(ids, list):
                 original_transaction_ids = ids
 
+        # Resolve environment override (enables TestFlight sandbox on production)
+        requested_environment = apple_data.get('environment') if apple_data else None
+        env_override = resolve_environment_override(requested_environment)
+        transaction_environment = requested_environment if env_override else "Production"
+
+        if env_override:
+            print(f"Using sandbox environment override for user {user_id}")
+
         # Process any provided transaction IDs
         if original_transaction_ids:
-            client = get_apple_api_client()
+            client = get_apple_api_client(environment_override=env_override)
 
             for original_transaction_id in original_transaction_ids:
                 try:
-                    transactions = fetch_transaction_history(client, original_transaction_id)
+                    transactions = fetch_transaction_history(
+                        client, original_transaction_id,
+                        environment_override=env_override,
+                    )
 
                     for transaction in transactions:
-                        _create_entitlement_grant(user_id, transaction)
+                        _create_entitlement_grant(
+                            user_id, transaction,
+                            transaction_environment=transaction_environment,
+                        )
 
                 except Exception as e:
                     print(f"Error processing transaction {original_transaction_id}: {str(e)}")
@@ -302,14 +317,28 @@ def handle_apple_notification(event: Dict[str, Any]) -> Dict[str, Any]:
 
         print(f"Processing notification for user: {user_id}")
 
+        # Resolve environment from notification verification
+        # (parse_notification uses dual-environment verification for webhooks)
+        transaction_environment = notification_data.get('transactionEnvironment', 'Production')
+        env_override = resolve_environment_override(transaction_environment)
+
+        if env_override:
+            print(f"Notification verified as sandbox transaction for user {user_id}")
+
         # Fetch transaction history and create grants
         if original_transaction_id:
             try:
-                client = get_apple_api_client()
-                transactions = fetch_transaction_history(client, original_transaction_id)
+                client = get_apple_api_client(environment_override=env_override)
+                transactions = fetch_transaction_history(
+                    client, original_transaction_id,
+                    environment_override=env_override,
+                )
 
                 for transaction in transactions:
-                    _create_entitlement_grant(user_id, transaction)
+                    _create_entitlement_grant(
+                        user_id, transaction,
+                        transaction_environment=transaction_environment,
+                    )
 
             except Exception as e:
                 print(f"Error fetching transaction history: {str(e)}")
@@ -325,7 +354,11 @@ def handle_apple_notification(event: Dict[str, Any]) -> Dict[str, Any]:
         return create_response(status_code=200, body={"message": "ok"})
 
 
-def _create_entitlement_grant(user_id: str, transaction: Dict[str, Any]) -> tuple:
+def _create_entitlement_grant(
+    user_id: str,
+    transaction: Dict[str, Any],
+    transaction_environment: str = "Production",
+) -> tuple:
     """
     Create an entitlement grant from a transaction.
 
@@ -334,6 +367,8 @@ def _create_entitlement_grant(user_id: str, transaction: Dict[str, Any]) -> tupl
     Args:
         user_id: User's unique identifier
         transaction: Transaction data from Apple API
+        transaction_environment: "Production" or "Sandbox" — tracks whether
+            the grant was validated against Apple's production or sandbox API
 
     Returns:
         Tuple of (grant dict or None, was_created bool)
@@ -374,6 +409,7 @@ def _create_entitlement_grant(user_id: str, transaction: Dict[str, Any]) -> tupl
             'paymentPlatformSource': 'apple',
             'originalTransactionId': original_transaction_id,
             'productId': product_id,
+            'transactionEnvironment': transaction_environment,
             'createdDatetime': current_datetime,
             'lastModifiedDatetime': current_datetime,
         }
@@ -478,6 +514,7 @@ def _log_subscription_event(notification_data: Dict[str, Any]) -> None:
             'productId': transaction.get('productId', ''),
             'purchaseDateMs': transaction.get('purchaseDate', 0),
             'expiresDateMs': transaction.get('expiresDate', 0),
+            'transactionEnvironment': notification_data.get('transactionEnvironment', 'Production'),
         }
 
         # Only include subtype if present (not all notification types have one)

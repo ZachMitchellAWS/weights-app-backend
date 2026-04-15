@@ -78,15 +78,44 @@ def get_apple_environment() -> Environment:
     return Environment.SANDBOX
 
 
-def get_apple_api_client() -> AppStoreServerAPIClient:
+def resolve_environment_override(requested_env: Optional[str]) -> Optional[Environment]:
+    """
+    Resolve a client-requested environment override.
+
+    Only allows sandbox override when the deployment environment is Production.
+    This enables TestFlight builds (which use Apple Sandbox) to validate
+    transactions against the production backend.
+
+    Args:
+        requested_env: Environment string from request body ("Sandbox" or None)
+
+    Returns:
+        Environment.SANDBOX if override is valid, None otherwise
+    """
+    if requested_env == "Sandbox" and get_apple_environment() == Environment.PRODUCTION:
+        return Environment.SANDBOX
+    return None
+
+
+def get_apple_api_client(
+    environment_override: Optional[Environment] = None,
+) -> AppStoreServerAPIClient:
     """
     Create an Apple App Store Server API client.
+
+    Args:
+        environment_override: Optional environment override (e.g. SANDBOX for
+            TestFlight transactions on the production backend)
 
     Returns:
         Configured AppStoreServerAPIClient instance
     """
     credentials = get_apple_credentials()
     environment = get_apple_environment()
+
+    # Apply override only when running in production
+    if environment_override and environment == Environment.PRODUCTION:
+        environment = environment_override
 
     return AppStoreServerAPIClient(
         signing_key=credentials['private_key'].encode('utf-8'),
@@ -99,7 +128,8 @@ def get_apple_api_client() -> AppStoreServerAPIClient:
 
 def fetch_transaction_history(
     client: AppStoreServerAPIClient,
-    original_transaction_id: str
+    original_transaction_id: str,
+    environment_override: Optional[Environment] = None,
 ) -> List[Dict[str, Any]]:
     """
     Fetch transaction history for an original transaction ID.
@@ -110,6 +140,8 @@ def fetch_transaction_history(
     Args:
         client: Apple API client
         original_transaction_id: The original transaction ID
+        environment_override: Optional environment override for signature
+            verification (e.g. SANDBOX for TestFlight on production)
 
     Returns:
         List of transaction dictionaries
@@ -133,6 +165,10 @@ def fetch_transaction_history(
     if response and response.signedTransactions:
         credentials = get_apple_credentials()
         environment = get_apple_environment()
+
+        # Apply override only when running in production
+        if environment_override and environment == Environment.PRODUCTION:
+            environment = environment_override
 
         # Create verifier for decoding signed transactions
         verifier = SignedDataVerifier(
@@ -232,6 +268,7 @@ def parse_notification(body: str) -> Optional[Dict[str, Any]]:
 
         # Verify and decode the notification
         notification = verifier.verify_and_decode_notification(signed_payload)
+        transaction_environment = "Production" if environment == Environment.PRODUCTION else "Sandbox"
 
         if not notification:
             print("Failed to verify notification")
@@ -270,6 +307,7 @@ def parse_notification(body: str) -> Optional[Dict[str, Any]]:
             'notificationType': notification_type,
             'subtype': subtype,
             'transaction': _transaction_to_dict(transaction),
+            'transactionEnvironment': transaction_environment,
         }
 
     except Exception as e:

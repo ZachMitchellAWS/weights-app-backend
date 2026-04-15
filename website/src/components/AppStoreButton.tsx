@@ -1,7 +1,7 @@
 function AppStoreButton() {
   return (
     <a
-      href="#"
+      href="https://apps.apple.com/us/app/lift-the-bull/id6759113833"
       className="appstore-button"
       target="_blank"
       rel="noopener noreferrer"
