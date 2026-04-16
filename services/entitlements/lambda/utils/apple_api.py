@@ -65,6 +65,25 @@ def get_apple_credentials() -> Dict[str, str]:
     }
 
 
+def _get_app_apple_id() -> Optional[int]:
+    """
+    Get the App Store app ID from environment.
+
+    Required by SignedDataVerifier when verifying Production transactions.
+    Not required for Sandbox verification.
+
+    Returns:
+        The app's numeric Apple ID, or None if unset.
+    """
+    value = os.environ.get('APPLE_APP_APPLE_ID')
+    if not value:
+        return None
+    try:
+        return int(value)
+    except ValueError:
+        return None
+
+
 def get_apple_environment() -> Environment:
     """
     Get the Apple environment based on deployment environment.
@@ -170,13 +189,15 @@ def fetch_transaction_history(
         if environment_override and environment == Environment.PRODUCTION:
             environment = environment_override
 
-        # Create verifier for decoding signed transactions
+        # Create verifier for decoding signed transactions. app_apple_id is
+        # required by the library when verifying Production transactions.
+        app_apple_id = _get_app_apple_id() if environment == Environment.PRODUCTION else None
         verifier = SignedDataVerifier(
             root_certificates=[_APPLE_ROOT_CA],  # Apple's root certs are included in the library
             enable_online_checks=False,
             environment=environment,
             bundle_id=credentials['bundle_id'],
-            app_apple_id=None,  # Not required for subscription verification
+            app_apple_id=app_apple_id,
         )
 
         for signed_transaction in response.signedTransactions:
@@ -258,12 +279,13 @@ def parse_notification(body: str) -> Optional[Dict[str, Any]]:
         credentials = get_apple_credentials()
         environment = get_apple_environment()
 
+        app_apple_id = _get_app_apple_id() if environment == Environment.PRODUCTION else None
         verifier = SignedDataVerifier(
             root_certificates=[_APPLE_ROOT_CA],
             enable_online_checks=False,
             environment=environment,
             bundle_id=credentials['bundle_id'],
-            app_apple_id=None,
+            app_apple_id=app_apple_id,
         )
 
         # Verify and decode the notification

@@ -328,6 +328,10 @@ class EntitlementsStack(Stack):
                 "SENTRY_DSN": os.environ.get("SENTRY_DSN", ""),
                 "LOG_LEVEL": self.config.LOG_LEVEL,
                 "APPLE_ENVIRONMENT": apple_environment,
+                # App Store app ID — required by SignedDataVerifier when
+                # verifying Production-environment transactions. Sandbox
+                # (staging) does not require it.
+                "APPLE_APP_APPLE_ID": "6759113833",
                 # SSM parameter names (Lambda will read values at runtime)
                 "APPLE_PRIVATE_KEY_PARAM": f"/{self.project_name}/{self.env_name}/entitlements/apple-private-key",
                 "APPLE_KEY_ID_PARAM": f"/{self.project_name}/{self.env_name}/entitlements/apple-key-id",
