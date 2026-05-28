@@ -7,31 +7,80 @@
 }
 
 :root {
-  --color-bg: #0a0a0a;
-  --color-surface: #141414;
-  --color-surface-hover: #1e1e1e;
-  --color-border: #2a2a2a;
-  --color-text: #e5e5e5;
-  --color-text-secondary: #a0a0a0;
-  --color-accent: #4f8cff;
-  --color-accent-hover: #3a7af0;
-  --color-success: #34c759;
-  --color-error: #ff453a;
+  --color-bg: #000000;
+  --color-surface: rgba(255, 255, 255, 0.06);
+  --color-surface-hover: rgba(255, 255, 255, 0.10);
+  --color-border: rgba(255, 255, 255, 0.10);
+  --color-text: #ffffff;
+  --color-text-secondary: rgba(255, 255, 255, 0.6);
+  --color-accent: #FFC850;
+  --color-accent-hover: #FFD978;
+  --color-accent-ink: #000000;
+  --color-success: #22C55E;
+  --color-error: #EF4444;
+  --color-tier-amber: #FFC850;
+  --color-tier-violet: #CC85F5;
+  --color-tier-teal: #21B8C9;
+  --color-tier-green: #21C45E;
+  --color-tier-blue: #4A8FD9;
+  --radius-card: 16px;
+  --radius-button: 10px;
+  --font-display: "BebasNeue", "Bebas Neue", Impact, sans-serif;
+  --font-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
   --max-width: 1080px;
+}
+
+@font-face {
+  font-family: "BebasNeue";
+  src: url("/fonts/BebasNeue-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Inter";
+  src: url("/fonts/Inter_18pt-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Inter";
+  src: url("/fonts/Inter_18pt-SemiBold.ttf") format("truetype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
 }
 
 html {
   font-size: 16px;
-  background-color: #0a0a0a;
+  background-color: #000;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--font-body);
   background-color: var(--color-bg);
   color: var(--color-text);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  position: relative;
+  min-height: 100vh;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.035) 0%,
+    transparent 60%
+  );
 }
 
 .app {
@@ -51,6 +100,7 @@ body {
 a {
   color: var(--color-accent);
   text-decoration: none;
+  transition: color 0.2s;
 }
 
 a:hover {
@@ -60,20 +110,30 @@ a:hover {
 h1,
 h2,
 h3 {
-  line-height: 1.2;
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-weight: 400;
+  text-transform: uppercase;
+  line-height: 1.1;
+  color: var(--color-text);
 }
 
 h1 {
-  font-size: 2.5rem;
+  font-size: 2.75rem;
+  letter-spacing: 4px;
 }
 
 h2 {
-  font-size: 1.75rem;
+  font-size: 1.9rem;
+  letter-spacing: 3px;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
 }
 
 h3 {
-  font-size: 1.25rem;
+  font-size: 1.35rem;
+  letter-spacing: 2px;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
 }
 
 button {
@@ -86,4 +146,57 @@ textarea,
 select {
   font-family: inherit;
   font-size: 1rem;
+}
+
+.legal-page {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.legal-page h1,
+.legal-page h2,
+.legal-page h3 {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.legal-page h1 {
+  font-size: 2rem;
+  margin-bottom: 1.25rem;
+}
+
+.legal-page h2 {
+  font-size: 1.5rem;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+}
+
+.legal-page h3 {
+  font-size: 1.15rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.legal-page p {
+  margin-bottom: 1rem;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.legal-page ul,
+.legal-page ol {
+  padding-left: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.legal-page li {
+  margin-bottom: 0.5rem;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.legal-page strong {
+  color: var(--color-text);
 }

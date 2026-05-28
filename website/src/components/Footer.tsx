@@ -16,31 +16,34 @@ function Footer() {
       <style>{`
         .footer {
           border-top: 1px solid var(--color-border);
-          background-color: var(--color-surface);
+          background-color: rgba(255, 255, 255, 0.03);
           margin-top: auto;
         }
         .footer-inner {
           max-width: var(--max-width);
           margin: 0 auto;
-          padding: 1.5rem;
+          padding: 1.75rem 1.5rem;
           text-align: center;
         }
         .footer-links {
           display: flex;
           justify-content: center;
           gap: 1.5rem;
-          margin-bottom: 0.75rem;
+          margin-bottom: 0.85rem;
+          flex-wrap: wrap;
         }
         .footer-links a {
           color: var(--color-text-secondary);
           font-size: 0.875rem;
+          transition: color 0.2s;
         }
         .footer-links a:hover {
-          color: var(--color-text);
+          color: var(--color-accent);
         }
         .footer-copy {
           color: var(--color-text-secondary);
           font-size: 0.8rem;
+          letter-spacing: 0.5px;
         }
       `}</style>
     </footer>

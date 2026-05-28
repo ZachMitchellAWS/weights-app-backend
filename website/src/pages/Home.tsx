@@ -1,37 +1,45 @@
 import AppStoreButton from "../components/AppStoreButton";
+import { BullIcon } from "../components/BullIcon";
 
 function Home() {
   return (
     <div className="home">
       <section className="hero">
-        <h1>Lift the Bull</h1>
+        <div className="hero-bull">
+          <BullIcon size={96} color="#FFC850" />
+        </div>
+        <h1 className="hero-title">Lift the Bull</h1>
+        <p className="hero-eyebrow">Strength Training, Gamified</p>
         <p className="tagline">
-          Strength training, simplified. Track your lifts, plan your sets, and
-          watch your progress grow.
+          Always know how strong you are. Always have a clear target to push
+          toward. Get measurably stronger — one tier at a time.
         </p>
-        <AppStoreButton />
+        <div className="hero-cta">
+          <AppStoreButton size="hero" />
+        </div>
       </section>
 
       <section className="features">
         <div className="feature-card">
-          <h3>Track Every Set</h3>
+          <h3>Know Your Strength</h3>
           <p>
-            Log exercises, reps, and weight with a fast, intuitive interface
-            built for the gym floor.
+            Every lift shows its current estimated 1RM and strength tier. No
+            spreadsheets, no guessing — just an honest read of where you stand
+            today.
           </p>
         </div>
         <div className="feature-card">
-          <h3>Smart Set Plans</h3>
+          <h3>Unlock The Next Tier</h3>
           <p>
-            Create reusable set plan templates so you always know what's next
-            when you step up to the bar.
+            Concrete, predefined milestones replace open-ended programming.
+            Hit the target, level up your tier, push your strength forward.
           </p>
         </div>
         <div className="feature-card">
-          <h3>Progress Insights</h3>
+          <h3>See Your Progress</h3>
           <p>
-            See estimated 1RM trends and AI-powered weekly training summaries to
-            keep you on track.
+            Glance at what you did last time. Watch your strength grow week
+            over week. Always know you're moving forward.
           </p>
         </div>
       </section>
@@ -40,35 +48,75 @@ function Home() {
         .hero {
           text-align: center;
           padding: 4rem 0 3rem;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
         }
-        .hero h1 {
-          font-size: 3rem;
-          margin-bottom: 1rem;
+        .hero-bull {
+          margin-bottom: 1.5rem;
+          display: inline-flex;
+        }
+        .hero-title {
+          font-size: 4.5rem;
+          letter-spacing: 6px;
+          margin-bottom: 0.4rem;
+        }
+        .hero-eyebrow {
+          font-family: var(--font-body);
+          font-size: 0.78rem;
+          font-weight: 600;
+          letter-spacing: 4px;
+          text-transform: uppercase;
+          color: var(--color-accent);
+          margin-bottom: 1.5rem;
         }
         .tagline {
-          font-size: 1.2rem;
+          font-size: 1.15rem;
           color: var(--color-text-secondary);
-          max-width: 540px;
+          max-width: 560px;
           margin: 0 auto 2rem;
+          line-height: 1.55;
+        }
+        .hero-cta {
+          display: inline-flex;
+          margin-top: 0.25rem;
         }
         .features {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
           gap: 1.5rem;
-          padding: 2rem 0;
+          padding: 2rem 0 4rem;
         }
         .feature-card {
-          background-color: var(--color-surface);
-          border: 1px solid var(--color-border);
-          border-radius: 12px;
-          padding: 1.5rem;
+          background-color: rgba(255, 255, 255, 0.06);
+          background-image: linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.04) 0%,
+            transparent 60%
+          );
+          border: 1px solid rgba(255, 255, 255, 0.10);
+          border-radius: var(--radius-card);
+          padding: 1.75rem 1.5rem 1.5rem;
         }
         .feature-card h3 {
-          margin-bottom: 0.5rem;
+          color: var(--color-accent);
+          font-size: 1.4rem;
+          margin-top: 0;
+          margin-bottom: 0.6rem;
         }
         .feature-card p {
           color: var(--color-text-secondary);
           font-size: 0.95rem;
+          line-height: 1.55;
+        }
+        @media (max-width: 600px) {
+          .hero-title {
+            font-size: 3.25rem;
+            letter-spacing: 4px;
+          }
+          .hero {
+            padding: 2.5rem 0 2rem;
+          }
         }
       `}</style>
     </div>

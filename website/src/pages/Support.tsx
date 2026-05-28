@@ -191,16 +191,18 @@ function Support() {
         }
         .support-form button {
           background-color: var(--color-accent);
-          color: #fff;
+          color: var(--color-accent-ink);
           border: none;
-          border-radius: 8px;
-          padding: 0.75rem;
+          border-radius: var(--radius-button);
+          padding: 0.8rem;
           font-size: 1rem;
           font-weight: 600;
+          letter-spacing: 0.5px;
           transition: background-color 0.2s;
         }
         .support-form button:hover:not(:disabled) {
           background-color: var(--color-accent-hover);
+          color: var(--color-accent-ink);
         }
         .support-form button:disabled {
           opacity: 0.6;

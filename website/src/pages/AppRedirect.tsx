@@ -11,7 +11,7 @@ export default function AppRedirect() {
   }, []);
 
   return (
-    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh", color: "#aaa" }}>
+    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh", color: "rgba(255,255,255,0.6)" }}>
       <p>Redirecting to the App Store...</p>
     </div>
   );
