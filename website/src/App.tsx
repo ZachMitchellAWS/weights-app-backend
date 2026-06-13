@@ -6,6 +6,7 @@ import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import Support from "./pages/Support";
 import AppRedirect from "./pages/AppRedirect";
+import AndroidInterest from "./pages/AndroidInterest";
 
 function App() {
   const [searchParams] = useSearchParams();
@@ -21,6 +22,7 @@ function App() {
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/support" element={<Support />} />
           <Route path="/app" element={<AppRedirect />} />
+          <Route path="/android" element={<AndroidInterest />} />
         </Routes>
       </main>
       {!embedded && <Footer />}

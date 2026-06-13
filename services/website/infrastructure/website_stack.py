@@ -50,8 +50,10 @@ class WebsiteStack(Stack):
         self.distribution = self._create_cloudfront_distribution()
         self._create_route53_records()
         self.support_tickets_table = self._create_support_tickets_table()
+        self.android_interest_table = self._create_android_interest_table()
         self.dependencies_layer = self._create_dependencies_layer()
         self.support_function = self._create_support_lambda()
+        self.android_interest_function = self._create_android_interest_lambda()
         self._create_api_route()
 
     def _create_s3_bucket(self) -> s3.Bucket:
@@ -195,6 +197,21 @@ class WebsiteStack(Stack):
             removal_policy=self.config.REMOVAL_POLICY,
         )
 
+    def _create_android_interest_table(self) -> dynamodb.Table:
+        """Create DynamoDB table for Android-version interest submissions."""
+        return dynamodb.Table(
+            self,
+            "AndroidInterestTable",
+            table_name=f"{self.project_name}-{self.env_name}-android-interest",
+            partition_key=dynamodb.Attribute(
+                name="submissionId",
+                type=dynamodb.AttributeType.STRING,
+            ),
+            billing_mode=self.config.DYNAMODB_BILLING_MODE,
+            point_in_time_recovery=self.config.DYNAMODB_POINT_IN_TIME_RECOVERY,
+            removal_policy=self.config.REMOVAL_POLICY,
+        )
+
     def _create_dependencies_layer(self) -> lambda_.LayerVersion:
         """Create Lambda layer with Python dependencies for website service."""
         layer_path = Path(__file__).parent.parent / "layer"
@@ -234,18 +251,48 @@ class WebsiteStack(Stack):
 
         return function
 
-    def _create_api_route(self) -> None:
-        """Add POST /website/support to existing API Gateway."""
-        support_integration = apigateway.LambdaIntegration(
-            self.support_function,
-            proxy=True,
+    def _create_android_interest_lambda(self) -> lambda_.Function:
+        """Create Lambda for Android-version interest submissions."""
+        lambda_code_path = Path(__file__).parent.parent / "lambda"
+
+        function = lambda_.Function(
+            self,
+            "WebsiteAndroidInterestFunction",
+            function_name=f"{self.project_name}-{self.env_name}-website-android-interest",
+            runtime=lambda_.Runtime.PYTHON_3_13,
+            handler="handlers.android_interest.handler",
+            code=lambda_.Code.from_asset(str(lambda_code_path)),
+            layers=[self.dependencies_layer],
+            memory_size=self.config.LAMBDA_MEMORY_SIZE,
+            timeout=self.config.LAMBDA_TIMEOUT,
+            environment={
+                "ANDROID_INTEREST_TABLE_NAME": self.android_interest_table.table_name,
+                "ENVIRONMENT": self.config.ENVIRONMENT,
+                "SENTRY_DSN": os.environ.get("SENTRY_DSN", ""),
+                "LOG_LEVEL": self.config.LOG_LEVEL,
+            },
         )
 
-        website_resource = self.api.root.add_resource("website")
-        support_resource = website_resource.add_resource("support")
+        self.android_interest_table.grant_write_data(function)
 
+        return function
+
+    def _create_api_route(self) -> None:
+        """Add public POST routes under /website/ to the shared API Gateway."""
+        website_resource = self.api.root.add_resource("website")
+
+        # POST /website/support
+        support_resource = website_resource.add_resource("support")
         support_resource.add_method(
             "POST",
-            support_integration,
+            apigateway.LambdaIntegration(self.support_function, proxy=True),
+            api_key_required=False,
+        )
+
+        # POST /website/android-interest
+        android_interest_resource = website_resource.add_resource("android-interest")
+        android_interest_resource.add_method(
+            "POST",
+            apigateway.LambdaIntegration(self.android_interest_function, proxy=True),
             api_key_required=False,
         )

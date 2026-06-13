@@ -160,6 +160,11 @@ function Support() {
           grid-template-columns: 1fr 1fr;
           gap: 1rem;
         }
+        @media (max-width: 600px) {
+          .form-row {
+            grid-template-columns: 1fr;
+          }
+        }
         .form-group {
           display: flex;
           flex-direction: column;

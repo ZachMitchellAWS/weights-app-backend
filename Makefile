@@ -270,6 +270,29 @@ delete-review-user:
 	@echo "Deleting review user from $(or $(ENV),production) DynamoDB..."
 	$(PYTHON) scripts/generate_review_user.py delete --env $(or $(ENV),production)
 
+# === DANGEROUS / COMMENTED OUT BY DEFAULT ===================================
+# Delete ALL DynamoDB data for one specific user across every per-user table.
+# Walks 15 tables (auth, user, checkin, entitlements, insights stacks).
+# This is destructive and irreversible. There is NO undo.
+#
+# To use:
+#   1. Uncomment the four lines below
+#   2. Run, supplying BOTH the env and user-id explicitly:
+#        make delete-user ENV=staging    USER_ID=<uuid>
+#        make delete-user ENV=production USER_ID=<uuid>
+#   3. For production, the script will require two-step typed confirmation.
+#   4. Add --dry-run to preview what would be deleted without deleting:
+#        make delete-user ENV=production USER_ID=<uuid> DRY_RUN=--dry-run
+#   5. Re-comment after use.
+#
+# Strongly recommended: run `make save-user-production USER_ID=<uuid>` first
+# so you have a snapshot to restore from if you delete the wrong user.
+#
+# delete-user:
+# 	@if [ -z "$(ENV)" ] || [ -z "$(USER_ID)" ]; then echo "ERROR: ENV and USER_ID are required. Example: make delete-user ENV=staging USER_ID=<uuid>"; exit 2; fi
+# 	@echo "Deleting user $(USER_ID) from $(ENV) DynamoDB..."
+# 	$(PYTHON) scripts/delete_user.py --env $(ENV) --user-id $(USER_ID) $(DRY_RUN)
+
 # Generate and load power user data (large dataset) into staging DynamoDB
 # MONTHS defaults to 12 but can be overridden: make load-power-user-staging MONTHS=6
 load-power-user-staging:

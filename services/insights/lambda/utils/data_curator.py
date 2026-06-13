@@ -625,18 +625,22 @@ def _format_strength_status(
         tier_name = _get_tier_name(tier_idx)
         tier_indices.append(tier_idx)
 
-        # Compute next tier target
+        # Compute next tier target.
+        # Tier-threshold-derived lbs values are rounded to whole numbers to
+        # match the iOS app's display (frontend tier ranges, milestone targets,
+        # and "X lbs to next tier" all round, not truncate). Keeps narrative
+        # text consistent with what the user sees on screen.
         thresholds = TIER_THRESHOLDS.get(ex_name, {}).get(sex, [])
         next_target_e1rm = None
         lbs_remaining = None
         if tier_idx < len(TIER_ORDER) - 1 and tier_idx + 1 < len(thresholds):
-            next_target_e1rm = round(thresholds[tier_idx + 1] * bodyweight, 1)
-            lbs_remaining = round(next_target_e1rm - current_e1rm, 1) if current_e1rm > 0 else None
+            next_target_e1rm = round(thresholds[tier_idx + 1] * bodyweight)
+            lbs_remaining = round(next_target_e1rm - current_e1rm) if current_e1rm > 0 else None
 
         # Novice milestone: 50% of Beginner threshold
         novice_milestone_e1rm = None
         if tier_idx == 0 and len(thresholds) > 1:
-            novice_milestone_e1rm = round(thresholds[1] * bodyweight * 0.5, 1)
+            novice_milestone_e1rm = round(thresholds[1] * bodyweight * 0.5)
 
         exercise_tiers[ex_name] = {
             'tier': tier_name,
@@ -680,7 +684,7 @@ def _format_strength_status(
             if info['e1rm'] >= info['novice_milestone']:
                 parts.append(f"— Novice milestone achieved ({info['novice_milestone']} lbs)")
             else:
-                remaining = round(info['novice_milestone'] - info['e1rm'], 1)
+                remaining = round(info['novice_milestone'] - info['e1rm'])
                 parts.append(f"— {remaining} lbs to Novice milestone ({info['novice_milestone']} lbs)")
 
         if info['next_target'] and info['lbs_remaining'] is not None:
@@ -871,9 +875,12 @@ def curate_tier_unlock_data(user_id: str, tier_name: str) -> str | None:
         logger.info(f"Tier mismatch for user {user_id}: requested {tier_name}, computed {computed_overall}")
         return None
 
-    # Determine previous tier by checking actual unlock history.
-    # If no prior tier unlock exists, this is the user's first tier regardless
-    # of tier index (e.g. first-ever unlock at Beginner should NOT say "from Novice").
+    # The strength-tier insight is a one-time celebration of the user's
+    # STARTING tier (whatever tier they first qualified for) — it is NOT
+    # generated for subsequent tier-ups. We detect the starting tier by
+    # checking whether any prior tier-unlock items already exist for this
+    # user; if any do, this request is for a subsequent tier and we skip
+    # generation entirely (handler returns a no-op response).
     from utils.cache import get_all_tier_unlocks
 
     existing_unlocks = get_all_tier_unlocks(user_id)
@@ -883,10 +890,17 @@ def curate_tier_unlock_data(user_id: str, tier_name: str) -> str | None:
         if u.get('insightWeek', '') != f'tier-{tier_name.lower()}'
     ]
 
-    if prior_unlocks and computed_overall_idx > 0:
-        prev_tier = _get_tier_name(computed_overall_idx - 1)
-    else:
-        prev_tier = None
+    if prior_unlocks:
+        logger.info(
+            f"User {user_id} already has prior tier unlock(s) "
+            f"{[u.get('insightWeek') for u in prior_unlocks]}; "
+            f"skipping insight generation for tier '{tier_name}' "
+            f"(insight is starting-tier-only)."
+        )
+        return None
+
+    # First-tier path: no prior unlocks, no "from <prev_tier>" framing in the prompt.
+    prev_tier = None
 
     # Determine weakest (bottleneck) and strongest
     weakest = min(exercise_tiers.items(), key=lambda x: x[1]['tier_idx'])

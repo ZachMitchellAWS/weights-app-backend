@@ -1,4 +1,5 @@
 import AppStoreButton from "../components/AppStoreButton";
+import AndroidInterestButton from "../components/AndroidInterestButton";
 import { BullIcon } from "../components/BullIcon";
 
 function Home() {
@@ -9,13 +10,13 @@ function Home() {
           <BullIcon size={96} color="#FFC850" />
         </div>
         <h1 className="hero-title">Lift the Bull</h1>
-        <p className="hero-eyebrow">Strength Training, Gamified</p>
+        <p className="hero-eyebrow">Strength Tracker</p>
         <p className="tagline">
-          Always know how strong you are. Always have a clear target to push
-          toward. Get measurably stronger — one tier at a time.
+          Skip the noise. Train what matters. Get measurably stronger.
         </p>
         <div className="hero-cta">
           <AppStoreButton size="hero" />
+          <AndroidInterestButton size="hero" />
         </div>
       </section>
 
@@ -79,6 +80,9 @@ function Home() {
         }
         .hero-cta {
           display: inline-flex;
+          flex-wrap: wrap;
+          justify-content: center;
+          gap: 12px;
           margin-top: 0.25rem;
         }
         .features {

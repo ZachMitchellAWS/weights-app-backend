@@ -26,6 +26,7 @@ from utils.jwt_utils import (
 )
 from utils.password import hash_password, verify_password
 from utils.apple_auth import verify_apple_identity_token
+from utils.blacklist import is_email_blocked
 from utils.sentry_init import init_sentry, set_sentry_user
 import sentry_sdk
 
@@ -162,6 +163,15 @@ def handle_create_user(event: Dict[str, Any]) -> Dict[str, Any]:
                 body={
                     "error": "Missing required fields",
                     "message": "Both emailAddress and password are required"
+                }
+            )
+
+        if is_email_blocked(email_address):
+            return create_response(
+                status_code=403,
+                body={
+                    "error": "Forbidden",
+                    "message": "An error occurred. Please try again later."
                 }
             )
 
@@ -336,6 +346,15 @@ def handle_login(event: Dict[str, Any]) -> Dict[str, Any]:
                 body={
                     "error": "Missing required fields",
                     "message": "Both emailAddress and password are required"
+                }
+            )
+
+        if is_email_blocked(email_address):
+            return create_response(
+                status_code=403,
+                body={
+                    "error": "Forbidden",
+                    "message": "An error occurred. Please try again later."
                 }
             )
 
@@ -1141,6 +1160,15 @@ def handle_apple_signin(event: Dict[str, Any]) -> Dict[str, Any]:
                 body={
                     "error": "Authentication failed",
                     "message": "Apple identity token missing sub claim"
+                }
+            )
+
+        if is_email_blocked(apple_email):
+            return create_response(
+                status_code=401,
+                body={
+                    "error": "Authentication failed",
+                    "message": "Invalid Apple identity token"
                 }
             )
 

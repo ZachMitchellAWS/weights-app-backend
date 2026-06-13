@@ -10,7 +10,7 @@ function Footer() {
           <Link to="/support">Support</Link>
         </div>
         <p className="footer-copy">
-          &copy; {new Date().getFullYear()} Lift the Bull. All rights reserved.
+          &copy; {new Date().getFullYear()} Anthroverse LLC. All rights reserved.
         </p>
       </div>
       <style>{`
