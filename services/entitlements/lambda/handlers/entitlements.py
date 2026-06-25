@@ -235,6 +235,7 @@ def process_transactions(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
 
                 except Exception as e:
                     print(f"Error processing transaction {original_transaction_id}: {str(e)}")
+                    sentry_sdk.capture_exception(e)
 
         # Always return current active entitlements
         active_entitlements = _get_active_entitlements(user_id)
@@ -342,12 +343,14 @@ def handle_apple_notification(event: Dict[str, Any]) -> Dict[str, Any]:
 
             except Exception as e:
                 print(f"Error fetching transaction history: {str(e)}")
+                sentry_sdk.capture_exception(e)
                 # Still return 200 to Apple
 
         return create_response(status_code=200, body={"message": "ok"})
 
     except Exception as e:
         print(f"Error handling Apple notification: {str(e)}")
+        sentry_sdk.capture_exception(e)
         import traceback
         traceback.print_exc()
         # Always return 200 to Apple
@@ -430,6 +433,7 @@ def _create_entitlement_grant(
 
     except Exception as e:
         print(f"Error creating entitlement grant: {str(e)}")
+        sentry_sdk.capture_exception(e)
         import traceback
         traceback.print_exc()
         return None, False
@@ -475,6 +479,7 @@ def _get_active_entitlements(user_id: str) -> List[Dict[str, Any]]:
 
     except Exception as e:
         print(f"Error getting active entitlements: {str(e)}")
+        sentry_sdk.capture_exception(e)
         return []
 
 
@@ -528,5 +533,6 @@ def _log_subscription_event(notification_data: Dict[str, Any]) -> None:
 
     except Exception as e:
         print(f"Error logging subscription event: {str(e)}")
+        sentry_sdk.capture_exception(e)
         import traceback
         traceback.print_exc()

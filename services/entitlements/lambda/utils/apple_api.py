@@ -175,7 +175,7 @@ def fetch_transaction_history(
 
     # Fetch transaction history
     response = client.get_transaction_history(
-        transaction_id=original_transaction_id,
+        any_transaction_id=original_transaction_id,
         revision=None,
         transaction_history_request=request,
     )
@@ -211,7 +211,7 @@ def fetch_transaction_history(
     # Handle pagination if there are more results
     while response and response.hasMore and response.revision:
         response = client.get_transaction_history(
-            transaction_id=original_transaction_id,
+            any_transaction_id=original_transaction_id,
             revision=response.revision,
             transaction_history_request=request,
         )
