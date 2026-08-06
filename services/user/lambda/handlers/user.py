@@ -479,6 +479,76 @@ def handle_update_properties(event: Dict[str, Any]) -> Dict[str, Any]:
                     }
                 )
 
+        # Handle locale (nullable string - e.g. "en_US"; push-only client metadata)
+        if "locale" in body:
+            locale_val = body.get("locale")
+            if locale_val is None:
+                remove_parts.append("locale")
+            elif isinstance(locale_val, str) and len(locale_val) <= 40:
+                update_parts.append("locale = :locale")
+                expression_values[":locale"] = locale_val
+            else:
+                return create_response(
+                    status_code=400,
+                    body={
+                        "error": "Invalid field type",
+                        "message": "locale must be a string (max 40 chars) or null"
+                    }
+                )
+
+        # Handle language (nullable string - e.g. "en"; push-only client metadata)
+        # "language" is a DynamoDB reserved keyword, so it must go through an
+        # ExpressionAttributeNames placeholder (same as timezone above).
+        if "language" in body:
+            language_val = body.get("language")
+            if language_val is None:
+                expression_names["#language"] = "language"
+                remove_parts.append("#language")
+            elif isinstance(language_val, str) and len(language_val) <= 16:
+                expression_names["#language"] = "language"
+                update_parts.append("#language = :language")
+                expression_values[":language"] = language_val
+            else:
+                return create_response(
+                    status_code=400,
+                    body={
+                        "error": "Invalid field type",
+                        "message": "language must be a string (max 16 chars) or null"
+                    }
+                )
+
+        # Handle latestAppVersion (nullable string, e.g. "1.4.2"; push-only client metadata)
+        if "latestAppVersion" in body:
+            version_val = body.get("latestAppVersion")
+            if version_val is None:
+                remove_parts.append("latestAppVersion")
+            elif isinstance(version_val, str) and len(version_val) <= 32:
+                update_parts.append("latestAppVersion = :latestAppVersion")
+                expression_values[":latestAppVersion"] = version_val
+            else:
+                return create_response(
+                    status_code=400,
+                    body={
+                        "error": "Invalid field type",
+                        "message": "latestAppVersion must be a string (max 32 chars) or null"
+                    }
+                )
+
+        # Handle hasCompletedOnboarding (boolean; push-only client metadata)
+        if "hasCompletedOnboarding" in body:
+            val = body["hasCompletedOnboarding"]
+            if isinstance(val, bool):
+                update_parts.append("hasCompletedOnboarding = :hasCompletedOnboarding")
+                expression_values[":hasCompletedOnboarding"] = val
+            else:
+                return create_response(
+                    status_code=400,
+                    body={
+                        "error": "Invalid field type",
+                        "message": "hasCompletedOnboarding must be a boolean"
+                    }
+                )
+
         # Require at least one field to update
         if not update_parts and not remove_parts:
             return create_response(

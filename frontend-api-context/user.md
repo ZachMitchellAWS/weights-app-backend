@@ -37,11 +37,23 @@ Updates user properties. Partial updates supported - only include fields you wan
 }
 ```
 
-**Field Details:**
+**Field Details:** (all optional; key present → updated, absent → untouched, explicit `null` → removed)
 | Field | Type | Description |
 |-------|------|-------------|
 | `bodyweight` | number \| null | User's bodyweight. Send `null` to remove. |
 | `availableChangePlates` | number[] | List of available change plate weights |
+| `minReps` / `maxReps` | number | Global rep-range target |
+| `activeSetPlanId` | string \| null | UUID of active set plan |
+| `stepsGoal` / `proteinGoal` | number \| null | Daily goals (positive int) |
+| `bodyweightTarget` | number \| null | Target bodyweight |
+| `biologicalSex` | string \| null | `"male"` or `"female"` |
+| `weightUnit` | string | `"lbs"` or `"kg"` |
+| `timezone` | string \| null | IANA identifier (validated), e.g. `"America/Los_Angeles"` |
+| `locale` | string \| null | Device locale identifier, e.g. `"en_US"` (max 40 chars) |
+| `language` | string \| null | Device language code, e.g. `"en"` (max 16 chars) |
+| `hasCompletedOnboarding` | boolean | Set `true` when the user finishes onboarding |
+| `hasMetStrengthTierConditions` | boolean | Strength-tier journey completion |
+| `apnsDeviceToken` | string \| null | APNs push token (max 200 chars) |
 
 **Response (200):**
 ```json

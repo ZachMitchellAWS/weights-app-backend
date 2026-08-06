@@ -53,11 +53,24 @@
 | minReps | Number | No | Global minimum reps target |
 | maxReps | Number | No | Global maximum reps target |
 | activeSetPlanId | String | No | Nullable -- UUID of active set plan |
+| stepsGoal | Number | No | Nullable -- daily steps goal (positive int) |
+| proteinGoal | Number | No | Nullable -- daily protein goal (positive int) |
+| bodyweightTarget | Number | No | Nullable -- target bodyweight |
+| biologicalSex | String | No | Nullable -- "male" or "female" |
+| weightUnit | String | No | "lbs" or "kg" |
+| timezone | String | No | Nullable -- IANA identifier (validated). Push-only client metadata |
+| locale | String | No | Nullable -- device locale identifier, e.g. "en_US" (max 40 chars). Push-only client metadata |
+| language | String | No | Nullable -- device language code, e.g. "en" (max 16 chars). Push-only client metadata |
+| latestAppVersion | String | No | Nullable -- most recent app version seen, e.g. "1.4.2" (max 32 chars). Push-only client metadata |
+| hasCompletedOnboarding | Boolean | No | Set true when a user finishes the onboarding flow. Push-only; not backfilled for pre-feature users |
+| apnsDeviceToken | String | No | Nullable -- push token (max 200 chars) |
 | hasMetStrengthTierConditions | Boolean | No | Default false -- set true when user completes strength tier journey |
 | createdDatetime | String | Yes | ISO 8601 |
 | lastModifiedDatetime | String | Yes | ISO 8601 |
 
-Auto-created when a user registers.
+Auto-created when a user registers. All non-key fields are optional in the POST body; a field is written
+only when its key is present, left untouched when absent, and removed when sent as explicit `null`
+(nullable fields only). GET returns the full stored item.
 
 ---
 
