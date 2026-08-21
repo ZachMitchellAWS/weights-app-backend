@@ -11,6 +11,7 @@ This directory contains API documentation split by service:
 | [user.md](./user.md) | User Service - user properties management |
 | [checkin.md](./checkin.md) | Checkin Service - exercises, lift sets, estimated 1RM |
 | [entitlements.md](./entitlements.md) | Entitlements Service - subscription management via Apple |
+| [sessions.md](./sessions.md) | Sessions Service - generated training session for today (premium) |
 
 ## Quick Start
 

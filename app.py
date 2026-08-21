@@ -33,6 +33,7 @@ from services.email.infrastructure.email_stack import EmailStack
 from services.checkin.infrastructure.checkin_stack import CheckinStack
 from services.entitlements.infrastructure.entitlements_stack import EntitlementsStack
 from services.insights.infrastructure.insights_stack import InsightsStack
+from services.sessions.infrastructure.sessions_stack import SessionsStack
 from services.website.infrastructure.website_cert_stack import WebsiteCertStack
 from services.website.infrastructure.website_stack import WebsiteStack
 from services.monitoring.infrastructure.monitoring_stack import MonitoringStack
@@ -255,6 +256,30 @@ def main():
         )
     )
 
+    # Create Sessions service stack
+    # Reads checkin tables, user-properties, and entitlement-grants to generate today's
+    # recommended session. Owns no tables and persists nothing.
+    sessions_stack = SessionsStack(
+        app,
+        f"{project_name}-{env_name}-sessions",
+        project_name=project_name,
+        env_name=env_name,
+        config=config,
+        api=auth_stack.api,
+        authorizer=auth_stack.authorizer,
+        lift_sets_table=checkin_stack.lift_sets_table,
+        exercises_table=checkin_stack.exercises_table,
+        estimated_1rm_table=checkin_stack.estimated_1rm_table,
+        user_properties_table=user_stack.user_properties_table,
+        entitlement_grants_table=entitlements_stack.entitlement_grants_table,
+        env=env,
+        description=f"Sessions service stack for {env_name} environment",
+    )
+
+    for key, value in config.TAGS.items():
+        Tags.of(sessions_stack).add(key, value)
+    Tags.of(sessions_stack).add("Service", "sessions")
+
     # Website certificate stack (us-east-1 required for CloudFront)
     website_cert_stack = WebsiteCertStack(
         app,
@@ -307,6 +332,7 @@ def main():
     # Consolidate auth Lambda permissions to avoid 20KB resource policy limit.
     auth_stack.consolidate_auth_permissions(all_stacks=[
         auth_stack, user_stack, checkin_stack, entitlements_stack, insights_stack,
+        sessions_stack,
     ])
 
     # Synthesize CloudFormation templates

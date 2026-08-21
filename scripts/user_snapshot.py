@@ -39,7 +39,9 @@ SNAPSHOT_DIR = Path(__file__).parent.parent / "snapshots"
 TABLES = [
     ("users", "userId", None),
     ("user-properties", "userId", None),
+    ("ad-attributions", "userId", "createdDatetime"),
     ("password-reset-codes", "userId", None),
+    ("generated-sessions", "userId", "sessionId"),
     ("exercises", "userId", "exerciseItemId"),
     ("lift-sets", "userId", "liftSetId"),
     ("estimated-1rm", "userId", "liftSetId"),

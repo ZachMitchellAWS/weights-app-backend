@@ -1,0 +1,517 @@
+{
+  "$comment": "Generated from WeightApp/WeightApp/Models/SwiftData/SetPlan.swift (builtInPlans). That file is the source of truth \u2014 the catalog lives in client code and is sent to the backend on each POST /sessions/generate, so this file is a snapshot for reference, not something the backend reads at runtime. Regenerate if the client catalog changes.",
+  "source": "WeightApp/WeightApp/Models/SwiftData/SetPlan.swift",
+  "planCount": 21,
+  "effortKeys": {
+    "$comment": "`sequence` uses the keys the app PERSISTS. `sequenceNormalized` uses the keys the sessions payload and prompt speak. The backend accepts either and normalizes on input (see _EFFORT_ALIASES in handlers/sessions.py).",
+    "stored": [
+      "easy",
+      "moderate",
+      "hard",
+      "redline",
+      "pr"
+    ],
+    "normalized": [
+      "easy",
+      "moderate",
+      "hard",
+      "near_max",
+      "progress"
+    ],
+    "aliases": {
+      "redline": "near_max",
+      "pr": "progress"
+    }
+  },
+  "summary": {
+    "free": 3,
+    "premium": 18,
+    "withProgressSet": 10,
+    "setCountRange": [
+      3,
+      8
+    ],
+    "effortUsage": {
+      "moderate": 38,
+      "easy": 30,
+      "hard": 28,
+      "pr": 11,
+      "redline": 3
+    }
+  },
+  "plans": [
+    {
+      "id": "00000000-0000-0000-0000-000000000101",
+      "name": "Standard",
+      "description": "Warm-up sets followed by a progress set",
+      "tier": "free",
+      "setCount": 6,
+      "sequence": [
+        "easy",
+        "easy",
+        "moderate",
+        "moderate",
+        "hard",
+        "pr"
+      ],
+      "sequenceNormalized": [
+        "easy",
+        "easy",
+        "moderate",
+        "moderate",
+        "hard",
+        "progress"
+      ],
+      "hasProgressSet": true
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000103",
+      "name": "Maintenance",
+      "description": "Moderate volume, hold strength",
+      "tier": "free",
+      "setCount": 3,
+      "sequence": [
+        "moderate",
+        "moderate",
+        "hard"
+      ],
+      "sequenceNormalized": [
+        "moderate",
+        "moderate",
+        "hard"
+      ],
+      "hasProgressSet": false
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000104",
+      "name": "Deload",
+      "description": "Recovery phase",
+      "tier": "free",
+      "setCount": 3,
+      "sequence": [
+        "easy",
+        "easy",
+        "easy"
+      ],
+      "sequenceNormalized": [
+        "easy",
+        "easy",
+        "easy"
+      ],
+      "hasProgressSet": false
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000102",
+      "name": "Grease the Groove",
+      "description": "High volume, low intensity",
+      "tier": "premium",
+      "setCount": 8,
+      "sequence": [
+        "easy",
+        "easy",
+        "easy",
+        "easy",
+        "moderate",
+        "moderate",
+        "moderate",
+        "hard"
+      ],
+      "sequenceNormalized": [
+        "easy",
+        "easy",
+        "easy",
+        "easy",
+        "moderate",
+        "moderate",
+        "moderate",
+        "hard"
+      ],
+      "hasProgressSet": false
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000105",
+      "name": "Pyramid",
+      "description": "Build up then back off",
+      "tier": "premium",
+      "setCount": 6,
+      "sequence": [
+        "easy",
+        "moderate",
+        "hard",
+        "pr",
+        "hard",
+        "moderate"
+      ],
+      "sequenceNormalized": [
+        "easy",
+        "moderate",
+        "hard",
+        "progress",
+        "hard",
+        "moderate"
+      ],
+      "hasProgressSet": true
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000106",
+      "name": "Top Set + Backoff",
+      "description": "Work up to max, drop intensity",
+      "tier": "premium",
+      "setCount": 6,
+      "sequence": [
+        "easy",
+        "moderate",
+        "hard",
+        "pr",
+        "moderate",
+        "moderate"
+      ],
+      "sequenceNormalized": [
+        "easy",
+        "moderate",
+        "hard",
+        "progress",
+        "moderate",
+        "moderate"
+      ],
+      "hasProgressSet": true
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000107",
+      "name": "Reverse Pyramid",
+      "description": "Heaviest set first, then reduce",
+      "tier": "premium",
+      "setCount": 6,
+      "sequence": [
+        "hard",
+        "pr",
+        "hard",
+        "moderate",
+        "moderate",
+        "easy"
+      ],
+      "sequenceNormalized": [
+        "hard",
+        "progress",
+        "hard",
+        "moderate",
+        "moderate",
+        "easy"
+      ],
+      "hasProgressSet": true
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000108",
+      "name": "Wave Loading",
+      "description": "Ascending waves of intensity",
+      "tier": "premium",
+      "setCount": 6,
+      "sequence": [
+        "moderate",
+        "hard",
+        "pr",
+        "moderate",
+        "hard",
+        "pr"
+      ],
+      "sequenceNormalized": [
+        "moderate",
+        "hard",
+        "progress",
+        "moderate",
+        "hard",
+        "progress"
+      ],
+      "hasProgressSet": true
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000109",
+      "name": "Cluster Sets",
+      "description": "Short rest between heavy singles/doubles",
+      "tier": "premium",
+      "setCount": 5,
+      "sequence": [
+        "hard",
+        "hard",
+        "hard",
+        "hard",
+        "hard"
+      ],
+      "sequenceNormalized": [
+        "hard",
+        "hard",
+        "hard",
+        "hard",
+        "hard"
+      ],
+      "hasProgressSet": false
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000110",
+      "name": "Rest-Pause",
+      "description": "Near-failure set, brief rest, continue",
+      "tier": "premium",
+      "setCount": 4,
+      "sequence": [
+        "hard",
+        "pr",
+        "hard",
+        "hard"
+      ],
+      "sequenceNormalized": [
+        "hard",
+        "progress",
+        "hard",
+        "hard"
+      ],
+      "hasProgressSet": true
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000111",
+      "name": "Drop Sets",
+      "description": "Reduce weight each set, rep to failure",
+      "tier": "premium",
+      "setCount": 4,
+      "sequence": [
+        "pr",
+        "hard",
+        "moderate",
+        "easy"
+      ],
+      "sequenceNormalized": [
+        "progress",
+        "hard",
+        "moderate",
+        "easy"
+      ],
+      "hasProgressSet": true
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000112",
+      "name": "Ladders",
+      "description": "Ascending rep ladder pattern",
+      "tier": "premium",
+      "setCount": 8,
+      "sequence": [
+        "easy",
+        "easy",
+        "moderate",
+        "moderate",
+        "hard",
+        "moderate",
+        "hard",
+        "pr"
+      ],
+      "sequenceNormalized": [
+        "easy",
+        "easy",
+        "moderate",
+        "moderate",
+        "hard",
+        "moderate",
+        "hard",
+        "progress"
+      ],
+      "hasProgressSet": true
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000113",
+      "name": "Pause Reps",
+      "description": "Paused reps to build positional strength",
+      "tier": "premium",
+      "setCount": 4,
+      "sequence": [
+        "moderate",
+        "moderate",
+        "hard",
+        "hard"
+      ],
+      "sequenceNormalized": [
+        "moderate",
+        "moderate",
+        "hard",
+        "hard"
+      ],
+      "hasProgressSet": false
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000114",
+      "name": "Speed / Dynamic",
+      "description": "Submaximal weight, max velocity",
+      "tier": "premium",
+      "setCount": 8,
+      "sequence": [
+        "easy",
+        "easy",
+        "easy",
+        "easy",
+        "easy",
+        "easy",
+        "easy",
+        "easy"
+      ],
+      "sequenceNormalized": [
+        "easy",
+        "easy",
+        "easy",
+        "easy",
+        "easy",
+        "easy",
+        "easy",
+        "easy"
+      ],
+      "hasProgressSet": false
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000115",
+      "name": "EMOM",
+      "description": "Every minute on the minute",
+      "tier": "premium",
+      "setCount": 6,
+      "sequence": [
+        "moderate",
+        "moderate",
+        "moderate",
+        "moderate",
+        "moderate",
+        "moderate"
+      ],
+      "sequenceNormalized": [
+        "moderate",
+        "moderate",
+        "moderate",
+        "moderate",
+        "moderate",
+        "moderate"
+      ],
+      "hasProgressSet": false
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000116",
+      "name": "Technique",
+      "description": "Light load, focus on form",
+      "tier": "premium",
+      "setCount": 5,
+      "sequence": [
+        "easy",
+        "easy",
+        "easy",
+        "moderate",
+        "moderate"
+      ],
+      "sequenceNormalized": [
+        "easy",
+        "easy",
+        "easy",
+        "moderate",
+        "moderate"
+      ],
+      "hasProgressSet": false
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000117",
+      "name": "Quick Attempt",
+      "description": "Fast ramp to a progress attempt when time is short",
+      "tier": "premium",
+      "setCount": 4,
+      "sequence": [
+        "easy",
+        "moderate",
+        "hard",
+        "pr"
+      ],
+      "sequenceNormalized": [
+        "easy",
+        "moderate",
+        "hard",
+        "progress"
+      ],
+      "hasProgressSet": true
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000118",
+      "name": "Primer",
+      "description": "Heavy exposure without spending an attempt; rehearsal before a future attempt",
+      "tier": "premium",
+      "setCount": 5,
+      "sequence": [
+        "easy",
+        "moderate",
+        "hard",
+        "redline",
+        "redline"
+      ],
+      "sequenceNormalized": [
+        "easy",
+        "moderate",
+        "hard",
+        "near_max",
+        "near_max"
+      ],
+      "hasProgressSet": false
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000119",
+      "name": "Openers",
+      "description": "Short feel-heavy day at near-max intensity",
+      "tier": "premium",
+      "setCount": 3,
+      "sequence": [
+        "moderate",
+        "hard",
+        "redline"
+      ],
+      "sequenceNormalized": [
+        "moderate",
+        "hard",
+        "near_max"
+      ],
+      "hasProgressSet": false
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000120",
+      "name": "Compact Standard",
+      "description": "Standard's structure with one less warm-up set",
+      "tier": "premium",
+      "setCount": 5,
+      "sequence": [
+        "easy",
+        "moderate",
+        "moderate",
+        "hard",
+        "pr"
+      ],
+      "sequenceNormalized": [
+        "easy",
+        "moderate",
+        "moderate",
+        "hard",
+        "progress"
+      ],
+      "hasProgressSet": true
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000121",
+      "name": "Rebuild",
+      "description": "Moderate-volume builder for a stalled lift; accumulate without attempting",
+      "tier": "premium",
+      "setCount": 5,
+      "sequence": [
+        "easy",
+        "moderate",
+        "moderate",
+        "moderate",
+        "hard"
+      ],
+      "sequenceNormalized": [
+        "easy",
+        "moderate",
+        "moderate",
+        "moderate",
+        "hard"
+      ],
+      "hasProgressSet": false
+    }
+  ],
+  "catalogVersion": 2
+}

@@ -64,6 +64,17 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                         "message": f"Method {http_method} not supported for {path}"
                     }
                 )
+        elif path.endswith("/user/ad-attribution"):
+            if http_method == "POST":
+                return handle_ad_attribution(event)
+            else:
+                return create_response(
+                    status_code=405,
+                    body={
+                        "error": "Method not allowed",
+                        "message": f"Method {http_method} not supported for {path}"
+                    }
+                )
         elif path.endswith("/user/delete-account"):
             if http_method == "POST":
                 return handle_delete_account_request(event)
@@ -415,6 +426,41 @@ def handle_update_properties(event: Dict[str, Any]) -> Dict[str, Any]:
                     }
                 )
 
+        # Handle utcOffsetSeconds (nullable number - can be set or removed)
+        #
+        # No ExpressionAttributeName alias needed: `utcOffsetSeconds` is a single
+        # identifier and not a DynamoDB reserved word. (`timezone` and `language` both
+        # were, which is why they use #tz / #lang above — one bad name fails the whole
+        # UpdateItem, so check any new attribute before wiring it directly.)
+        #
+        # This is a CACHE of the device's current offset, not a source of truth: it does
+        # not move when DST does, so `timezone` above stays authoritative for resolving
+        # "what is this user's offset right now".
+        if "utcOffsetSeconds" in body:
+            offset_val = body.get("utcOffsetSeconds")
+            if offset_val is None:
+                remove_parts.append("utcOffsetSeconds")
+            elif isinstance(offset_val, int) and not isinstance(offset_val, bool):
+                # Real-world offsets span UTC-12:00 to UTC+14:00.
+                if not (-43200 <= offset_val <= 50400):
+                    return create_response(
+                        status_code=400,
+                        body={
+                            "error": "Invalid field value",
+                            "message": f"utcOffsetSeconds must be between -43200 and 50400, got {offset_val}"
+                        }
+                    )
+                update_parts.append("utcOffsetSeconds = :utcOffsetSeconds")
+                expression_values[":utcOffsetSeconds"] = offset_val
+            else:
+                return create_response(
+                    status_code=400,
+                    body={
+                        "error": "Invalid field type",
+                        "message": "utcOffsetSeconds must be an integer or null"
+                    }
+                )
+
         # Handle biologicalSex (nullable string - "male" or "female")
         if "biologicalSex" in body:
             bio_sex = body.get("biologicalSex")
@@ -669,6 +715,108 @@ def handle_delete_account_request(event: Dict[str, Any]) -> Dict[str, Any]:
             body={
                 "error": "Internal server error",
                 "message": "Failed to process account deletion request"
+            }
+        )
+
+
+# Apple's AdServices payload, and the only keys we keep. Copied field by field rather than
+# stored as a blob, so a change at Apple's end cannot quietly reshape our rows — a new key
+# is ignored until someone decides it belongs here.
+#
+# All are optional: Apple omits campaign fields entirely for an organic install, and this
+# endpoint accepts that rather than 400-ing on it.
+AD_ATTRIBUTION_STRING_FIELDS = ["conversionType", "clickDate", "countryOrRegion"]
+AD_ATTRIBUTION_NUMBER_FIELDS = ["orgId", "campaignId", "adGroupId", "keywordId", "adId"]
+
+
+def handle_ad_attribution(event: Dict[str, Any]) -> Dict[str, Any]:
+    """Handle POST /user/ad-attribution requests.
+
+    Records which Apple Ads campaign produced this install, against the user who signed up
+    from it. The client posts this at most once per install and never reads it back.
+
+    Deliberately forgiving: a malformed or partial payload is recorded as far as it can be
+    rather than rejected. The alternative is losing an attribution permanently because one
+    field arrived in an unexpected shape, and the client has no retry path once it has
+    marked itself resolved.
+    """
+    try:
+        request_context = event.get("requestContext", {})
+        authorizer = request_context.get("authorizer", {})
+        user_id = authorizer.get("userId")
+
+        if not user_id:
+            return create_response(
+                status_code=401,
+                body={
+                    "error": "Unauthorized",
+                    "message": "User ID not found in authorization context"
+                }
+            )
+
+        body = json.loads(event.get("body", "{}"))
+
+        item = {
+            "userId": user_id,
+            "createdDatetime": get_current_datetime_iso(),
+            # Whether Apple said this install came from an ad. Present even in production,
+            # where only attributed installs are sent, so a row is self-describing.
+            "attribution": bool(body.get("attribution", False)),
+        }
+
+        for field in AD_ATTRIBUTION_STRING_FIELDS:
+            value = body.get(field)
+            if isinstance(value, str) and value.strip():
+                item[field] = value.strip()[:200]
+
+        for field in AD_ATTRIBUTION_NUMBER_FIELDS:
+            value = body.get(field)
+            # Apple sends these as numbers, but they are identifiers rather than
+            # quantities — stored as strings so nothing downstream does arithmetic on a
+            # campaign id or loses precision on a large one.
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
+                item[field] = str(int(value))
+            elif isinstance(value, str) and value.strip():
+                item[field] = value.strip()[:64]
+
+        table_name = os.environ.get("AD_ATTRIBUTIONS_TABLE_NAME")
+        if not table_name:
+            raise ValueError("AD_ATTRIBUTIONS_TABLE_NAME environment variable not set")
+
+        table = dynamodb.Table(table_name)
+        try:
+            table.put_item(
+                Item=item,
+                # Same idiom as entitlements.py:424. The sort key is a timestamp so a
+                # collision is near-impossible, but a duplicate costs nothing to prevent
+                # and a retried request should not create a second row.
+                ConditionExpression="attribute_not_exists(userId) AND attribute_not_exists(createdDatetime)"
+            )
+        except dynamodb.meta.client.exceptions.ConditionalCheckFailedException:
+            print(f"Ad attribution already recorded for user {user_id} at {item['createdDatetime']}")
+
+        print(f"Recorded ad attribution for user {user_id} (attribution={item['attribution']})")
+        return create_response(
+            status_code=200,
+            body={"message": "Attribution recorded"}
+        )
+
+    except json.JSONDecodeError:
+        return create_response(
+            status_code=400,
+            body={
+                "error": "Invalid JSON",
+                "message": "Request body is not valid JSON"
+            }
+        )
+    except Exception as e:
+        print(f"Error recording ad attribution: {str(e)}")
+        print(traceback.format_exc())
+        return create_response(
+            status_code=500,
+            body={
+                "error": "Internal server error",
+                "message": "Failed to record attribution"
             }
         )
 
