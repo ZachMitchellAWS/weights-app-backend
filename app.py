@@ -21,7 +21,6 @@ Usage:
 
 import aws_cdk as cdk
 from aws_cdk import Tags
-from aws_cdk import aws_iam as iam
 
 # Import configuration modules
 from config import base, staging, production
@@ -238,23 +237,10 @@ def main():
     # Add service-specific tag
     Tags.of(insights_stack).add("Service", "insights")
 
-    # Wire checkin Lambda to insights Lambda for async task scheduling.
-    # Use constructed ARN string (not cross-stack reference) to avoid circular dependency:
-    # insights stack already depends on checkin tables.
-    insights_function_name = f"{project_name}-{env_name}-insights"
-    insights_lambda_arn = f"arn:aws:lambda:{config.REGION}:{config.ACCOUNT_ID}:function:{insights_function_name}"
-
-    checkin_stack.checkin_function.add_environment(
-        "INSIGHTS_LAMBDA_ARN",
-        insights_lambda_arn,
-    )
-
-    checkin_stack.checkin_function.add_to_role_policy(
-        iam.PolicyStatement(
-            actions=["lambda:InvokeFunction"],
-            resources=[insights_lambda_arn],
-        )
-    )
+    # NOTE: checkin used to async-invoke the insights Lambda after each lift set, to schedule
+    # Weekly Progress Narratives generation. Smart Sessions replaced narratives, so that wiring
+    # (INSIGHTS_LAMBDA_ARN + the lambda:InvokeFunction grant) is gone. Nothing invokes insights
+    # except API Gateway and its own self-invokes for TTS.
 
     # Create Sessions service stack
     # Reads checkin tables, user-properties, and entitlement-grants to generate today's

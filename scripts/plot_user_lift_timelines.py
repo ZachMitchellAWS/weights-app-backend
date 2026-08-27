@@ -12,8 +12,9 @@ What it does
 2. For each remaining user, queries their (non-deleted) lift-sets.
 3. Keeps only users who have at least one lift-set.
 4. Produces a single multi-page PDF:
-     - Overview sheet 1: a swimlane -- one row per user with logged sets, sorted by
-       volume, account-creation marker plus a dot per lift-set (+ sets/tier/push cols).
+     - Overview sheet 1: a swimlane -- one row per user with logged sets, most recently
+       active first, account-creation marker plus a dot per lift-set
+       (+ days/sets/tier/push/version cols).
      - Overview sheet 2: users who signed up but logged no sets.
      - "Effort & e1RM by Exercise" pages, ONLY for users who unlocked their starting
        strength tier AND logged >5 sets: per exercise, each set's %1RM over time inside
@@ -47,7 +48,7 @@ from botocore.exceptions import ClientError, NoCredentialsError
 
 REGION = "us-west-1"
 PROJECT = "liftthebull"
-DEFAULT_EXCLUSIONS = ["zmitc002", "zach", "chloe", "review", "marymitchell1212", "tjalves57"]
+DEFAULT_EXCLUSIONS = ["zach", "review", "marymitchell1212", "tjalves57"]
 DEFAULT_NAME_EXCLUSIONS = ["john apple", "nicole pierce"]
 OUTPUT_DIR = Path(__file__).resolve().parent.parent / "plots"
 
@@ -118,29 +119,34 @@ def scan_users(dynamodb, env: str, exclusions, name_exclusions=None):
 
 
 def scan_user_properties(dynamodb, env: str):
-    """Scan user-properties -> {userId: {tier, apns, bodyweight, sex}}. Read-only.
+    """Scan user-properties -> {userId: {tier, apns, bodyweight, sex, version}}. Read-only.
 
     tier       = hasMetStrengthTierConditions (starting strength tier unlocked).
     apns       = an apnsDeviceToken is present (push registered).
     bodyweight = float lbs, or None (needed for strength-tier math).
     sex        = "male"/"female" lowercased, or None.
+    version    = latestAppVersion, or None. Nullable and push-only, so absence means the
+                 client has not reported one since the field shipped, NOT that the user is
+                 on an old build -- an install that never re-synced simply has nothing here.
     """
     table = dynamodb.Table(table_name(env, "user-properties"))
     props = {}
     scan_kwargs = {
         "ProjectionExpression": "userId, hasMetStrengthTierConditions, apnsDeviceToken, "
-                                "bodyweight, biologicalSex"
+                                "bodyweight, biologicalSex, latestAppVersion"
     }
     while True:
         resp = table.scan(**scan_kwargs)
         for item in resp.get("Items", []):
             bw = item.get("bodyweight")
             sex = item.get("biologicalSex")
+            version = item.get("latestAppVersion")
             props[item["userId"]] = {
                 "tier": item.get("hasMetStrengthTierConditions") is True,
                 "apns": bool(item.get("apnsDeviceToken")),
                 "bodyweight": float(bw) if bw is not None else None,
                 "sex": sex.lower() if isinstance(sex, str) else None,
+                "version": version.strip() if isinstance(version, str) and version.strip() else None,
             }
         if "LastEvaluatedKey" not in resp:
             break
@@ -465,12 +471,12 @@ def build_pdf(users_with_sets, users_without_sets, out_path: Path, env: str,
 
     with PdfPages(out_path) as pdf:
         if users_with_sets:
-            top = max(len(u["sets"]) for u in users_with_sets)
+            latest = max(u["sets"][-1]["date"] for u in users_with_sets)
             _overview_page(
                 pdf, users_with_sets, now, plt, mdates,
                 title=f"Lift-set Activity  ·  {env}",
-                subtitle=f"{len(users_with_sets)} users with logged sets, sorted by volume "
-                         f"(top user: {top} sets)",
+                subtitle=f"{len(users_with_sets)} users with logged sets, most recently active "
+                         f"first (latest set: {latest:%Y-%m-%d})",
             )
         if users_without_sets:
             _overview_page(
@@ -521,6 +527,26 @@ def _truncate(text, limit):
     return text if len(text) <= limit else text[: limit - 1] + "…"
 
 
+# Right-gutter column positions, in axes-fraction x (1.0 == the right edge of the plot).
+#
+# Six columns share roughly 2.9in of page here, and they are hand-placed rather than evenly
+# spaced because they do not render alike: `days` and `last set` are left-aligned decimals
+# that grow rightward, `sets` is a right-aligned integer that grows leftward, `tier`/`push`
+# are single centred glyphs, and `version` is a left-aligned monospace string that grows
+# rightward toward the page edge. Even spacing collides the wide ones and strands the narrow
+# ones.
+#
+# `scripts/` has no test harness, so these were checked by rendering worst-case content
+# ("1234.5", "1234.56", "9999", an 8-character version) and measuring the bounding boxes for
+# overlap and for overflow past the page. Re-run that check before moving one.
+COL_DAYS = 1.025
+COL_LAST = 1.114
+COL_SETS = 1.241
+COL_TIER = 1.282
+COL_PUSH = 1.322
+COL_VERSION = 1.357
+
+
 def _overview_page(pdf, users, now, plt, mdates, title, subtitle):
     """Swimlane: one row per user (name + userId), creation marker + a dot per set."""
     # Palette
@@ -543,16 +569,29 @@ def _overview_page(pdf, users, now, plt, mdates, title, subtitle):
 
     # Roomy top margin so title / subtitle / legend stack without colliding.
     title_in, bottom_in = 2.2, 0.65
-    fig.subplots_adjust(left=0.29, right=0.90,
+    # `right` buys the gutter the columns live in. It has been walked in from the original
+    # 0.90 as columns were added; at 0.775 the six of them fit with the plot still taking
+    # the majority of the page.
+    fig.subplots_adjust(left=0.29, right=0.775,
                         top=1 - title_in / height, bottom=bottom_in / height)
 
     # Font sizes scale down as the roster grows.
     name_fs = 8.5 if n <= 30 else (7.0 if n <= 60 else 6.0)
     id_fs = max(4.5, name_fs - 2.5)
 
-    # Stable sort: with-sets pages order by volume; no-set pages keep the
-    # caller's ordering (all counts equal), e.g. newest signups first.
-    ordered = sorted(users, key=lambda u: len(u["sets"]), reverse=True)
+    # Most-recently-active first, so the top of the sheet is who is training NOW.
+    # Volume ordering buried a user who logged yesterday under long-dormant accounts that
+    # happened to have more total sets, which is the opposite of what these sheets get read
+    # for. The `sets` column still carries the volume for anyone who wants it.
+    #
+    # `sets` is already date-ascending, so the last element is the newest -- no scan needed.
+    #
+    # `datetime.min` for the setless page: every key there is equal, and Python's sort is
+    # stable even with reverse=True (ties keep their input order rather than being flipped),
+    # so that page still shows the caller's ordering -- newest signups first.
+    ordered = sorted(users,
+                     key=lambda u: u["sets"][-1]["date"] if u["sets"] else datetime.min,
+                     reverse=True)
 
     for i, u in enumerate(ordered):
         y = n - 1 - i  # highest-count row at the top
@@ -587,19 +626,57 @@ def _overview_page(pdf, users, now, plt, mdates, title, subtitle):
                 transform=ax.get_yaxis_transform(), ha="right", va="center",
                 fontsize=id_fs, color=dim, family="monospace")
 
-        # Right gutter columns: set count, tier star, push check.
-        ax.text(1.045, y, str(len(u["sets"])),
+        # Right gutter columns: account age, recency, set count, tier star, push check,
+        # app version.
+        #
+        # Decimal days rather than a date: these sheets get read for "how long has this
+        # account existed", and a reader should not have to subtract two dates in their head
+        # to answer it. One decimal keeps same-day signups legible (0.4) without implying
+        # precision the createdDatetime does not carry.
+        age_days = ((now - u["created"]).total_seconds() / 86400.0) if u.get("created") else None
+        ax.text(COL_DAYS, y, f"{age_days:.1f}" if age_days is not None else "·",
+                transform=ax.get_yaxis_transform(), ha="left", va="center",
+                fontsize=name_fs - 1 if age_days is not None else name_fs + 2,
+                color=sub if age_days is not None else dim)
+
+        # Days since the most recent set. The rows are already ordered by this, so the
+        # column's job is to say HOW FAR apart adjacent rows are — the ordering alone cannot
+        # distinguish a roster where everyone lifted this week from one where row two went
+        # quiet a month ago.
+        #
+        # Two decimals, unlike `days` above: lift-set timestamps are exact to the second, so
+        # the precision is real here, and the top of the sheet is where hours matter — 0.08
+        # and 0.94 are a different story about today than "0.1" and "0.9" tell. `sets` is
+        # already date-ascending, so the last element is the newest.
+        last_days = ((now - u["sets"][-1]["date"]).total_seconds() / 86400.0) if u["sets"] else None
+        ax.text(COL_LAST, y, f"{last_days:.2f}" if last_days is not None else "·",
+                transform=ax.get_yaxis_transform(), ha="left", va="center",
+                fontsize=name_fs - 1 if last_days is not None else name_fs + 2,
+                color=sub if last_days is not None else dim)
+        ax.text(COL_SETS, y, str(len(u["sets"])),
                 transform=ax.get_yaxis_transform(), ha="right", va="center",
                 fontsize=name_fs, fontweight="700", color=accent)
         if u.get("tier_unlocked"):
-            ax.text(1.085, y, "★",
+            ax.text(COL_TIER, y, "★",
                     transform=ax.get_yaxis_transform(), ha="center", va="center",
                     fontsize=name_fs + 1.5, color=star_c)
-        ax.text(1.125, y, "✓" if u.get("has_apns") else "·",
+        ax.text(COL_PUSH, y, "✓" if u.get("has_apns") else "·",
                 transform=ax.get_yaxis_transform(), ha="center", va="center",
                 fontsize=name_fs + (0 if u.get("has_apns") else 2),
                 fontweight="700" if u.get("has_apns") else "normal",
                 color=apns_c if u.get("has_apns") else dim)
+        # Left-aligned and monospaced so the dotted components stack into columns down the
+        # page and an outlier build is findable by shape rather than by reading every row.
+        #
+        # Truncated to 8: the backend accepts up to 32 characters here, and at the largest
+        # row font (n <= 30 rows) anything past 8 monospace characters runs off the right
+        # edge of the 13in page. Real versions are "1.1.2"/"1.0.9.0" and fit with room.
+        ver = u.get("app_version")
+        ax.text(COL_VERSION, y, _truncate(ver, 8) if ver else "·",
+                transform=ax.get_yaxis_transform(), ha="left", va="center",
+                fontsize=(name_fs - 1) if ver else name_fs + 2,
+                family="monospace" if ver else None,
+                color=ink if ver else dim)
 
     ax.set_ylim(-0.6, n - 0.4)
     ax.set_yticks([])
@@ -617,12 +694,12 @@ def _overview_page(pdf, users, now, plt, mdates, title, subtitle):
     _draw_now(ax, now, mdates)
 
     # Gutter column headers, just above the top row.
-    ax.text(1.045, n - 0.35, "sets", transform=ax.get_yaxis_transform(),
-            ha="right", va="bottom", fontsize=id_fs, fontweight="700", color=dim)
-    ax.text(1.085, n - 0.35, "tier", transform=ax.get_yaxis_transform(),
-            ha="center", va="bottom", fontsize=id_fs, fontweight="700", color=dim)
-    ax.text(1.125, n - 0.35, "push", transform=ax.get_yaxis_transform(),
-            ha="center", va="bottom", fontsize=id_fs, fontweight="700", color=dim)
+    for x, label, ha in ((COL_DAYS, "days", "left"), (COL_LAST, "last set", "left"),
+                         (COL_SETS, "sets", "right"),
+                         (COL_TIER, "tier", "center"), (COL_PUSH, "push", "center"),
+                         (COL_VERSION, "version", "left")):
+        ax.text(x, n - 0.35, label, transform=ax.get_yaxis_transform(),
+                ha=ha, va="bottom", fontsize=id_fs, fontweight="700", color=dim)
 
     # Header block (figure coords so it sits above the plot cleanly).
     from matplotlib.lines import Line2D
@@ -869,11 +946,12 @@ def main():
         return 1
     print(f"  {len(users)} users after exclusions.")
 
-    print("Loading tier + push flags from user-properties ...")
+    print("Loading tier + push + app-version from user-properties ...")
     try:
         user_props = scan_user_properties(dynamodb, args.env)
     except ClientError as e:
-        print(f"  WARN: could not read user-properties ({e}); tier/push columns disabled.", file=sys.stderr)
+        print(f"  WARN: could not read user-properties ({e}); tier/push/version columns disabled.",
+              file=sys.stderr)
         user_props = {}
 
     users_with_sets = []
@@ -888,6 +966,7 @@ def main():
         u["tier_unlocked"] = info.get("tier", False)
         u["has_apns"] = info.get("apns", False)
         u["bodyweight"] = info.get("bodyweight")
+        u["app_version"] = info.get("version")
         u["sex"] = info.get("sex")
         u["sets"] = sets
         (users_with_sets if sets else users_without_sets).append(u)

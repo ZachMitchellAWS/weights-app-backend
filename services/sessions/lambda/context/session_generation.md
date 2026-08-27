@@ -170,9 +170,30 @@ these instructions.
 6. **Match the plan to the situation.** A lift due to move up wants a plan whose sequence
    ends in `progress`. A lift recently pushed hard wants volume without one. Recovery wants
    easy work throughout.
-7. **One to five lifts.** Three is typical. Two is right when they are short on time or
+7. **At most one progress attempt in the whole session.** A `progress` set is a real bid at
+   a lift's ceiling, and it only lands when the lifter is fresh. Two in one session means the
+   second is attempted tired — it fails, and the log records a failure that was really a
+   scheduling mistake.
+
+   So: pick the ONE lift most due for it, give that lift a plan whose sequence reaches
+   `progress`, and give **every other lift in the session a plan containing no `progress` set
+   at all**. If a plan's sequence holds more than one `progress` entry, that single plan
+   already spends the session's attempt — do not pair it with another.
+
+   Zero is equally correct and more common than you would guess. Most sessions should carry
+   zero or one.
+
+   **Two lifts being due is the normal case, not the exception.** The data will routinely
+   show several lifts ready to move up; that is not licence to attempt them all. Override
+   this only on explicit context: `Go heavy` alongside `Feeling strong` or `Well rested`,
+   `Extra time today`, or something the user typed that plainly asks for it ("want to test my
+   maxes"). When you do override, name the reason in the summary.
+
+   For the lifts that yielded the attempt, say so in the rationale — "holding the attempt for
+   Deadlifts today" is a considered choice, and reads as one.
+8. **One to five lifts.** Three is typical. Two is right when they are short on time or
    depleted. Five only when they say they feel good and the data supports it.
-8. **One set plan per lift.** Never list the same lift twice.
+9. **One set plan per lift.** Never list the same lift twice.
 
 ## What you return
 
