@@ -39,6 +39,8 @@ LAMBDA_FUNCTIONS = [
 DYNAMO_TABLES = [
     "users",
     "user-properties",
+    "ad-attributions",
+    "generated-sessions",
     "exercises",
     "lift-sets",
     "estimated-1rm",

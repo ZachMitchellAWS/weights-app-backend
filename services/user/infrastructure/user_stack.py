@@ -60,6 +60,7 @@ class UserStack(Stack):
         self.user_properties_table = self._create_user_properties_table()
         self.deletion_requests_table = self._create_deletion_requests_table()
         self.feedback_table = self._create_feedback_table()
+        self.ad_attributions_table = self._create_ad_attributions_table()
         self.dependencies_layer = self._create_dependencies_layer()
         self.user_function = self._create_user_lambda()
         self._create_api_routes()
@@ -136,6 +137,33 @@ class UserStack(Stack):
 
         return table
 
+    def _create_ad_attributions_table(self) -> dynamodb.Table:
+        """Apple Search Ads attribution, one row per install that came from an ad.
+
+        Sort key is `createdDatetime` rather than the table being keyed on `userId` alone,
+        so a user who reinstalls or signs up on a second device gets a row per install
+        instead of overwriting the campaign that produced the first one.
+
+        Write-only from the app's point of view: nothing reads this back, and no endpoint
+        returns it. It exists to be joined against Apple Ads reporting.
+        """
+        return dynamodb.Table(
+            self,
+            "AdAttributionsTable",
+            table_name=f"{self.project_name}-{self.env_name}-ad-attributions",
+            partition_key=dynamodb.Attribute(
+                name="userId",
+                type=dynamodb.AttributeType.STRING
+            ),
+            sort_key=dynamodb.Attribute(
+                name="createdDatetime",
+                type=dynamodb.AttributeType.STRING
+            ),
+            billing_mode=self.config.DYNAMODB_BILLING_MODE,
+            point_in_time_recovery=self.config.DYNAMODB_POINT_IN_TIME_RECOVERY,
+            removal_policy=self.config.REMOVAL_POLICY,
+        )
+
     def _create_dependencies_layer(self) -> lambda_.LayerVersion:
         """Create Lambda layer with Python dependencies for user service."""
         layer_path = Path(__file__).parent.parent / "layer"
@@ -180,6 +208,7 @@ class UserStack(Stack):
                 "USER_PROPERTIES_TABLE_NAME": self.user_properties_table.table_name,
                 "DELETION_REQUESTS_TABLE_NAME": self.deletion_requests_table.table_name,
                 "FEEDBACK_TABLE_NAME": self.feedback_table.table_name,
+                "AD_ATTRIBUTIONS_TABLE_NAME": self.ad_attributions_table.table_name,
                 "ENVIRONMENT": self.config.ENVIRONMENT,
                 "SENTRY_DSN": os.environ.get("SENTRY_DSN", ""),
                 "LOG_LEVEL": self.config.LOG_LEVEL,
@@ -190,6 +219,7 @@ class UserStack(Stack):
         self.user_properties_table.grant_read_write_data(function)
         self.deletion_requests_table.grant_read_write_data(function)
         self.feedback_table.grant_read_write_data(function)
+        self.ad_attributions_table.grant_read_write_data(function)
 
         return function
 
@@ -239,6 +269,18 @@ class UserStack(Stack):
 
         # Add POST method (requires API key + JWT authentication)
         feedback_resource.add_method(
+            "POST",
+            user_integration,
+            api_key_required=True,
+            authorizer=self.authorizer,
+            authorization_type=apigateway.AuthorizationType.CUSTOM,
+        )
+
+        # Create /user/ad-attribution resource
+        ad_attribution_resource = user_resource.add_resource("ad-attribution")
+
+        # Add POST method (requires API key + JWT authentication)
+        ad_attribution_resource.add_method(
             "POST",
             user_integration,
             api_key_required=True,

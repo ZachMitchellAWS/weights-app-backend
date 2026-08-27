@@ -401,7 +401,7 @@ EXERCISE_CATALOG = [
 
 # Matches SetPlan.builtInPlans exactly (16 plans with deterministic UUIDs)
 SET_PLANS = [
-    ("00000000-0000-0000-0000-000000000101", "Standard",            ["easy", "easy", "moderate", "moderate", "hard", "pr"],                        "Progressive warmup to PR attempt"),
+    ("00000000-0000-0000-0000-000000000101", "Standard",            ["easy", "easy", "moderate", "moderate", "hard", "pr"],                        "Warm-up sets followed by a progress set"),
     ("00000000-0000-0000-0000-000000000102", "Grease the Groove",   ["easy", "easy", "easy", "easy", "moderate", "moderate", "moderate", "hard"],  "High volume, low intensity"),
     ("00000000-0000-0000-0000-000000000103", "Maintenance",         ["moderate", "moderate", "hard"],                                              "Moderate volume, hold strength"),
     ("00000000-0000-0000-0000-000000000104", "Deload",              ["easy", "easy", "easy"],                                                      "Recovery phase"),

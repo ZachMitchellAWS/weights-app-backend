@@ -436,6 +436,12 @@ def upsert_exercises(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
                     'lastModifiedDatetime': current_datetime,
                 }
 
+                # Optional, and deliberately absent from `required_fields`: every app version
+                # currently in the wild omits this, so requiring it would 400 all of them.
+                # `is not None` rather than a truthiness check — 0 is a legal offset (UTC).
+                if exercise.get('createdUtcOffsetSeconds') is not None:
+                    exercise_item['createdUtcOffsetSeconds'] = int(exercise['createdUtcOffsetSeconds'])
+
                 # Add optional notes if provided
                 if 'notes' in exercise and exercise['notes']:
                     exercise_item['notes'] = exercise['notes']
@@ -718,41 +724,6 @@ def delete_exercises(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
 # Insights Task Scheduling
 # =============================================================================
 
-def _schedule_insights_task(user_id: str, first_lift_set: dict) -> None:
-    """
-    Fire-and-forget async invoke of the insights Lambda to schedule an insight task.
-
-    Uses InvocationType='Event' so this returns immediately without waiting for
-    the insights Lambda to complete. Failures are silently logged — they should
-    never affect the lift set creation response.
-
-    Args:
-        user_id: The authenticated user's ID
-        first_lift_set: The first lift set from the request (used for timezone/datetime)
-    """
-    insights_lambda_arn = os.environ.get('INSIGHTS_LAMBDA_ARN')
-    if not insights_lambda_arn:
-        return
-
-    try:
-        lambda_client = boto3.client('lambda')
-        payload = json.dumps({
-            'invocationType': 'SCHEDULE_TASK',
-            'userId': user_id,
-            'createdTimezone': first_lift_set.get('createdTimezone', 'UTC'),
-            'createdDatetime': first_lift_set.get('createdDatetime', ''),
-        })
-        lambda_client.invoke(
-            FunctionName=insights_lambda_arn,
-            InvocationType='Event',
-            Payload=payload,
-        )
-        print(f"Async-invoked insights Lambda for user {user_id}")
-    except Exception as e:
-        # Never let insights scheduling failure affect lift set creation
-        print(f"Warning: Failed to invoke insights Lambda: {e}")
-
-
 # =============================================================================
 # Lift Set Operations
 # =============================================================================
@@ -892,6 +863,12 @@ def create_lift_sets(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
                 'lastModifiedDatetime': current_datetime,
             }
 
+            # Optional, and deliberately absent from `required_fields`: every app version
+            # currently in the wild omits this, so requiring it would 400 all of them.
+            # `is not None` rather than a truthiness check — 0 is a legal offset (UTC).
+            if lift_set.get('createdUtcOffsetSeconds') is not None:
+                lift_set_item['createdUtcOffsetSeconds'] = int(lift_set['createdUtcOffsetSeconds'])
+
             # Add optional baseline fields if provided
             if lift_set.get('isBaselineSet'):
                 lift_set_item['isBaselineSet'] = True
@@ -905,13 +882,6 @@ def create_lift_sets(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
             result_lift_sets.append(response_item)
 
         print(f"Created {len(result_lift_sets)} lift sets for user {user_id}")
-
-        # Async-invoke insights Lambda if client indicates premium status.
-        # This is an optimization: the client-side premium flag avoids unnecessary
-        # Lambda invocations for free users. The insights Lambda does the authoritative
-        # entitlement check before creating a task.
-        if body.get('isPremiumOnClient') and result_lift_sets:
-            _schedule_insights_task(user_id, lift_sets_input[0])
 
         return create_response(
             status_code=201,
@@ -1019,6 +989,9 @@ def get_lift_sets(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
                     lift_set['reps'] = int(lift_set['reps'])
                 if 'rir' in lift_set:
                     lift_set['rir'] = int(lift_set['rir'])
+                # DynamoDB returns numbers as Decimal; convert like the fields above.
+                if 'createdUtcOffsetSeconds' in lift_set:
+                    lift_set['createdUtcOffsetSeconds'] = int(lift_set['createdUtcOffsetSeconds'])
                 non_deleted_lift_sets.append(lift_set)
 
         print(f"Retrieved {len(non_deleted_lift_sets)} non-deleted lift sets for user: {user_id}")
@@ -1175,6 +1148,8 @@ def delete_lift_sets(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
                 updated_item['weight'] = float(updated_item['weight'])
             if 'reps' in updated_item:
                 updated_item['reps'] = int(updated_item['reps'])
+            if 'createdUtcOffsetSeconds' in updated_item:
+                updated_item['createdUtcOffsetSeconds'] = int(updated_item['createdUtcOffsetSeconds'])
             deleted_lift_sets.append(updated_item)
 
         print(f"Soft deleted {len(deleted_lift_sets)} lift sets for user: {user_id}")
@@ -1331,6 +1306,12 @@ def create_estimated_1rm(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
                 'lastModifiedDatetime': current_datetime,
             }
 
+            # Optional, and deliberately absent from `required_fields`: every app version
+            # currently in the wild omits this, so requiring it would 400 all of them.
+            # `is not None` rather than a truthiness check — 0 is a legal offset (UTC).
+            if e1rm.get('createdUtcOffsetSeconds') is not None:
+                e1rm_item['createdUtcOffsetSeconds'] = int(e1rm['createdUtcOffsetSeconds'])
+
             table.put_item(Item=e1rm_item)
 
             # Convert Decimal back to float for JSON response
@@ -1441,6 +1422,8 @@ def get_estimated_1rm(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
                 # Convert Decimal to float for JSON serialization
                 if 'value' in e1rm:
                     e1rm['value'] = float(e1rm['value'])
+                if 'createdUtcOffsetSeconds' in e1rm:
+                    e1rm['createdUtcOffsetSeconds'] = int(e1rm['createdUtcOffsetSeconds'])
                 non_deleted_estimated_1rms.append(e1rm)
 
         print(f"Retrieved {len(non_deleted_estimated_1rms)} non-deleted estimated 1RM records for user: {user_id}")
@@ -1597,6 +1580,8 @@ def delete_estimated_1rm(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
             # Convert Decimal to float for JSON serialization
             if 'value' in updated_item:
                 updated_item['value'] = float(updated_item['value'])
+            if 'createdUtcOffsetSeconds' in updated_item:
+                updated_item['createdUtcOffsetSeconds'] = int(updated_item['createdUtcOffsetSeconds'])
             deleted_estimated_1rms.append(updated_item)
 
         print(f"Soft deleted {len(deleted_estimated_1rms)} estimated 1RM records for user: {user_id}")
@@ -1786,6 +1771,12 @@ def upsert_set_plans(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
                     'createdDatetime': plan['createdDatetime'],
                     'lastModifiedDatetime': current_datetime,
                 }
+
+                # Optional, and deliberately absent from `required_fields`: every app version
+                # currently in the wild omits this, so requiring it would 400 all of them.
+                # `is not None` rather than a truthiness check — 0 is a legal offset (UTC).
+                if plan.get('createdUtcOffsetSeconds') is not None:
+                    plan_item['createdUtcOffsetSeconds'] = int(plan['createdUtcOffsetSeconds'])
 
                 if 'planDescription' in plan and plan['planDescription']:
                     plan_item['planDescription'] = plan['planDescription']
@@ -2090,6 +2081,12 @@ def create_accessory_goal_checkins(event: Dict[str, Any], user_id: str) -> Dict[
                 'lastModifiedDatetime': current_datetime,
             }
 
+            # Optional, and deliberately absent from `required_fields`: every app version
+            # currently in the wild omits this, so requiring it would 400 all of them.
+            # `is not None` rather than a truthiness check — 0 is a legal offset (UTC).
+            if checkin.get('createdUtcOffsetSeconds') is not None:
+                checkin_item['createdUtcOffsetSeconds'] = int(checkin['createdUtcOffsetSeconds'])
+
             table.put_item(Item=checkin_item)
 
             response_item = {**checkin_item, 'value': float(checkin_item['value'])}
@@ -2187,6 +2184,8 @@ def get_accessory_goal_checkins(event: Dict[str, Any], user_id: str) -> Dict[str
                     continue
                 if 'value' in checkin:
                     checkin['value'] = float(checkin['value'])
+                if 'createdUtcOffsetSeconds' in checkin:
+                    checkin['createdUtcOffsetSeconds'] = int(checkin['createdUtcOffsetSeconds'])
                 non_deleted_checkins.append(checkin)
 
         print(f"Retrieved {len(non_deleted_checkins)} non-deleted accessory goal checkins for user: {user_id}")
@@ -2318,6 +2317,8 @@ def delete_accessory_goal_checkins(event: Dict[str, Any], user_id: str) -> Dict[
             updated_item = response.get('Attributes', {})
             if 'value' in updated_item:
                 updated_item['value'] = float(updated_item['value'])
+            if 'createdUtcOffsetSeconds' in updated_item:
+                updated_item['createdUtcOffsetSeconds'] = int(updated_item['createdUtcOffsetSeconds'])
             deleted_checkins.append(updated_item)
 
         print(f"Soft deleted {len(deleted_checkins)} accessory goal checkins for user {user_id}")
@@ -2507,6 +2508,12 @@ def upsert_groups(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
                     'createdDatetime': group['createdDatetime'],
                     'lastModifiedDatetime': current_datetime,
                 }
+
+                # Optional, and deliberately absent from `required_fields`: every app version
+                # currently in the wild omits this, so requiring it would 400 all of them.
+                # `is not None` rather than a truthiness check — 0 is a legal offset (UTC).
+                if group.get('createdUtcOffsetSeconds') is not None:
+                    group_item['createdUtcOffsetSeconds'] = int(group['createdUtcOffsetSeconds'])
 
                 if group.get('deleted'):
                     group_item['deleted'] = True

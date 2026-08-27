@@ -561,3 +561,18 @@ Soft deletes groups by setting `deleted=true`. Built-in groups cannot be deleted
 - Built-in groups (isCustom=false) cannot be deleted — returns 400
 - Deleted items excluded from GET responses
 - Returns `notFoundIds` for any IDs not found for this user
+
+## `createdUtcOffsetSeconds` (all record types)
+
+Optional integer on every record that carries `createdTimezone`: exercises, lift-sets,
+estimated-1RMs, set-plans, exercise-groups and accessory-goal-checkins.
+
+Seconds **east** of UTC in effect where and when the record was created — negative in the
+Americas (`-25200` for Los Angeles in August). Captured on device.
+
+- **Never required.** Clients that predate the field omit it and are accepted as before.
+- **`0` is a legal value** (UTC, London in winter), so test presence, not truthiness.
+- **Falls back to derivation.** When absent, resolve `createdTimezone` against the record's
+  own `createdDatetime` — not against the current time, and not against the reader's
+  timezone.
+- It does **not** replace `createdTimezone`; an offset cannot tell you the zone it came from.

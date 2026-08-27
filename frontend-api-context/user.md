@@ -65,3 +65,16 @@ Updates user properties. Partial updates supported - only include fields you wan
   "lastModifiedDatetime": "2026-01-23T14:25:00.000Z"
 }
 ```
+
+## `utcOffsetSeconds`
+
+Optional integer on user-properties, synced as device metadata beside `timezone`. Seconds
+east of UTC. Accepts `null` to clear, following the same key-presence semantics as every
+other field here (present → updated, absent → untouched, explicit null → removed).
+
+Validated to the real-world range −43200…50400 (UTC−12:00 … UTC+14:00).
+
+This is a **cache**, not a source of truth: it is captured at sync time and does not move
+when DST does, so `timezone` remains authoritative for resolving the user's current offset.
+Per-record `createdUtcOffsetSeconds` values do not have this problem — they are pinned to
+their own instant.

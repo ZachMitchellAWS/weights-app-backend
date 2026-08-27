@@ -52,6 +52,8 @@ TABLES: List[Tuple[str, str, Optional[str], str]] = [
     ("user-properties",           "userId", None,              "user"),
     ("account-deletion-requests", "userId", None,              "user"),
     ("feedback",                  "userId", "createdDatetime", "user"),
+    ("ad-attributions",           "userId", "createdDatetime", "user"),
+    ("generated-sessions",        "userId", "sessionId",       "sessions"),
     ("exercises",                 "userId", "exerciseItemId",  "checkin"),
     ("lift-sets",                 "userId", "liftSetId",       "checkin"),
     ("estimated-1rm",             "userId", "liftSetId",       "checkin"),

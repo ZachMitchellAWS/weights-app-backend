@@ -25,8 +25,10 @@ class InsightsStack(Stack):
     - DynamoDB tables for insight tasks and cache
     - Lambda function for GPT-powered training insights
     - Lambda layer for OpenAI dependency
-    - EventBridge rule for periodic task processing
-    - API Gateway route for weekly insights endpoint
+    - EventBridge rule for periodic task processing — DORMANT since Weekly Progress
+      Narratives were removed; kept rather than torn down, and the handler answers it
+      with an explicit no-op
+    - API Gateway routes for the tier-unlock pair, plus the dormant starter route
 
     This stack reads from checkin tables (lift-sets, exercises, estimated-1rm,
     set-plans, accessory-goal-checkins), user-properties,
@@ -312,8 +314,14 @@ class InsightsStack(Stack):
         """
         Create API Gateway routes for insights service.
 
-        Adds routes to the existing API Gateway from the auth stack:
-        - GET /insights/weekly → insights_function (requires JWT auth + API key)
+        Adds routes to the existing API Gateway from the auth stack, all on
+        insights_function and all requiring JWT auth + API key:
+        - GET  /insights/starter      (dead on the client; kept for the cache migration)
+        - POST /insights/tier-unlock
+        - GET  /insights/tier-unlocks
+
+        GET /insights/weekly used to live here and was removed with narratives. Shipped
+        1.1.x clients still call it on launch and now get a 404, which iOS swallows.
         """
         insights_integration = apigateway.LambdaIntegration(
             self.insights_function,
@@ -322,18 +330,6 @@ class InsightsStack(Stack):
 
         # Create /insights resource
         insights_resource = self.api.root.add_resource("insights")
-
-        # Create /insights/weekly resource
-        weekly_resource = insights_resource.add_resource("weekly")
-
-        # Add GET method (requires API key + JWT authentication)
-        weekly_resource.add_method(
-            "GET",
-            insights_integration,
-            api_key_required=True,
-            authorizer=self.authorizer,
-            authorization_type=apigateway.AuthorizationType.CUSTOM,
-        )
 
         # Create /insights/starter resource (no premium check — available to all users)
         starter_resource = insights_resource.add_resource("starter")
