@@ -59,7 +59,37 @@ Three consequences:
         "id": "uuid",
         "current_e1rm": 315,
         "tier": "Intermediate",
-        "tier_progress": 0.62            // 0–1 from this tier's floor to the next
+        "tier_progress": 0.62,           // 0–1 from this tier's floor to the next
+
+        // Days since ANY set on this lift; null = none in the 30-day window. Baselines
+        // count — they are calibration rather than training, and `progress_readiness`
+        // excludes them for that reason, but this answers "when did you last touch it".
+        "days_since_last_trained": 4,
+
+        // Whether this lift can be PUSHED today, decided here rather than by the model.
+        // The prompt caps a session at one progress attempt; this is what picks which
+        // lift gets it, and often says that none should.
+        //
+        // signal, in precedence order:
+        //   insufficient_data  < 3 non-baseline sets in the window — nothing to read
+        //   stalling           >= 3 near-max sets with no progress among or after them
+        //   grinding           progress landing, but median increment < 1 lb
+        //   due                no progress in the window, or none within 10 days
+        //   progressing        landing at meaningful increments
+        //
+        // The app records what a set WAS, never what it was FOR, so there is no stored
+        // "failed progress attempt". What one looks like in the data is a near-max set:
+        // went to the ceiling, did not pass it. Three of those with nothing landing is
+        // the signature of a lift that needs volume rather than another attempt.
+        "progress_readiness": {
+          "signal": "stalling",
+          "sets_in_window": 14,
+          "progress_sets_in_window": 0,
+          "days_since_last_progress": null,    // null = none in the 30-day window
+          "near_max_since_last_progress": 4,   // window-wide when there is no progress set
+          "days_since_last_near_max": 2,
+          "median_increment": null             // e1rm_after - e1rm_before, median, in lbs
+        }
       },
       "Bench Press":    { /* same shape */ },
       "Deadlifts":      { /* same shape */ },
@@ -110,12 +140,27 @@ Three consequences:
   // journey made a lift look finished, which made the whole day look finished, and a user
   // who had logged five calibration sets was told "you're covered for today".
   //
-  // covered = sets_today >= 6  OR  a non-baseline progress set landed today.
+  // covered = sets_today >= 3  OR  a non-baseline progress set landed today.
+  //
+  // Was 6, which was the wrong unit. A generated session prescribes 3-5 sets PER LIFT
+  // across several lifts, so someone who completed every set of their squat item sat at
+  // 3 or 4 — under the line — and the next generation of the day recommended squats
+  // again. Three genuinely light sets now cover a lift that arguably still has work in
+  // it; that is the better error of the two.
   // Baselines are excluded from the progress test because the first ever set for an
   // exercise classifies as `progress` almost by construction; they still count toward
   // sets_today, since the work was performed.
+  // The five lifts, longest-untrained first — the session's default running order.
+  //
+  // Computed rather than left to the model, because it is the spine of the selection
+  // procedure and the model was not deriving it reliably. Left to judgement it returned the
+  // same two or three lifts every day (the ones with the most history to reason about) while
+  // a lift untouched for three weeks stayed untouched. Never-trained sorts first; ties break
+  // toward the lift furthest behind its peers by `tier_progress`.
+  "rotation_order": ["Barbell Rows", "Overhead Press", "Squats", "Bench Press", "Deadlifts"],
+
   "today_coverage": {
-    "Squats":         { "covered": true,  "sets_today": 6, "progress_set_today": false },
+    "Squats":         { "covered": true,  "sets_today": 3, "progress_set_today": false },
     "Bench Press":    { "covered": false, "sets_today": 1, "progress_set_today": false },
     "Deadlifts":      { "covered": false, "sets_today": 0, "progress_set_today": false },
     "Barbell Rows":   { "covered": false, "sets_today": 0, "progress_set_today": false },
@@ -309,6 +354,14 @@ efforts; restating it would create two sources of truth that can disagree.
 
 ## What earns its place, and why
 
+- **A short `ref` on every catalog entry, added server-side.** The model returns `"p7"`, not
+  a UUID. It used to echo ids back and it got them wrong — production logged
+  `00000000-0000-0000-000000000121` against a real `00000000-0000-0000-0000-000000000121`,
+  one group short. Not a hallucination: the built-in ids are almost all zeros, and counting
+  them is a token-level task models fail at, which no prompt wording fixes. Exercises resolve
+  by name (five, all distinct); plans need a ref because a user-written plan may share a
+  built-in's name. `_resolve_response` fills the real ids in, so the client contract is
+  unchanged.
 - **The full set plan catalog, sent by the client.** The model cannot choose a plan without
   knowing which exist and what each one's effort sequence is. Sending it from the frontend
   means the backend never stores or versions the catalog, and the user's own custom plans are
@@ -316,6 +369,24 @@ efforts; restating it would create two sources of truth that can disagree.
 - **`tier` and `tier_progress` per lift.** Together they show *relative balance*: deep into
   Intermediate on squats, barely into it on bench. That is the signal for what deserves
   attention, and it carries it without exposing bodyweight or biological sex.
+- **`progress_readiness` per lift.** Day-counts alone cannot distinguish "has not attempted
+  this in three weeks" from "has attempted it four times and failed" — both read as overdue,
+  and only one of them wants another attempt. The distinction is thirty days of arithmetic
+  over effort keys and e1RM deltas, which is exactly the kind of thing a model does
+  confidently and wrongly. Computed, like `today_coverage` and `date_labels`.
+- **The lift filter is the enforcement, not a prompt rule.** When `user_context.excluded_lifts`
+  arrives, those lifts are dropped from `strength.lifts`, `rotation_order` and `today_coverage`
+  before the payload is built. `sessions.generate` derives its allow-list of valid exercise ids
+  from `strength.lifts`, and `_validate_response` already rejects a response naming an id that
+  was not sent — so an excluded lift has no id for the model to return, and inventing one fails
+  a check that already existed. Asking the model nicely would have been one more instruction
+  competing with ten others; an absence competes with nothing. `recent_training` deliberately
+  keeps all five, because it is history and the summary reads better for it.
+- **`rotation_order`, and `days_since_last_trained` behind it.** Same argument one step
+  further: WHICH lifts to train was the last selection decision still left to judgement, and
+  judgement has a bias — it favours lifts with recent history to reason about, which is
+  exactly backwards from what rotation needs. Sending the order makes rotation the default
+  and a deviation something the model must actively choose and justify.
 - **Explicit local date and timezone.** Everything is stored UTC with local correction.
   Without the local day, a 9pm session in California is ambiguous.
 - **Every calendar date in `recent_training`, including empty ones.** Rest days are the training rhythm. Omitting

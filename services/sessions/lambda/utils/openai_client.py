@@ -94,16 +94,28 @@ SESSION_SCHEMA = {
                     "type": "array",
                     "items": {
                         "type": "object",
+                        # NO UUIDs. The model used to echo `exercise_id` and `set_plan_id`
+                        # back, and it got them wrong: production logged
+                        # `00000000-0000-0000-000000000121` — four groups instead of five,
+                        # a dropped `0000-` — against a real id of
+                        # `00000000-0000-0000-0000-000000000121`. It was not hallucinating,
+                        # it was counting zeros and miscounted. The built-in ids are
+                        # pathologically low-entropy and transcribing them is a token-level
+                        # task models are bad at, which no prompt instruction can fix.
+                        #
+                        # So it returns a NAME (five fundamentals, all distinct) and a short
+                        # `set_plan_ref` like "p7". The backend resolves both to real ids —
+                        # see `_resolve_response`. A ref rather than a plan name because the
+                        # catalog carries user-written plans and nothing stops someone naming
+                        # one "Standard"; matching by name would silently pick the built-in.
                         "properties": {
-                            "exercise_id": {"type": "string"},
                             "exercise_name": {"type": "string"},
-                            "set_plan_id": {"type": "string"},
+                            "set_plan_ref": {"type": "string"},
                             "set_plan_name": {"type": "string"},
                             "rationale": {"type": "string"},
                         },
                         "required": [
-                            "exercise_id", "exercise_name",
-                            "set_plan_id", "set_plan_name", "rationale",
+                            "exercise_name", "set_plan_ref", "set_plan_name", "rationale",
                         ],
                         "additionalProperties": False,
                     },
@@ -171,7 +183,15 @@ def generate_session(
     against what was sent — a schema guarantees shape, never truthfulness.
     """
     client = _get_client()
-    model = os.environ.get("OPENAI_MODEL", "gpt-5.4")
+    # Terra rather than Sol deliberately. This endpoint is bounded by API Gateway's fixed 29s
+    # timeout with ONE attempt and no retry, so wall clock is the binding constraint, not
+    # reasoning depth — and the task is structured selection from a catalog we supply against
+    # rules we state, which is not where a flagship model earns its latency.
+    #
+    # `reasoning_effort` is left at the model's default (medium). It is the lever to reach for
+    # first if generations start hitting the deadline; the bundled SDK accepts
+    # none | minimal | low | medium | high | xhigh | max.
+    model = os.environ.get("OPENAI_MODEL", "gpt-5.6-terra")
 
     logger.info("Generating with a %.1fs deadline", deadline_seconds)
 
@@ -183,7 +203,6 @@ def generate_session(
                 {"role": "user", "content": payload_json},
             ],
             response_format=SESSION_SCHEMA,
-            temperature=0.7,
         )
 
     parsed = json.loads(response.choices[0].message.content)

@@ -27,7 +27,8 @@ dates — by reading DynamoDB. The client sends only the two things the backend 
   ],
   "user_context": {
     "chips": ["Legs are sore"],
-    "note": "left knee twinged on Tuesday"
+    "note": "left knee twinged on Tuesday",
+    "excluded_lifts": ["Squats", "Deadlifts"]
   }
 }
 ```
@@ -41,6 +42,7 @@ dates — by reading DynamoDB. The client sends only the two things the backend 
 | `set_plan_catalog[].description` | string | No | Defaults to empty |
 | `user_context.chips` | string[] | No | **Capped at 8.** Extras are dropped, not rejected |
 | `user_context.note` | string | No | **Capped at 500 characters.** Longer notes are truncated, not rejected — the first 500 carry the intent. Screened for abuse; see below |
+| `user_context.excluded_lifts` | string[] | No | Fundamentals to leave out, by name. Matched case-insensitively; unrecognised names are dropped silently. **Excluding all five is ignored entirely** — the whole list is discarded rather than trimmed, because choosing which to keep would be our decision, not the user's. Omit the field for "none" |
 
 **Response (200):**
 ```json

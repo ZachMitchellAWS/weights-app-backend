@@ -27,9 +27,26 @@ logger = logging.getLogger(__name__)
 # the worse failure. Pin it via the env var once a snapshot id is confirmed against the API.
 MODERATION_MODEL = os.environ.get("OPENAI_MODERATION_MODEL", "omni-moderation-latest")
 
-# Its own budget, nested inside the request's. Moderation typically answers in well under a
-# second; left unbounded it would eat the generation budget it is supposed to sit inside.
-MODERATION_DEADLINE_SECONDS = 5.0
+# Its own budget, nested inside the request's. Left unbounded it would eat the generation
+# budget it is supposed to sit inside.
+#
+# WAS 5.0, AND THAT WAS TOO TIGHT. The premise — "moderation typically answers in well under
+# a second" — is true of the call itself and false of the first call in a request. This is the
+# first thing to touch the OpenAI API, so it pays for DNS, TCP and the TLS handshake on a cold
+# connection pool; the generation call after it inherits a warm one. On a low-traffic Lambda
+# that is cold most of the time, that setup plus the request routinely cleared 5s, the alarm
+# fired mid-SSL-read, and `screen` failed closed — dropping perfectly benign notes. Production
+# logs showed zero content flags in the table's history and every single rejection was this.
+#
+# 7s, not 10. The first pass at this raised it to 10 and that was the wrong direction to push
+# hard: everything before generation spends from the SAME 28s budget, and generation is last
+# in line with no retry. Production showed a cold-start request where 15s was already gone
+# before the model call, leaving it 8s for work that needed 10.5s — so a wider moderation
+# ceiling directly buys more of those failures. 7s clears a cold TLS handshake while leaving
+# generation the room it actually needs.
+#
+# A ceiling, not a delay: on a warm connection this costs nothing.
+MODERATION_DEADLINE_SECONDS = 7.0
 
 # Outcomes, recorded verbatim on the stored item.
 OK = "ok"
@@ -86,11 +103,22 @@ def screen(note: str) -> tuple[bool, list[str], str]:
         logger.warning("Note flagged (%s): %s", status, ", ".join(categories) or "unspecified")
         return False, categories, status
 
-    except GenerationTimeout:
-        logger.warning("Moderation timed out after %.1fs; dropping note", MODERATION_DEADLINE_SECONDS)
-        return False, [], ERROR
-    except Exception:
+    except Exception as e:
         # Deliberately broad. Every failure mode here has the same correct response, and a
         # moderation outage must not become a 500 on a request that can still be fulfilled.
-        logger.exception("Moderation call failed; dropping note")
+        #
+        # ONE HANDLER, NOT TWO. A bare `except GenerationTimeout` above this never fired: the
+        # alarm goes off inside the SDK's socket read, so the SDK catches it and re-raises
+        # `APIConnectionError` FROM it — which puts our exception on `__cause__` and matches
+        # the broad clause instead. Every timeout was therefore logged as an unexplained
+        # stack trace, which is why a budget that was simply too small read for months as
+        # flaky transport.
+        #
+        # `isinstance(e, ...)` as well as the cause, so an alarm that fires outside the SDK's
+        # stack is still recognised.
+        if isinstance(e, GenerationTimeout) or isinstance(e.__cause__, GenerationTimeout):
+            logger.warning("Moderation timed out after %.1fs; dropping note",
+                           MODERATION_DEADLINE_SECONDS)
+        else:
+            logger.exception("Moderation call failed; dropping note")
         return False, [], ERROR

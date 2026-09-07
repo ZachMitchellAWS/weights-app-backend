@@ -52,6 +52,10 @@ _EFFORT_ALIASES = {"redline": "near_max", "pr": "progress"}
 # intent.
 NOTE_CHAR_LIMIT = 500
 MAX_CHIPS = 8
+# At most four of the five may be switched off. Stated as a bound rather than enforced with a
+# branch: the client's selector refuses to deselect the last lift, so anything past four is a
+# hand-rolled request, and a session with no lifts to choose from has no honest answer.
+MAX_EXCLUDED_LIFTS = 4
 
 
 def _validate_request(body: dict) -> tuple[list[dict], dict] | None:
@@ -70,8 +74,13 @@ def _validate_request(body: dict) -> tuple[list[dict], dict] | None:
             _EFFORT_ALIASES.get(str(e).lower(), str(e).lower())
             for e in plan["sequence"]
         ]
+        # `ref` is what the model actually returns — see SESSION_SCHEMA. Two or three
+        # characters it can copy without counting, in place of a 36-character UUID it
+        # provably cannot. Assigned by position, so it is stable within a request and
+        # meaningless outside one.
         cleaned.append({
             "id": plan["id"],
+            "ref": f"p{len(cleaned) + 1}",
             "name": plan["name"],
             "sequence": sequence,
             "description": plan.get("description", ""),
@@ -86,36 +95,159 @@ def _validate_request(body: dict) -> tuple[list[dict], dict] | None:
     context = {
         "chips": chips[:MAX_CHIPS],
         "note": note[:NOTE_CHAR_LIMIT],
+        "excluded_lifts": _clean_excluded_lifts(raw_context.get("excluded_lifts")),
     }
     return cleaned, context
 
 
-def _validate_response(session: dict, valid_exercise_ids: set, valid_plan_ids: set) -> bool:
-    """Every returned id must be one we sent.
+def _clean_excluded_lifts(raw) -> list[str]:
+    """Lifts the user switched off, resolved to canonical names.
 
-    A schema guarantees the shape of the output, never its truthfulness — the model can
-    return a well-formed uuid that refers to nothing. An unresolvable id would surface on
-    the client as a session item that silently does nothing, so the whole response is
-    rejected rather than partially trusted.
+    Absent, malformed or unrecognised input all resolve to "nothing excluded" rather than a
+    400. This field NARROWS a session; a request that fails to narrow it is still a perfectly
+    answerable request, and rejecting one would turn a cosmetic client bug into a dead Session
+    tab.
+
+    Matched case-insensitively and mapped back to the canonical spelling, because the payload
+    keys `strength.lifts` by exact name and a near-miss would silently exclude nothing.
+    """
+    if not isinstance(raw, list):
+        return []
+
+    canonical = {name.lower(): name for name in payload_builder.CORE_EXERCISES}
+    names: list[str] = []
+    for item in raw:
+        if not isinstance(item, str):
+            continue
+        match = canonical.get(item.strip().lower())
+        if match and match not in names:
+            names.append(match)
+
+    # Never leave the generator with nothing to pick from. The whole list is dropped rather
+    # than trimmed to four: which four to keep would be our choice, not the user's, and
+    # training a lift they explicitly switched off is worse than ignoring a request the UI
+    # cannot produce in the first place.
+    if len(names) > MAX_EXCLUDED_LIFTS:
+        logger.warning(
+            "Ignoring excluded_lifts: %d of %d excluded leaves nothing to choose from",
+            len(names), len(payload_builder.CORE_EXERCISES),
+        )
+        return []
+
+    return names
+
+
+def _resolve_response(session: dict, lifts: dict, catalog: list[dict]) -> bool:
+    """Turn the model's names and refs into real ids, IN PLACE. False if anything is unknown.
+
+    Replaces an older `_validate_response` that checked ids the model echoed back. That was
+    the wrong division of labour: transcribing a 36-character low-entropy UUID is a
+    token-level task models fail at, and production proved it — a returned
+    `00000000-0000-0000-000000000121` against a real `00000000-0000-0000-0000-000000000121`,
+    one group short. Now the model never handles an id at all; it names a lift and quotes a
+    two-character plan ref, and the ids are filled in here from the same tables they were
+    sent from. An id can no longer be wrong, because the model never touches one.
+
+    Rewrites each item to the shape the CLIENT already expects — `exercise_id`,
+    `exercise_name`, `set_plan_id`, `set_plan_name`, `rationale` — so the response contract
+    and the iOS decoder are unchanged by this.
+
+    Still returns False rather than dropping bad items. A session missing a lift silently is
+    worse than a retryable failure, and the prompt's own rules make an unresolvable name a
+    sign that something is wrong rather than an ordinary miss.
 
     An EMPTY items list is valid and is not checked here. The prompt tells the model never
     to prescribe work already done today, so a user who has trained all five lifts gets a
-    correct answer of "nothing". This function used to reject that as malformed, which
-    turned the most reasonable possible response into a 502 — see `generate`, which now
-    reports it as its own outcome.
+    correct answer of "nothing" — see `generate`, which reports it as its own outcome.
     """
     items = session.get("items")
     if not isinstance(items, list):
         return False
 
+    # Case- and whitespace-insensitive: the model is quoting these back as prose, and a
+    # capitalisation difference is not a reason to fail a whole session.
+    # Keyed by the canonical name, VALUE carries it too: `strength.lifts` entries hold only
+    # id/tier/readiness, so the name lives in the dict key and would otherwise be lost here.
+    lift_by_name = {name.strip().lower(): (name, lift) for name, lift in lifts.items()}
+    plan_by_ref = {p["ref"].strip().lower(): p for p in catalog}
+    # Fallback only. Ambiguous when the user has written a plan sharing a built-in's name,
+    # so it is used solely when the ref itself does not resolve.
+    plan_by_name: dict[str, dict] = {}
+    for p in catalog:
+        plan_by_name.setdefault(p["name"].strip().lower(), p)
+
+    resolved = []
     for item in items:
-        if item.get("exercise_id") not in valid_exercise_ids:
-            logger.warning("Model returned unknown exercise_id: %s", item.get("exercise_id"))
+        match = lift_by_name.get(str(item.get("exercise_name", "")).strip().lower())
+        if match is None:
+            logger.warning("Model returned unknown exercise_name: %r", item.get("exercise_name"))
             return False
-        if item.get("set_plan_id") not in valid_plan_ids:
-            logger.warning("Model returned unknown set_plan_id: %s", item.get("set_plan_id"))
+        lift_name, lift = match
+
+        plan = plan_by_ref.get(str(item.get("set_plan_ref", "")).strip().lower())
+        if plan is None:
+            plan = plan_by_name.get(str(item.get("set_plan_name", "")).strip().lower())
+            if plan is not None:
+                logger.warning("set_plan_ref %r unknown; recovered by name %r",
+                               item.get("set_plan_ref"), item.get("set_plan_name"))
+        if plan is None:
+            logger.warning("Model returned unknown set_plan_ref: %r (name %r)",
+                           item.get("set_plan_ref"), item.get("set_plan_name"))
             return False
+
+        resolved.append({
+            "exercise_id": lift["id"],
+            "exercise_name": lift_name,
+            "set_plan_id": plan["id"],
+            # The catalog's spelling, not the model's. If it paraphrased the plan name while
+            # quoting the right ref, the client should still show what it actually got.
+            "set_plan_name": plan["name"],
+            "rationale": str(item.get("rationale", "")),
+        })
+
+    session["items"] = resolved
     return True
+
+
+# Session size bounds from the prompt's rules 8 and 9. Duplicated here ON PURPOSE: the
+# prompt is the instruction and this is the measurement, and the whole reason this exists is
+# that the two can disagree.
+MAX_ITEMS = 3
+MAX_TOTAL_SETS = 12
+# Counted across the WHOLE session, not per lift: two lifts on a plan with one `progress`
+# entry each and one lift on a plan holding two are the same spend.
+MAX_PROGRESS_SETS = 2
+
+
+def _log_size_compliance(session: dict, catalog: list[dict]) -> None:
+    """Record whether the model respected the session-size rules. Never rejects.
+
+    These are soft rules with legitimate escape hatches — `Extra time today` licenses a
+    bigger session, and a user who asks for one should get one — so a hard cap here would
+    override the user to satisfy a default. Trimming is worse still: dropping an item leaves
+    the `summary` describing lifts that are no longer in the session.
+
+    So this only counts and logs. It exists because "the model is ignoring the budget" was
+    caught by a user noticing 15-set sessions, which is a slow and unreliable way to learn
+    it. Filter CloudWatch on `session_size` to see the compliance rate directly, and note
+    that some breaches are correct — cross-reference the chips before concluding anything.
+    """
+    by_id = {p["id"]: (p.get("sequence") or []) for p in catalog}
+    items = session.get("items") or []
+    sequences = [by_id.get(i.get("set_plan_id"), []) for i in items]
+
+    total_sets = sum(len(seq) for seq in sequences)
+    progress_sets = sum(seq.count("progress") for seq in sequences)
+
+    over = (len(items) > MAX_ITEMS
+            or total_sets > MAX_TOTAL_SETS
+            or progress_sets > MAX_PROGRESS_SETS)
+    logger.log(
+        logging.WARNING if over else logging.INFO,
+        "session_size lifts=%d sets=%d progress=%d over_budget=%s plans=%s",
+        len(items), total_sets, progress_sets, over,
+        [i.get("set_plan_name") or i.get("set_plan_id") for i in items],
+    )
 
 
 def _is_staging() -> bool:
@@ -165,7 +297,7 @@ def _deadline_from(context: Any) -> float:
 
 
 def _finalise(context, user_id, chips, note, note_used, mod_status, mod_categories,
-              outcome, elapsed, session) -> None:
+              outcome, elapsed, session, excluded_lifts=None) -> None:
     """Record the request and, if warranted, count it against the user.
 
     One function so that no exit path can quietly skip it — an `outcome` field is worthless
@@ -176,6 +308,7 @@ def _finalise(context, user_id, chips, note, note_used, mod_status, mod_categori
         context,
         user_id=user_id,
         chips=chips,
+        excluded_lifts=excluded_lifts or [],
         note=note,
         note_used=note_used,
         moderation_status=mod_status,
@@ -258,7 +391,8 @@ def generate(event: Dict[str, Any], user_id: str, context: Any) -> Dict[str, Any
         elapsed = time.time() - started
         logger.warning("Generation timed out after %.1fs: %s", elapsed, e)
         _finalise(context, user_id, user_context["chips"], raw_note, note_allowed,
-                  mod_status, mod_categories, "timeout", elapsed, None)
+                  mod_status, mod_categories, "timeout", elapsed, None,
+                  excluded_lifts=user_context["excluded_lifts"])
         return create_response(503, {
             "error": "Generation timed out",
             "message": "Session generation took too long",
@@ -268,7 +402,8 @@ def generate(event: Dict[str, Any], user_id: str, context: Any) -> Dict[str, Any
         elapsed = time.time() - started
         logger.exception("Generation failed after %.1fs", elapsed)
         _finalise(context, user_id, user_context["chips"], raw_note, note_allowed,
-                  mod_status, mod_categories, "failed", elapsed, None)
+                  mod_status, mod_categories, "failed", elapsed, None,
+                  excluded_lifts=user_context["excluded_lifts"])
         # Retryable on purpose: the client's Retry button re-requests from scratch, which is
         # the retry strategy for this endpoint — see openai_client on why there is no loop.
         return create_response(503, {
@@ -282,15 +417,18 @@ def generate(event: Dict[str, Any], user_id: str, context: Any) -> Dict[str, Any
     # survives contact with the 29s ceiling.
     logger.info("Session generation took %.1fs", elapsed)
 
-    valid_exercise_ids = {l["id"] for l in lifts.values()}
-    valid_plan_ids = {p["id"] for p in catalog}
-    if not _validate_response(session, valid_exercise_ids, valid_plan_ids):
+    # Resolve BEFORE logging size: compliance counts sets by `set_plan_id`, which only
+    # exists once resolution has filled it in.
+    if not _resolve_response(session, lifts, catalog):
         _finalise(context, user_id, user_context["chips"], raw_note, note_allowed,
-                  mod_status, mod_categories, "invalid", elapsed, session)
+                  mod_status, mod_categories, "invalid", elapsed, session,
+                  excluded_lifts=user_context["excluded_lifts"])
         return create_response(502, {
             "error": "Invalid generation",
-            "message": "Model returned a session referencing unknown ids",
+            "message": "Model returned a session referencing unknown lifts or plans",
         })
+
+    _log_size_compliance(session, catalog)
 
     # "Nothing left to do today" is an answer, not a failure. Flagged explicitly rather
     # than left for the client to infer from an empty array, so the two cases the client
@@ -306,7 +444,8 @@ def generate(event: Dict[str, Any], user_id: str, context: Any) -> Dict[str, Any
         if payload_builder.all_covered(coverage):
             logger.info("Session generation returned no lifts for user %s (all lifts covered)", user_id)
             _finalise(context, user_id, user_context["chips"], raw_note, note_allowed,
-                      mod_status, mod_categories, "nothing_to_recommend", elapsed, session)
+                      mod_status, mod_categories, "nothing_to_recommend", elapsed, session,
+                  excluded_lifts=user_context["excluded_lifts"])
             return create_response(200, {
                 "session": session,
                 "nothing_to_recommend": True,
@@ -319,14 +458,16 @@ def generate(event: Dict[str, Any], user_id: str, context: Any) -> Dict[str, Any
             user_id, len(open_lifts), ", ".join(open_lifts),
         )
         _finalise(context, user_id, user_context["chips"], raw_note, note_allowed,
-                  mod_status, mod_categories, "invalid", elapsed, session)
+                  mod_status, mod_categories, "invalid", elapsed, session,
+                  excluded_lifts=user_context["excluded_lifts"])
         return create_response(502, {
             "error": "Invalid generation",
             "message": "Model returned no lifts while work remains for today",
         })
 
     _finalise(context, user_id, user_context["chips"], raw_note, note_allowed,
-              mod_status, mod_categories, "ok", elapsed, session)
+              mod_status, mod_categories, "ok", elapsed, session,
+                  excluded_lifts=user_context["excluded_lifts"])
 
     # One boolean, no reason code. "Flagged" and "we could not check" are both "couldn't be
     # used" to the user, and a reason code would only tell someone probing the filter which
