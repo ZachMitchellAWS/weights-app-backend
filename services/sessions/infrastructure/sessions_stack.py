@@ -150,7 +150,7 @@ class SessionsStack(Stack):
                 "ENTITLEMENT_GRANTS_TABLE_NAME": entitlement_grants_table.table_name,
                 # Shared with insights on purpose — one key to rotate, one placeholder to fill.
                 "OPENAI_API_KEY_PARAM": f"/{self.project_name}/{self.env_name}/insights/openai-api-key",
-                "OPENAI_MODEL": "gpt-5.4",
+                "OPENAI_MODEL": "gpt-5.6-terra",
                 # Alias by default. Pin to a dated snapshot here once one is confirmed —
                 # the alias can shift its false-positive rate with no deploy, and since
                 # moderation fails closed, drift means silently dropping real notes.

@@ -9,6 +9,7 @@ free-text context). Everything else is queried here.
 
 import logging
 import os
+import statistics
 from datetime import date, datetime, timedelta, timezone as dt_timezone
 from zoneinfo import ZoneInfo
 
@@ -199,6 +200,24 @@ def build_payload(user_id: str, set_plan_catalog: list[dict], user_context: dict
     sex = (props.get("biologicalSex") or "male").lower()
     weight_unit = props.get("weightUnit") or "lbs"
 
+    # THE LIFT FILTER, AND THE ENFORCEMENT.
+    #
+    # Lifts the user switched off are REMOVED from the payload rather than described to the
+    # model as forbidden. `sessions.generate` builds its allow-list of valid exercise ids
+    # straight from `strength.lifts` below, and `_validate_response` already rejects a
+    # response naming an id that was not sent — so an excluded lift has no id for the model
+    # to return, and inventing one fails the check that already exists.
+    #
+    # A prompt rule would have been one more instruction competing with ten others. This is
+    # not a rule; it is an absence.
+    #
+    # `recent_training` deliberately KEEPS every lift, including excluded ones. It is history,
+    # and the summary is better for it — "you squatted heavy Tuesday, so today is upper" needs
+    # to know about Tuesday. Selection is gated on `strength.lifts`, never on history, so
+    # showing it costs nothing.
+    excluded = {n for n in (user_context.get("excluded_lifts") or []) if n in CORE_EXERCISES}
+    included = [n for n in CORE_EXERCISES if n not in excluded]
+
     exercises = [e for e in query_exercises(user_id) if not e.get("deleted")]
     by_name = {e.get("name"): e for e in exercises if e.get("name") in CORE_EXERCISES}
     id_by_name = {n: by_name[n]["exerciseItemId"] for n in by_name}
@@ -223,7 +242,7 @@ def build_payload(user_id: str, set_plan_catalog: list[dict], user_context: dict
     )
 
     lifts = {}
-    for name in CORE_EXERCISES:
+    for name in included:
         if name not in id_by_name:
             continue
         current = _current_e1rm(e1rm_series.get(id_by_name[name], []))
@@ -232,6 +251,12 @@ def build_payload(user_id: str, set_plan_catalog: list[dict], user_context: dict
             "current_e1rm": round(current, 1),
             "tier": TIER_ORDER[_tier_index(name, current, bodyweight, sex)],
             "tier_progress": round(_tier_progress(name, current, bodyweight, sex), 2),
+            "days_since_last_trained": _days_since_last_trained(
+                recent_training, name, today_local
+            ),
+            "progress_readiness": _progress_readiness(
+                recent_training, name, current, today_local
+            ),
         }
 
     overall = min((TIER_ORDER.index(l["tier"]) for l in lifts.values()), default=0)
@@ -247,7 +272,8 @@ def build_payload(user_id: str, set_plan_catalog: list[dict], user_context: dict
             "lifts": lifts,
         },
         "recent_training": recent_training,
-        "today_coverage": _today_coverage(recent_training, today_local),
+        "rotation_order": _rotation_order(recent_training, lifts, today_local),
+        "today_coverage": _today_coverage(recent_training, today_local, included),
         "date_labels": _date_labels(window_start, today_local),
         "effort_level_definitions": effort.definitions(),
         "set_plan_catalog": set_plan_catalog,
@@ -285,13 +311,48 @@ def _today_local(props: dict) -> tuple[date, str]:
 
 
 # A lift counts as done for the day AT OR ABOVE this many sets. Not "any sets": one
-# baseline set, or a couple of light ones, leaves a lift very much still trainable.
+# baseline set leaves a lift very much still trainable.
 #
-# Inclusive: six sets is a session's worth of work on one lift, so the sixth is the set
-# that finishes it, not the one after. Most built-in plans are exactly six long, which is
-# what makes this the natural line — a completed Standard plan should stop the lift being
-# recommended again the same day.
-COVERED_SET_COUNT = 6
+# Was 6, on the reasoning that six sets is a session's worth of work on one lift. That was
+# the wrong unit. A generated session prescribes 3-5 sets PER LIFT across several lifts, so
+# a user who completed every set of their squat item still sat at 3 or 4 — under the line —
+# and the next generation of the day recommended squats again. Asking someone to redo work
+# they just finished is the most visible way this feature can look broken.
+#
+# Inclusive: the third set is the one that finishes the lift, not the one after.
+#
+# The trade this accepts: three genuinely light sets now cover a lift that arguably still
+# has work in it. That is the better error. Under-recommending a lift the user already
+# touched today costs them one lift out of five; over-recommending work they just completed
+# makes the whole session look like it did not read their log.
+COVERED_SET_COUNT = 3
+
+
+# --- Progress readiness ---------------------------------------------------
+#
+# The app records the OUTCOME of a set, never the intent, so there is no such thing as a
+# stored "failed progress attempt". What one looks like in the data is a near-max set: the
+# lifter went to the ceiling and did not pass it. One of those is a hard day. Several with
+# no progress set among them is a lift that keeps being asked a question it cannot yet
+# answer, and the answer is volume, not another attempt.
+STALLED_NEAR_MAX_COUNT = 3
+
+# A progress set moves the ceiling by *some* amount, but the amount carries the meaning. Under
+# a pound is the ceiling technically moving and practically standing still.
+#
+# ABSOLUTE, not a fraction of the lift. This was 1% of current e1RM, which sounds more
+# principled and behaves worse: it demanded a 3lb jump on a 300lb deadlift and let a 0.9lb
+# jump on an overhead press pass, so the same physical progress read as healthy on one lift
+# and stalled on another. A pound is a pound — it is also roughly the smallest change the
+# plate math can express, which is what makes it the honest floor.
+MIN_MEANINGFUL_INCREMENT_LBS = 1.0
+
+# Progress this long ago stops counting as recent, whatever it was worth at the time.
+PROGRESS_DUE_DAYS = 10
+
+# Below this many sets in the whole window there is nothing to read, and a confident verdict
+# would be invented rather than observed.
+MIN_SETS_FOR_READINESS = 3
 
 
 def _account_age(props: dict, today_local: date) -> str:
@@ -320,7 +381,7 @@ def _account_age(props: dict, today_local: date) -> str:
     return "over_a_month"
 
 
-def _today_coverage(recent_training: dict, today_local: date) -> dict:
+def _today_coverage(recent_training: dict, today_local: date, names: list[str] | None = None) -> dict:
     """Per-lift: is there genuinely nothing left to do on this lift today?
 
     Computed here rather than inferred by the model, because "already trained today" was
@@ -343,7 +404,10 @@ def _today_coverage(recent_training: dict, today_local: date) -> dict:
     today = recent_training.get(today_key, {})
 
     coverage = {}
-    for name in CORE_EXERCISES:
+    # Only the lifts still in play. `all_covered` then answers "is there anything left among
+    # the lifts they ALLOWED", which is the right question — a user who excluded three lifts
+    # and finished the other two is genuinely done for today.
+    for name in (names if names is not None else CORE_EXERCISES):
         sets_today = today.get(name, [])
         progress_today = any(
             s.get("effort") == effort.PROGRESS and not s.get("baseline")
@@ -360,6 +424,141 @@ def _today_coverage(recent_training: dict, today_local: date) -> dict:
 def all_covered(coverage: dict) -> bool:
     """True only when every fundamental is done for the day."""
     return bool(coverage) and all(lift["covered"] for lift in coverage.values())
+
+
+def _days_since(day_key: str | None, today_local: date) -> int | None:
+    """Whole days from an ISO date key to the user's today. None passes through."""
+    if not day_key:
+        return None
+    return (today_local - date.fromisoformat(day_key)).days
+
+
+def _days_since_last_trained(recent_training: dict, name: str, today_local: date) -> int | None:
+    """Days since this lift last had ANY set logged. None when the window holds none.
+
+    Baselines count. They are calibration rather than training, and `progress_readiness`
+    excludes them for that reason — but this answers "when did you last touch this lift",
+    and the user who logged one did touch it.
+    """
+    days = [d for d in sorted(recent_training) if recent_training[d].get(name)]
+    return _days_since(days[-1] if days else None, today_local)
+
+
+def _rotation_order(recent_training: dict, lifts: dict, today_local: date) -> list[str]:
+    """The five lifts, longest-untrained first. The session's default running order.
+
+    Computed here because it is the spine of the whole selection procedure and the model was
+    not reliably deriving it. Left to judgement it kept returning the same two or three lifts
+    every day — the ones with the most history to reason about — while the lift nobody had
+    touched in three weeks stayed untouched. An explicit order makes rotation the default and
+    a deviation something the model has to actively choose.
+
+    Never-trained-in-window sorts first: an empty 30 days is the longest gap there is.
+
+    Ties break on `tier_progress` ascending, so the lift furthest behind its peers goes first.
+    That was previously a separate rule the model applied inconsistently; folding it in here
+    makes it deterministic and removes a step from the prompt. Final tiebreak is the canonical
+    lift order, purely so the result is stable.
+    """
+    NEVER = 10 ** 6
+
+    def key(name: str):
+        days = _days_since_last_trained(recent_training, name, today_local)
+        return (
+            -(days if days is not None else NEVER),
+            lifts.get(name, {}).get("tier_progress", 0.0),
+            CORE_EXERCISES.index(name),
+        )
+
+    return sorted(lifts.keys(), key=key)
+
+
+def _progress_readiness(recent_training: dict, name: str, current_e1rm: float,
+                        today_local: date) -> dict:
+    """Whether this lift is ready to be pushed, or needs volume before it can be.
+
+    The prompt caps a session at one progress attempt. This is what decides WHICH lift earns
+    it — and, at least as often, that no lift should get one today.
+
+    Computed here rather than left to the model, for the same reason `today_coverage` is: it
+    is arithmetic across thirty days of sets, and a model asked to do that produces a
+    confident number that does not match what the user can see in their own log.
+
+    Five signals, checked in this order — earlier ones outrank later:
+
+      `insufficient_data`  Fewer than `MIN_SETS_FOR_READINESS` sets in the window. Nothing
+                           to read; do not let the model invent a verdict from three sets.
+      `stalling`           `STALLED_NEAR_MAX_COUNT` or more near-max sets with no progress
+                           set among or after them. Attempts are being made and are not
+                           landing.
+      `grinding`           Progress IS landing, but the median increment is under
+                           `MIN_MEANINGFUL_INCREMENT_LBS`. The ceiling moves on paper and the
+                           lift is stuck in practice.
+      `due`               No progress in the window, or none within `PROGRESS_DUE_DAYS`,
+                           and not stalling. The attempt simply has not been made.
+      `progressing`        Landing at meaningful increments. Leave it alone.
+
+    `stalling` and `grinding` are both arguments AGAINST spending the session's attempt here
+    and FOR volume instead. They differ in what the user has experienced: stalling is visible
+    failure, grinding is invisible — the numbers go up and the lift feels stuck anyway.
+
+    Baseline sets are excluded throughout. A first-ever set classifies as `progress` almost
+    by construction, and its increment is the whole e1RM, which would read as the healthiest
+    lift in the account.
+    """
+    entries = []
+    for day_key in sorted(recent_training):
+        for entry in recent_training[day_key].get(name, []):
+            if entry.get("baseline"):
+                continue
+            entries.append((day_key, entry))
+
+    total = len(entries)
+    progress_entries = [(d, e) for d, e in entries if e["effort"] == effort.PROGRESS]
+    last_progress_day = progress_entries[-1][0] if progress_entries else None
+
+    # ISO date keys sort and compare chronologically, which is why this can be a string
+    # comparison. Same-day sets are excluded: if progress landed that day, near-max work
+    # around it is not a failed attempt at a ceiling that had already moved.
+    near_max_since = [
+        d for d, e in entries
+        if e["effort"] == effort.NEAR_MAX
+        and (last_progress_day is None or d > last_progress_day)
+    ]
+    near_max_days = [d for d, e in entries if e["effort"] == effort.NEAR_MAX]
+
+    # `e1rm_before`/`e1rm_after` are attached to progress entries only, in
+    # `_build_recent_training`. The increment is the whole point of `grinding`.
+    increments = [
+        e["e1rm_after"] - e["e1rm_before"]
+        for _, e in progress_entries
+        if e.get("e1rm_after") is not None and e.get("e1rm_before") is not None
+    ]
+    median_increment = round(statistics.median(increments), 1) if increments else None
+
+    days_since_progress = _days_since(last_progress_day, today_local)
+    days_since_near_max = _days_since(near_max_days[-1] if near_max_days else None, today_local)
+
+    if total < MIN_SETS_FOR_READINESS:
+        signal = "insufficient_data"
+    elif len(near_max_since) >= STALLED_NEAR_MAX_COUNT:
+        signal = "stalling"
+    elif median_increment is not None and median_increment < MIN_MEANINGFUL_INCREMENT_LBS:
+        signal = "grinding"
+    elif days_since_progress is None or days_since_progress >= PROGRESS_DUE_DAYS:
+        signal = "due"
+    else:
+        signal = "progressing"
+
+    return {
+        "signal": signal,
+        "sets_in_window": total,
+        "progress_sets_in_window": len(progress_entries),
+        "days_since_last_progress": days_since_progress,
+        "near_max_since_last_progress": len(near_max_since),
+        "days_since_last_near_max": days_since_near_max,
+        "median_increment": median_increment,
+    }
 
 
 def _date_labels(window_start: date, today_local: date) -> dict[str, str]:

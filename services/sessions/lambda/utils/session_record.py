@@ -52,7 +52,8 @@ def _remaining_ms(context) -> int:
 
 
 def record(context, *, user_id, chips, note, note_used, moderation_status,
-           moderation_categories, outcome, duration_ms, model, session=None) -> None:
+           moderation_categories, outcome, duration_ms, model, session=None,
+           excluded_lifts=None) -> None:
     """Write one request record. Never raises.
 
     `note` is stored RAW and always — including when moderation rejected it. That is the
@@ -68,6 +69,11 @@ def record(context, *, user_id, chips, note, note_used, moderation_status,
         "sessionId": str(uuid.uuid4()),
         "createdDatetime": datetime.now(timezone.utc).isoformat(),
         "chips": chips,
+        # What the user switched OFF in the lift selector, post-sanitising — so a report that
+        # a lift appeared despite being deselected can be checked against what actually
+        # arrived. `excludedLifts` is not a DynamoDB reserved word; see the note below, which
+        # is the reason to check every new attribute here.
+        "excludedLifts": excluded_lifts or [],
         "note": note,
         "noteUsed": note_used,
         "moderationStatus": moderation_status,
