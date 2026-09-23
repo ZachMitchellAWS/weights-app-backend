@@ -67,25 +67,31 @@ Three consequences:
         "days_since_last_trained": 4,
 
         // Whether this lift can be PUSHED today, decided here rather than by the model.
-        // The prompt caps a session at one progress attempt; this is what picks which
-        // lift gets it, and often says that none should.
+        // DESCRIBES the lift; does NOT gate it. `last_session_had_progress` below is what
+        // decides whether the session's one attempt lands here — see "Progress sets".
         //
         // signal, in precedence order:
         //   insufficient_data  < 3 non-baseline sets in the window — nothing to read
         //   stalling           >= 3 near-max sets with no progress among or after them
-        //   grinding           progress landing, but median increment < 1 lb
         //   due                no progress in the window, or none within 10 days
+        //   grinding           progress landed within 10 days, median increment < 1 lb
         //   progressing        landing at meaningful increments
+        //
+        // `due` is tested BEFORE `grinding` deliberately. The reverse order shipped on
+        // 2026-08-30 and made `due` unreachable for any lift with small increments, so a
+        // lift twenty days idle still reported `grinding` and the model narrated that.
         //
         // The app records what a set WAS, never what it was FOR, so there is no stored
         // "failed progress attempt". What one looks like in the data is a near-max set:
         // went to the ceiling, did not pass it. Three of those with nothing landing is
-        // the signature of a lift that needs volume rather than another attempt.
+        // worth SAYING to the lifter; it is not a reason to withhold the next attempt.
         "progress_readiness": {
           "signal": "stalling",
           "sets_in_window": 14,
           "progress_sets_in_window": 0,
           "days_since_last_progress": null,    // null = none in the 30-day window
+          "last_session_had_progress": false,  // did the lift's LAST TRAINING DAY include a
+                                               // progress set? null = no non-baseline history
           "near_max_since_last_progress": 4,   // window-wide when there is no progress set
           "days_since_last_near_max": 2,
           "median_increment": null             // e1rm_after - e1rm_before, median, in lbs
@@ -296,6 +302,25 @@ directly so the distinction is not left to inference.
 the only load numbers in the entire payload. Together they are the strength trajectory —
 everything else is shape and timing.
 
+**`last_session_had_progress` is the field that decides whether a lift is pushed today**, and
+it is the only one that does. `true` means the last day this lift was actually trained already
+contained a progress set, so today it builds; `false` or `null` means it attempts. The priority
+lift — first in `rotation_order` after coverage and context filters — takes the attempt, and if
+it declines the attempt passes down the session. At most one per session.
+
+**Why alternation rather than the readiness signal.** The first design gated attempts on
+`progress_readiness`: only a `due` lift could be pushed, and `stalling` or `grinding` barred it
+outright. That is a latch, not a gate. `grinding` was tested before `due`, so a grinding lift
+could never become due; no attempt meant no new increment; the increment window only cleared
+after thirty days with no attempt at all — which the generator itself prevented. Measured
+against production, sessions containing a progress plan fell from 25/52 (48%) before that
+deploy to 6/60 (10%) after, with none at all in the last eight.
+
+Alternation cannot latch: one builder session always makes the next one an attempt. The
+readiness signal survives as narration and as a reason to pick a cheaper attempt (Quick
+Attempt, Compact Standard) over Standard — never as a veto. **Do not restore the veto.** It
+reads as an obvious safety improvement and is the bug.
+
 ---
 
 ---
@@ -371,9 +396,11 @@ efforts; restating it would create two sources of truth that can disagree.
   attention, and it carries it without exposing bodyweight or biological sex.
 - **`progress_readiness` per lift.** Day-counts alone cannot distinguish "has not attempted
   this in three weeks" from "has attempted it four times and failed" — both read as overdue,
-  and only one of them wants another attempt. The distinction is thirty days of arithmetic
-  over effort keys and e1RM deltas, which is exactly the kind of thing a model does
-  confidently and wrongly. Computed, like `today_coverage` and `date_labels`.
+  and they call for very different things to be SAID about the lift, and for a different size
+  of attempt. The distinction is thirty days of arithmetic over effort keys and e1RM deltas,
+  which is exactly the kind of thing a model does confidently and wrongly. Computed, like
+  `today_coverage` and `date_labels`. It no longer decides whether a lift is pushed — see
+  "Progress sets" for why that moved to `last_session_had_progress`.
 - **The lift filter is the enforcement, not a prompt rule.** When `user_context.excluded_lifts`
   arrives, those lifts are dropped from `strength.lifts`, `rotation_order` and `today_coverage`
   before the payload is built. `sessions.generate` derives its allow-list of valid exercise ids

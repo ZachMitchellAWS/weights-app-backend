@@ -53,7 +53,7 @@ def _remaining_ms(context) -> int:
 
 def record(context, *, user_id, chips, note, note_used, moderation_status,
            moderation_categories, outcome, duration_ms, model, session=None,
-           excluded_lifts=None) -> None:
+           excluded_lifts=None, attempts=1, retry_reason=None) -> None:
     """Write one request record. Never raises.
 
     `note` is stored RAW and always — including when moderation rejected it. That is the
@@ -74,6 +74,15 @@ def record(context, *, user_id, chips, note, note_used, moderation_status,
         # arrived. `excludedLifts` is not a DynamoDB reserved word; see the note below, which
         # is the reason to check every new attribute here.
         "excludedLifts": excluded_lifts or [],
+        # How many model calls this request took, and why a second one happened. 1 for almost
+        # everything; 2 means the first attempt's connection dropped and there was enough
+        # budget left to try again — see MIN_RETRY_BUDGET_SECONDS in openai_client.
+        #
+        # Stored rather than left to the logs so the connection-drop rate is a table scan
+        # instead of a Logs Insights query against a 90-day window. Rows written before this
+        # shipped have neither attribute; treat absent as 1.
+        "attempts": attempts,
+        "retryReason": retry_reason,
         "note": note,
         "noteUsed": note_used,
         "moderationStatus": moderation_status,

@@ -89,6 +89,11 @@ build-layer:
 	cd services/entitlements && pip3 install -r requirements.txt -t layer/python/ --upgrade --platform manylinux2014_x86_64 --python-version 3.13 --only-binary=:all:
 	@echo "Lambda layer built successfully at services/entitlements/layer/"
 	@echo ""
+	@echo "Building Lambda layer for notifications service..."
+	cd services/notifications && rm -rf layer/python && mkdir -p layer/python
+	cd services/notifications && pip3 install -r requirements.txt -t layer/python/ --upgrade --platform manylinux2014_x86_64 --python-version 3.13 --only-binary=:all:
+	@echo "Lambda layer built successfully at services/notifications/layer/"
+	@echo ""
 	@echo "Building Lambda layer for insights service..."
 	cd services/insights && rm -rf layer/python && mkdir -p layer/python
 	cd services/insights && pip3 install -r requirements.txt -t layer/python/ --upgrade --platform manylinux2014_x86_64 --python-version 3.13 --only-binary=:all:

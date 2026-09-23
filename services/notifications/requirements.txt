@@ -1,0 +1,5 @@
+# APNs speaks HTTP/2 only — httpx[http2] pulls in the h2 stack.
+httpx[http2]>=0.27.0
+# ES256 JWT for the APNs authorization header, signed with the .p8 key.
+PyJWT[crypto]>=2.8.0
+sentry-sdk>=2.0.0

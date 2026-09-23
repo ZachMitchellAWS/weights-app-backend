@@ -7,6 +7,7 @@ from typing import Dict, Any
 from zoneinfo import ZoneInfo
 import traceback
 import boto3
+from boto3.dynamodb.conditions import Key
 
 # Import from parent directory (Lambda function structure)
 import sys
@@ -201,6 +202,68 @@ def handle_get_properties(event: Dict[str, Any]) -> Dict[str, Any]:
         )
 
 
+def _sync_apns_token(user_id: str, action: tuple) -> None:
+    """Mirror a token registration (or a logout) into the `apns-tokens` table.
+
+    Registration CLEARS `invalid`/`loggedOut` as well as setting the timestamps: a device
+    re-registering is telling us the token is live again, which genuinely happens after a
+    reinstall, and a token retired earlier should come back rather than stay muted forever.
+
+    A clear marks EVERY token this user holds as logged out, because the request that clears
+    `apnsDeviceToken` does not say which device it came from. That is safe precisely because
+    registration un-sets the flag: the next sign-in on any device revives that pairing, and the
+    others stay muted, which is what signing out is supposed to mean.
+
+    `loggedOut` rather than `invalid` on purpose — the token is still perfectly good for
+    whoever signs in on that device next; it is this pairing that ended.
+    """
+    table_name = os.environ.get("APNS_TOKENS_TABLE_NAME")
+    if not table_name:
+        raise ValueError("APNS_TOKENS_TABLE_NAME environment variable not set")
+    table = dynamodb.Table(table_name)
+    now = get_current_datetime_iso()
+
+    kind, payload = action
+    if kind == "register":
+        token, environment = payload
+        # Writes a COMPLETE row: every attribute the table ever carries is set, with False for
+        # the flags and NULL for the not-yet-known timestamps. Nothing is left absent, so a
+        # reader never has to decide whether a missing `loggedOut` means "no" or "unknown".
+        # Mirrors `_write` in services/notifications/lambda/utils/tokens.py — the two services
+        # cannot share code, so they must agree by convention; change both together.
+        #
+        # Registration RESETS the invalidation state rather than preserving it: a device
+        # re-registering is telling us the token is live again, which is what happens after a
+        # reinstall.
+        table.update_item(
+            Key={"userId": user_id, "apnsToken": token},
+            UpdateExpression=(
+                "SET lastRegisteredUtc = :now, apnsEnvironment = :env, "
+                "lastModifiedDatetime = :now, "
+                "createdDatetime = if_not_exists(createdDatetime, :now), "
+                "invalid = :false, invalidatedAt = :null, invalidReason = :null, "
+                "loggedOut = :false, "
+                "lastDeliveredUtc = if_not_exists(lastDeliveredUtc, :null), "
+                "backfilledFrom = if_not_exists(backfilledFrom, :null)"
+            ),
+            ExpressionAttributeValues={
+                ":now": now, ":env": environment, ":false": False, ":null": None,
+            },
+        )
+        return
+
+    resp = table.query(
+        KeyConditionExpression=Key("userId").eq(user_id),
+        ProjectionExpression="apnsToken",
+    )
+    for row in resp.get("Items", []):
+        table.update_item(
+            Key={"userId": user_id, "apnsToken": row["apnsToken"]},
+            UpdateExpression="SET loggedOut = :true, lastModifiedDatetime = :now",
+            ExpressionAttributeValues={":true": True, ":now": now},
+        )
+
+
 def handle_update_properties(event: Dict[str, Any]) -> Dict[str, Any]:
     """
     Handle POST /user/properties requests.
@@ -253,6 +316,9 @@ def handle_update_properties(event: Dict[str, Any]) -> Dict[str, Any]:
         update_parts = []
         remove_parts = []
         expression_values = {}
+        # ('register', (token, environment)) or ('clear', None); applied to the
+        # apns-tokens table after the properties write succeeds.
+        apns_token_action = None
         expression_names = {}  # For DynamoDB reserved keywords
 
         # Handle bodyweight (nullable - can be set or removed)
@@ -509,13 +575,39 @@ def handle_update_properties(event: Dict[str, Any]) -> Dict[str, Any]:
                 )
 
         # Handle apnsDeviceToken (nullable string - can be set or removed)
+        #
+        # PHASE-OUT, DELIBERATE. The dedicated `apns-tokens` table is now the real home for
+        # device tokens — it carries validity, environment, last-delivered and logged-out
+        # state, none of which fit as loose user-properties fields. This write is kept only so
+        # that the notifications service's transitional fallback (tokens table first,
+        # user-properties second) keeps working for users who have not re-registered since the
+        # table shipped.
+        #
+        # TO FINISH THE MIGRATION, in this order:
+        #   1. one-time backfill: copy any `apnsDeviceToken` present here but absent from
+        #      `apns-tokens` (sends already backfill lazily, so this only catches users who
+        #      never received one)
+        #   2. delete this block and the `apnsDeviceToken` field from the client request
+        #   3. delete the fallback in `services/notifications/lambda/utils/tokens.py`
+        #      (`usable_tokens`, the `_fallback` branch)
+        # Until then BOTH writes must happen, or a token registered after step 2 is invisible
+        # to the sender.
         if "apnsDeviceToken" in body:
             apns_token = body.get("apnsDeviceToken")
             if apns_token is None:
                 remove_parts.append("apnsDeviceToken")
+                apns_token_action = ("clear", None)
             elif isinstance(apns_token, str) and len(apns_token) <= 200:
                 update_parts.append("apnsDeviceToken = :apnsDeviceToken")
                 expression_values[":apnsDeviceToken"] = apns_token
+                # Environment is NOT stored on user-properties — it belongs to the token, and
+                # a user can hold a sandbox token from Xcode and a production one from
+                # TestFlight at the same time. Absent means production, which is what every
+                # TestFlight and App Store build produces.
+                env_value = body.get("apnsEnvironment")
+                if env_value not in ("sandbox", "production"):
+                    env_value = "production"
+                apns_token_action = ("register", (apns_token, env_value))
             else:
                 return create_response(
                     status_code=400,
@@ -636,6 +728,15 @@ def handle_update_properties(event: Dict[str, Any]) -> Dict[str, Any]:
         response = table.update_item(**update_kwargs)
 
         updated_properties = response.get("Attributes")
+
+        # Mirror into `apns-tokens`. Deliberately after the properties write and deliberately
+        # non-fatal: this is the secondary store during the migration, and a failure here must
+        # not turn a successful properties update into a 500 the client will retry forever.
+        if apns_token_action is not None:
+            try:
+                _sync_apns_token(user_id, apns_token_action)
+            except Exception as e:  # noqa: BLE001
+                print(f"apns-tokens mirror failed for user {user_id}: {e}")
 
         print(f"Updated properties for user: {user_id}, update_expression: {update_expression}, values: {expression_values}")
 

@@ -61,6 +61,7 @@ class UserStack(Stack):
         self.deletion_requests_table = self._create_deletion_requests_table()
         self.feedback_table = self._create_feedback_table()
         self.ad_attributions_table = self._create_ad_attributions_table()
+        self.apns_tokens_table = self._create_apns_tokens_table()
         self.dependencies_layer = self._create_dependencies_layer()
         self.user_function = self._create_user_lambda()
         self._create_api_routes()
@@ -164,6 +165,42 @@ class UserStack(Stack):
             removal_policy=self.config.REMOVAL_POLICY,
         )
 
+    def _create_apns_tokens_table(self) -> dynamodb.Table:
+        """Device push tokens, one row per (user, token).
+
+        WHY THIS LIVES IN THE USER STACK rather than the notifications stack, which is where a
+        reader would expect it: the user Lambda writes this on registration, and the
+        notifications Lambda must read `user-properties` for its send-time precondition.
+        Owning it there would force notifications to be created BEFORE user, which turns the
+        user-properties reference into a constructed ARN string — the circular-dependency
+        workaround `app.py` already carries for the insights ARN. Ordering user → notifications
+        instead lets both cross-stack references be real CDK refs. See the note in `app.py`.
+
+        A COMPOSITE KEY, not just userId: multiple devices per user cost nothing, and "same
+        device, new account" becomes two visible rows rather than one silent overwrite.
+
+        Attributes beyond the key are written by whichever service learns them —
+        `lastRegisteredUtc`/`apnsEnvironment` by user on registration, `lastDeliveredUtc` and
+        `invalid`/`invalidReason` by notifications from what Apple answers. Together they are
+        what decides whether a token should still be used.
+        """
+        return dynamodb.Table(
+            self,
+            "ApnsTokensTable",
+            table_name=f"{self.project_name}-{self.env_name}-apns-tokens",
+            partition_key=dynamodb.Attribute(
+                name="userId",
+                type=dynamodb.AttributeType.STRING
+            ),
+            sort_key=dynamodb.Attribute(
+                name="apnsToken",
+                type=dynamodb.AttributeType.STRING
+            ),
+            billing_mode=self.config.DYNAMODB_BILLING_MODE,
+            point_in_time_recovery=self.config.DYNAMODB_POINT_IN_TIME_RECOVERY,
+            removal_policy=self.config.REMOVAL_POLICY,
+        )
+
     def _create_dependencies_layer(self) -> lambda_.LayerVersion:
         """Create Lambda layer with Python dependencies for user service."""
         layer_path = Path(__file__).parent.parent / "layer"
@@ -206,6 +243,7 @@ class UserStack(Stack):
             timeout=self.config.LAMBDA_TIMEOUT,
             environment={
                 "USER_PROPERTIES_TABLE_NAME": self.user_properties_table.table_name,
+                "APNS_TOKENS_TABLE_NAME": self.apns_tokens_table.table_name,
                 "DELETION_REQUESTS_TABLE_NAME": self.deletion_requests_table.table_name,
                 "FEEDBACK_TABLE_NAME": self.feedback_table.table_name,
                 "AD_ATTRIBUTIONS_TABLE_NAME": self.ad_attributions_table.table_name,
@@ -217,6 +255,7 @@ class UserStack(Stack):
 
         # Grant read/write permissions to DynamoDB tables
         self.user_properties_table.grant_read_write_data(function)
+        self.apns_tokens_table.grant_read_write_data(function)
         self.deletion_requests_table.grant_read_write_data(function)
         self.feedback_table.grant_read_write_data(function)
         self.ad_attributions_table.grant_read_write_data(function)
