@@ -51,9 +51,15 @@ Updates user properties. Partial updates supported - only include fields you wan
 | `timezone` | string \| null | IANA identifier (validated), e.g. `"America/Los_Angeles"` |
 | `locale` | string \| null | Device locale identifier, e.g. `"en_US"` (max 40 chars) |
 | `language` | string \| null | Device language code, e.g. `"en"` (max 16 chars) |
+| `latestAppVersion` | string \| null | Most recent app version seen, e.g. `"1.1.6"` (max 32 chars). Push-only — never returned in the app's decoded response model |
 | `hasCompletedOnboarding` | boolean | Set `true` when the user finishes onboarding |
 | `hasMetStrengthTierConditions` | boolean | Strength-tier journey completion |
 | `apnsDeviceToken` | string \| null | APNs push token (max 200 chars) |
+
+> **`firstAppVersion` is not settable here.** It is written once by `POST /auth/create-user` (and
+> the Apple sign-in equivalent) when the account is created, and is absent from this endpoint's
+> allowlist on purpose — sending it has no effect. It is returned in the response body like any
+> other stored attribute.
 
 **Response (200):**
 ```json

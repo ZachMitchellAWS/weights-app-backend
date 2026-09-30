@@ -672,6 +672,12 @@ def handle_update_properties(event: Dict[str, Any]) -> Dict[str, Any]:
                     }
                 )
 
+        # There is deliberately no firstAppVersion branch here, and adding one would be a bug.
+        # That field is written exactly once, by the auth handler, in the same put_item that
+        # creates this row. Leaving it off this allowlist is the entire mechanism that makes it
+        # immutable: an unrecognised key is silently ignored, so no client — current, old, or
+        # malicious — can revise the version a user came through the door on.
+
         # Handle hasCompletedOnboarding (boolean; push-only client metadata)
         if "hasCompletedOnboarding" in body:
             val = body["hasCompletedOnboarding"]

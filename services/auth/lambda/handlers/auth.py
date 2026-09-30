@@ -36,6 +36,21 @@ init_sentry()
 dynamodb = boto3.resource('dynamodb')
 
 
+def sanitise_app_version(raw: Any):
+    """The app version to record as `firstAppVersion`, or None if unusable.
+
+    Returns None rather than raising or 400-ing: this is a metadata field, and a malformed or
+    missing value must never be the reason an account fails to be created. An older client that
+    sends nothing simply has no `firstAppVersion` — which is the same honest encoding used by
+    every account that predates the field.
+
+    32 chars matches the `latestAppVersion` bound in the user service.
+    """
+    if isinstance(raw, str) and 0 < len(raw) <= 32:
+        return raw
+    return None
+
+
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
     Unified handler for both API requests and Lambda Authorizer requests.
@@ -239,6 +254,13 @@ def handle_create_user(event: Dict[str, Any]) -> Dict[str, Any]:
                 "createdDatetime": current_datetime,
                 "lastModifiedDatetime": current_datetime,
             }
+            # Write-once record of the version the user came through the door on. This is the
+            # only place it is ever written — `handle_update_properties` has no firstAppVersion
+            # branch, so nothing can revise it later. The key is omitted rather than set to None
+            # when absent, matching every pre-existing row.
+            first_app_version = sanitise_app_version(body.get("appVersion"))
+            if first_app_version:
+                user_properties_item["firstAppVersion"] = first_app_version
             user_properties_table.put_item(Item=user_properties_item)
             print(f"Created user_properties for user: {user_id}")
         else:
@@ -1288,6 +1310,12 @@ def handle_apple_signin(event: Dict[str, Any]) -> Dict[str, Any]:
                 "createdDatetime": current_datetime,
                 "lastModifiedDatetime": current_datetime,
             }
+            # See handle_create_user. Reached only for a brand-new Apple account — a returning
+            # user takes an earlier branch that never touches user-properties, so signing in
+            # again cannot re-seed this.
+            first_app_version = sanitise_app_version(body.get("appVersion"))
+            if first_app_version:
+                user_properties_item["firstAppVersion"] = first_app_version
             user_properties_table.put_item(Item=user_properties_item)
             print(f"Created user_properties for Apple user: {user_id}")
 

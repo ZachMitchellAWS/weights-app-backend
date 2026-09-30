@@ -68,6 +68,7 @@
 | locale | String | No | Nullable -- device locale identifier, e.g. "en_US" (max 40 chars). Push-only client metadata |
 | language | String | No | Nullable -- device language code, e.g. "en" (max 16 chars). Push-only client metadata |
 | latestAppVersion | String | No | Nullable -- most recent app version seen, e.g. "1.4.2" (max 32 chars). Push-only client metadata |
+| firstAppVersion | String | No | Nullable -- app version at account creation, e.g. "1.1.6" (max 32 chars). Write-once: set only by the auth handler when the row is created, and absent from the `POST /user/properties` allowlist so nothing can revise it. Absent for every account created before it shipped |
 | hasCompletedOnboarding | Boolean | No | Set true when a user finishes the onboarding flow. Push-only; not backfilled for pre-feature users |
 | apnsDeviceToken | String | No | Nullable -- push token (max 200 chars) |
 | hasMetStrengthTierConditions | Boolean | No | Default false -- set true when user completes strength tier journey |

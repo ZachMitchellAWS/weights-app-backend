@@ -3,7 +3,7 @@
 Schedule `unlock-strength-tier-nudge` notification tasks. REVIEW FIRST, WRITE ONLY ON --commit.
 
 Selects users who signed up a while ago, never finished onboarding, and can actually be
-reached, then queues one nudge each for 5:30pm local on the coming Thursday.
+reached, then queues one nudge each for 5:00pm local on the coming Monday.
 
 THE DEFAULT RUN WRITES NOTHING. It prints the full intended schedule — who, in which timezone,
 at what local and UTC time, and how many decimal days out — and stops. `--commit` is what
@@ -66,34 +66,46 @@ from utils.tasks import bin_for, build_task  # noqa: E402
 
 NOTIFICATION_TYPE = "unlock-strength-tier-nudge"
 
-# Wednesday 11:30 local. Monday=0 in `weekday()`.
+# Monday 17:00 local. Monday=0 in `weekday()`.
 #
-# Chosen from production behaviour on 2026-09-18, AFTER excluding the owner's account, the App
-# Store reviewer account and the plus-addressed test accounts — which together were ~70% of all
-# logged sets and had made the raw histogram a picture of one person's routine. With those out:
+# A DELIBERATE PRODUCT CHOICE, NOT A MEASURED ONE — and it runs against the measurement, so the
+# measurement is kept here rather than quietly deleted. Production behaviour on 2026-09-18
+# (after excluding the owner, the App Store reviewer and the plus-addressed test accounts, which
+# together were ~70% of all logged sets and had made the raw histogram a picture of one person's
+# routine) said:
 #
-#   day      Wed leads workout-days (27), distinct users (19) AND volume (204) simultaneously.
-#            Thursday, the previous choice, is mid-pack at 19 workout-days. Saturday is the
-#            only clear negative at 9.
-#   hour     08:00-12:00 carries ~45% of sets; 11:00 has the widest participation (12 users).
-#            17:30, the previous choice, sat in the weakest stretch of the active day.
+#   day      Wed led workout-days (27), distinct users (19) AND volume (204) simultaneously.
+#            Monday was not the leader on any of the three. Saturday was the only clear
+#            negative at 9.
+#   hour     08:00-12:00 carried ~45% of sets; 11:00 had the widest participation (12 users).
+#            The 17:00-18:00 stretch was among the weakest of the active day.
 #
-# CAVEAT WORTH KEEPING: this measures people who ALREADY train. The nudge targets people who
-# have not logged their five lifts, and they are absent from that data by definition. So this
-# is a better-supported guess, not a measured optimum — treat day and hour as the thing to A/B
-# once `notification-log` holds enough sends to compare against.
-TARGET_WEEKDAY = 2
-TARGET_LOCAL_TIME = time(11, 30)
+# Why override it anyway: that data describes people who ALREADY train, and the nudge targets
+# people who have never logged their five lifts — they are absent from it by definition. It
+# says when existing users happen to lift, not when a stalled user is most willing to start.
+# Monday evening bets on start-of-week intent instead, which the data cannot speak to either way.
+#
+# So: treat BOTH the old timing and this one as guesses. This is the thing to A/B once
+# `notification-log` holds enough sends to compare open and unlock rates directly.
+TARGET_WEEKDAY = 0
+TARGET_LOCAL_TIME = time(17, 0)
 
-# Used when a user has no `timezone` and no `utcOffsetSeconds`. A GUESS, and 5:30pm local is the
+# Derived once, used everywhere a human-readable target is printed — help text, review banner.
+# The old code hardcoded "Thursday 17:30" in four places and all four were still saying it two
+# retimes later. Deriving it is the only way that stops happening.
+TARGET_DAY_NAME = ["Monday", "Tuesday", "Wednesday", "Thursday",
+                   "Friday", "Saturday", "Sunday"][TARGET_WEEKDAY]
+TARGET_LABEL = f"{TARGET_DAY_NAME} {TARGET_LOCAL_TIME:%H:%M} local"
+
+# Used when a user has no `timezone` and no `utcOffsetSeconds`. A GUESS, and 5:00pm local is the
 # entire point of the schedule — rows using it are marked in the review output so the assumption
 # is visible at approval time rather than buried here.
 DEFAULT_TIMEZONE = "America/New_York"
 
 # Per-environment defaults. Staging exists to exercise the plumbing, not to model the product:
-# there is one test account, it signed up whenever it signed up, and waiting until Thursday
+# there is one test account, it signed up whenever it signed up, and waiting until Monday
 # evening to find out whether a task fires is not a test loop. So staging drops the signup
-# floor, drops de-duplication, and schedules for the next sweep instead of 17:30 Thursday.
+# floor, drops de-duplication, and schedules for the next sweep instead of the weekly target.
 #
 # Production keeps all three. Every one of them is still overridable by flag in both
 # environments — these are defaults, not behaviour changes.
@@ -123,15 +135,15 @@ NUDGE_EXCLUSIONS = ["zach+"]
 # Scheduling
 # --------------------------------------------------------------------------- #
 def next_target(now_utc: datetime, tz_name: str) -> datetime:
-    """The next Thursday 17:30 in `tz_name` that is strictly in the future, as UTC.
+    """The next `TARGET_LABEL` in `tz_name` that is strictly in the future, as UTC.
 
     Built as a NAIVE local datetime with the zone attached to that date, rather than by shifting
     an already-aware value: a target on the far side of a DST boundary would otherwise inherit
-    today's offset and land an hour off. 17:30 never falls inside a transition window, so there
-    is no ambiguous/imaginary time to disambiguate.
+    today's offset and land an hour off. 17:00 never falls inside a US transition window (those
+    run at 02:00 local), so there is no ambiguous or imaginary time to disambiguate.
 
-    "Strictly in the future" is what makes "the closest Thursday" unambiguous — Thursday 3pm
-    schedules today, Thursday 6pm schedules a week out.
+    "Strictly in the future" is what makes "the closest Monday" unambiguous — Monday 4pm
+    schedules today, Monday 6pm schedules a week out.
     """
     zone = ZoneInfo(tz_name)
     local_now = now_utc.astimezone(zone)
@@ -282,7 +294,8 @@ def print_plan(rows: list[dict], rejected: Counter, skipped: list[dict],
                   f"{r['days_out']:>6.2f}")
         if any(r["assumed_tz"] for r in rows):
             print(f"\n  * timezone ASSUMED ({rows[0]['default_tz']}) — none recorded for this user.")
-            print("    5:30pm local is the point of the schedule; check these rows specifically.")
+            print(f"    {TARGET_LOCAL_TIME:%H:%M} local is the point of the schedule; "
+                  f"check these rows specifically.")
     else:
         print("  No users qualify.")
 
@@ -338,10 +351,12 @@ def main():
     parser.add_argument("--no-dedup", dest="dedup", action="store_false",
                         help="Skip both de-dup checks (default on staging).")
     parser.add_argument("--asap", dest="asap", action="store_true", default=None,
-                        help="Schedule for the next sweep instead of Thursday 17:30 "
-                             "(default on staging).")
-    parser.add_argument("--thursday", dest="asap", action="store_false",
-                        help="Force Thursday 17:30 local (default on production).")
+                        help=f"Schedule for the next sweep instead of {TARGET_LABEL} "
+                             f"(default on staging).")
+    # Named for the behaviour, not the weekday. This flag was --thursday, then the target moved
+    # to Wednesday, then to Monday; the name outlived two of its own meanings.
+    parser.add_argument("--scheduled", "--weekly", dest="asap", action="store_false",
+                        help=f"Force {TARGET_LABEL} (default on production).")
     parser.add_argument("--default-timezone", default=DEFAULT_TIMEZONE)
     parser.add_argument("--exclude", nargs="*", default=None,
                         help=f"Email substrings to exclude from BULK selection. "
@@ -476,9 +491,7 @@ def main():
 
     # Derived from the constants, never hardcoded: a banner that disagrees with what the
     # script actually does is worse than no banner.
-    day_name = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][TARGET_WEEKDAY]
-    when = f"{day_name} {TARGET_LOCAL_TIME:%H:%M} local"
-    mode = (f"schedule={'ASAP (next sweep)' if args.asap else when}  "
+    mode = (f"schedule={'ASAP (next sweep)' if args.asap else TARGET_LABEL}  "
             f"min account age={args.days_since_signup}d  "
             f"de-dup={'on, ' + str(args.dedup_days) + 'd' if args.dedup else 'OFF'}  "
             f"exclusions={','.join(args.exclude) if args.exclude else 'none'}"
