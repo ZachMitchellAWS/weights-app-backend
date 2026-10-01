@@ -41,3 +41,10 @@ TAGS = {
     "ManagedBy": "CDK",
     "CostCenter": "development",
 }
+
+# How many workers the notification fan-out splits its shard space across, sent in the
+# EventBridge payload every 15 minutes. THE DIAL: the shard count (100) is fixed in the task
+# table's keys, and this decides how many concurrent Lambdas divide it. 1 means one worker
+# sweeps all 100 shards, which takes well under a second at current volume. Raise it only when
+# a single worker starts running long — more workers at zero volume is just more cold starts.
+NOTIFICATION_FANOUT_CONCURRENCY = 1

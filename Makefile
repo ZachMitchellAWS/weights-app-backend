@@ -16,7 +16,7 @@
 #   5. make deploy-staging
 #   6. make test
 
-.PHONY: help venv install install-dev build-layer upload-email-templates-staging upload-email-templates-production bootstrap-staging bootstrap-production bootstrap-us-east-1 synth-staging synth-production diff-staging diff-production deploy-staging deploy-production destroy-staging destroy-production clear-staging-db clear-production-db save-user-staging load-user-staging load-power-user-staging deploy-website-cert-staging deploy-website-cert-production deploy-website-infra-staging deploy-website-infra-production deploy-website-staging deploy-website-production whitelist-ip-staging test lint format clean
+.PHONY: help venv install install-dev build-layer upload-email-templates-staging upload-email-templates-production bootstrap-staging bootstrap-production bootstrap-us-east-1 synth-staging synth-production diff-staging diff-production deploy-staging deploy-production destroy-staging destroy-production clear-staging-db clear-production-db save-user-staging load-user-staging load-power-user-staging deploy-website-cert-staging deploy-website-cert-production deploy-website-infra-staging deploy-website-infra-production deploy-website-staging deploy-website-production whitelist-ip-staging plot-conversion test lint format clean
 
 # Python command - use python3 for macOS/Linux compatibility
 PYTHON := python3
@@ -88,6 +88,11 @@ build-layer:
 	cd services/entitlements && rm -rf layer/python && mkdir -p layer/python
 	cd services/entitlements && pip3 install -r requirements.txt -t layer/python/ --upgrade --platform manylinux2014_x86_64 --python-version 3.13 --only-binary=:all:
 	@echo "Lambda layer built successfully at services/entitlements/layer/"
+	@echo ""
+	@echo "Building Lambda layer for notifications service..."
+	cd services/notifications && rm -rf layer/python && mkdir -p layer/python
+	cd services/notifications && pip3 install -r requirements.txt -t layer/python/ --upgrade --platform manylinux2014_x86_64 --python-version 3.13 --only-binary=:all:
+	@echo "Lambda layer built successfully at services/notifications/layer/"
 	@echo ""
 	@echo "Building Lambda layer for insights service..."
 	cd services/insights && rm -rf layer/python && mkdir -p layer/python
@@ -268,6 +273,16 @@ load-review-user:
 system-snapshot:
 	@echo "Capturing system snapshot for $(or $(ENV),production) ($(or $(HOURS),24)h window)..."
 	$(PYTHON) scripts/system_snapshot.py --env $(or $(ENV),production) --hours $(or $(HOURS),24)
+
+# Plot the rolling free -> paid (yearly) conversion rate as a wide, scrollable PDF.
+# Read-only: scans users + entitlement-grants, writes only the PDF into plots/.
+#   make plot-conversion                 # production, sampled hourly
+#   make plot-conversion ENV=staging
+#   make plot-conversion INTERVAL=6      # coarser sampling, narrower page
+plot-conversion:
+	@echo "Plotting rolling conversion for $(or $(ENV),production)..."
+	$(PYTHON) scripts/plot_conversion_trend.py --env $(or $(ENV),production) \
+		$(if $(INTERVAL),--interval-hours $(INTERVAL))
 
 # Delete review user data from production (only this user, nothing else)
 # Override: make delete-review-user ENV=staging

@@ -32,6 +32,7 @@ from services.email.infrastructure.email_stack import EmailStack
 from services.checkin.infrastructure.checkin_stack import CheckinStack
 from services.entitlements.infrastructure.entitlements_stack import EntitlementsStack
 from services.insights.infrastructure.insights_stack import InsightsStack
+from services.notifications.infrastructure.notifications_stack import NotificationsStack
 from services.sessions.infrastructure.sessions_stack import SessionsStack
 from services.website.infrastructure.website_cert_stack import WebsiteCertStack
 from services.website.infrastructure.website_stack import WebsiteStack
@@ -316,9 +317,38 @@ def main():
     Tags.of(monitoring_stack).add("Service", "monitoring")
 
     # Consolidate auth Lambda permissions to avoid 20KB resource policy limit.
+    # Create Notifications service stack
+    # Sharded task queue + APNs delivery. Owns notification-tasks and notification-log.
+    #
+    # ORDERING MATTERS. This must come after user_stack, because it takes REAL CDK references
+    # to both user-properties (read, for the send-time precondition) and apns-tokens
+    # (read/write, to stamp deliveries and retire dead tokens). The apns-tokens table lives in
+    # the user stack for exactly this reason: owning it here would force notifications to be
+    # created first, which would turn the user-properties reference into a constructed ARN
+    # string — the same circular-dependency workaround already carried above for the insights
+    # ARN. One convention break (a service not owning a table it writes) buys two real refs.
+    notifications_stack = NotificationsStack(
+        app,
+        f"{project_name}-{env_name}-notifications",
+        project_name=project_name,
+        env_name=env_name,
+        config=config,
+        api=auth_stack.api,
+        authorizer=auth_stack.authorizer,
+        user_properties_table=user_stack.user_properties_table,
+        apns_tokens_table=user_stack.apns_tokens_table,
+        env=env,
+        description=f"Notifications service stack for {env_name} environment",
+    )
+
+    for key, value in config.TAGS.items():
+        Tags.of(notifications_stack).add(key, value)
+
+    Tags.of(notifications_stack).add("Service", "notifications")
+
     auth_stack.consolidate_auth_permissions(all_stacks=[
         auth_stack, user_stack, checkin_stack, entitlements_stack, insights_stack,
-        sessions_stack,
+        sessions_stack, notifications_stack,
     ])
 
     # Synthesize CloudFormation templates

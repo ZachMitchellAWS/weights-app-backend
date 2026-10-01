@@ -477,8 +477,11 @@ def _progress_readiness(recent_training: dict, name: str, current_e1rm: float,
                         today_local: date) -> dict:
     """Whether this lift is ready to be pushed, or needs volume before it can be.
 
-    The prompt caps a session at one progress attempt. This is what decides WHICH lift earns
-    it — and, at least as often, that no lift should get one today.
+    This DESCRIBES a lift; it does not gate one. Whether the session spends its progress
+    attempt here is decided by alternation — see `last_session_had_progress` below, and Step 3
+    of the prompt. Signal-gating was tried and produced a self-sustaining lockout: `grinding`
+    outranked `due`, so a grinding lift could never become due, and the only exit was thirty
+    days with no attempt at all — which the generator itself prevented.
 
     Computed here rather than left to the model, for the same reason `today_coverage` is: it
     is arithmetic across thirty days of sets, and a model asked to do that produces a
@@ -491,16 +494,20 @@ def _progress_readiness(recent_training: dict, name: str, current_e1rm: float,
       `stalling`           `STALLED_NEAR_MAX_COUNT` or more near-max sets with no progress
                            set among or after them. Attempts are being made and are not
                            landing.
-      `grinding`           Progress IS landing, but the median increment is under
-                           `MIN_MEANINGFUL_INCREMENT_LBS`. The ceiling moves on paper and the
-                           lift is stuck in practice.
-      `due`               No progress in the window, or none within `PROGRESS_DUE_DAYS`,
-                           and not stalling. The attempt simply has not been made.
+      `due`                No progress in the window, or none within `PROGRESS_DUE_DAYS`,
+                           and not stalling. The attempt simply has not been made. Tested
+                           BEFORE `grinding` on purpose: a lift twenty days without an attempt
+                           is due, whatever its older increments measured.
+      `grinding`           Progress landed within `PROGRESS_DUE_DAYS`, but the median
+                           increment is under `MIN_MEANINGFUL_INCREMENT_LBS`. The ceiling
+                           moves on paper and the lift is stuck in practice.
       `progressing`        Landing at meaningful increments. Leave it alone.
 
-    `stalling` and `grinding` are both arguments AGAINST spending the session's attempt here
-    and FOR volume instead. They differ in what the user has experienced: stalling is visible
-    failure, grinding is invisible — the numbers go up and the lift feels stuck anyway.
+    `stalling` and `grinding` both say the lift is not really moving, and they differ in what
+    the user has EXPERIENCED: stalling is visible failure — they know those sets did not go
+    up; grinding is invisible, the numbers rise and the lift feels stuck anyway. That is
+    rationale material, not a veto. They steer the attempt toward a cheaper plan and give the
+    model something true to say; neither can remove the attempt.
 
     Baseline sets are excluded throughout. A first-ever set classifies as `progress` almost
     by construction, and its increment is the whole e1RM, which would read as the healthiest
@@ -539,14 +546,27 @@ def _progress_readiness(recent_training: dict, name: str, current_e1rm: float,
     days_since_progress = _days_since(last_progress_day, today_local)
     days_since_near_max = _days_since(near_max_days[-1] if near_max_days else None, today_local)
 
+    # The alternation input, and the only thing gating a progress attempt. True when the
+    # lift's most recent TRAINING day — not the most recent calendar day — contained a
+    # progress set; the prompt then gives it a builder plan and passes the attempt down the
+    # session. `None` when the lift has no non-baseline history in the window: there is no
+    # last session to alternate against, and that reads as eligible, never as skip.
+    #
+    # Baselines are already excluded from `entries`, which is what makes a brand-new lift
+    # eligible on the day it is first logged rather than a day late.
+    last_trained_day = entries[-1][0] if entries else None
+    last_session_had_progress = (
+        None if last_trained_day is None else last_progress_day == last_trained_day
+    )
+
     if total < MIN_SETS_FOR_READINESS:
         signal = "insufficient_data"
     elif len(near_max_since) >= STALLED_NEAR_MAX_COUNT:
         signal = "stalling"
-    elif median_increment is not None and median_increment < MIN_MEANINGFUL_INCREMENT_LBS:
-        signal = "grinding"
     elif days_since_progress is None or days_since_progress >= PROGRESS_DUE_DAYS:
         signal = "due"
+    elif median_increment is not None and median_increment < MIN_MEANINGFUL_INCREMENT_LBS:
+        signal = "grinding"
     else:
         signal = "progressing"
 
@@ -555,6 +575,7 @@ def _progress_readiness(recent_training: dict, name: str, current_e1rm: float,
         "sets_in_window": total,
         "progress_sets_in_window": len(progress_entries),
         "days_since_last_progress": days_since_progress,
+        "last_session_had_progress": last_session_had_progress,
         "near_max_since_last_progress": len(near_max_since),
         "days_since_last_near_max": days_since_near_max,
         "median_increment": median_increment,

@@ -25,7 +25,9 @@ import logging
 import os
 import signal
 import threading
+import time
 from contextlib import contextmanager
+from dataclasses import dataclass
 
 import boto3
 
@@ -43,9 +45,33 @@ TRANSPORT_TIMEOUT_SECONDS = 25.0
 # Fallback when the caller cannot supply a deadline (no Lambda context).
 DEFAULT_DEADLINE_SECONDS = 20.0
 
+# A dropped connection is retried ONCE, and only when this much budget survives it.
+#
+# Measured over 170 production generations: median 15.7s, p90 20.3s, against a ~25s budget
+# (28s Lambda minus the 3s response reserve). So a retry usually has less than one median
+# generation left to work with, and retrying below this floor converts a fast, actionable
+# failure into a full-deadline wait for the same Retry button — worse than not retrying.
+#
+# At 16s roughly half of generations complete; 18.0 would lift that to about two thirds at the
+# cost of firing even less often. THE FLOOR IS THE DESIGN: removing it to "simplify" the retry
+# is what reintroduces the slow-failure case.
+MIN_RETRY_BUDGET_SECONDS = 16.0
+
 
 class GenerationTimeout(Exception):
     """The generation ran past its wall-clock deadline."""
+
+
+@dataclass
+class GenerationResult:
+    """What came back, and what it took to get it.
+
+    Returned rather than tracked in module state: these containers are reused across warm
+    invocations, so a counter would attribute one request's retry to the next request.
+    """
+    session: dict
+    attempts: int
+    retry_reason: str | None = None   # "connection" when a retry fired, else None
 
 
 @contextmanager
@@ -174,13 +200,17 @@ def generate_session(
     payload_json: str,
     deadline_seconds: float = DEFAULT_DEADLINE_SECONDS,
 ) -> dict:
-    """One attempt, bounded by a real wall-clock deadline.
+    """Up to two attempts, bounded by ONE shared wall-clock deadline.
+
+    A second attempt happens only when the first died of a dropped connection AND at least
+    `MIN_RETRY_BUDGET_SECONDS` of the budget survives — see that constant for why the floor
+    matters more than the retry.
 
     Raises `GenerationTimeout` when the deadline passes and whatever the SDK raises
     otherwise; the caller maps both to a retryable 503.
 
-    Returns the parsed {summary, items[]} dict. The caller must still validate the ids
-    against what was sent — a schema guarantees shape, never truthfulness.
+    Returns a `GenerationResult`. The caller must still validate the ids against what was
+    sent — a schema guarantees shape, never truthfulness.
     """
     client = _get_client()
     # Terra rather than Sol deliberately. This endpoint is bounded by API Gateway's fixed 29s
@@ -193,21 +223,61 @@ def generate_session(
     # none | minimal | low | medium | high | xhigh | max.
     model = os.environ.get("OPENAI_MODEL", "gpt-5.6-terra")
 
+    # Imported here rather than at module scope, matching the lazy `from openai import OpenAI`
+    # in `_get_client()` — nothing in this module should pay the SDK import on a cold start
+    # that never reaches generation.
+    from openai import APIConnectionError
+
     logger.info("Generating with a %.1fs deadline", deadline_seconds)
 
-    with _deadline(deadline_seconds):
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": payload_json},
-            ],
-            response_format=SESSION_SCHEMA,
-        )
+    started = time.monotonic()
+    attempts = 0
+    retry_reason = None
+
+    while True:
+        attempts += 1
+        # Derived from the ORIGINAL start on every pass, so both attempts share one budget.
+        # A fresh deadline for attempt 2 could total ~46s against API Gateway's fixed 29s
+        # ceiling, which returns a bare 504 with no body the client can act on — the exact
+        # failure this endpoint's no-retry design exists to avoid.
+        remaining = deadline_seconds - (time.monotonic() - started)
+        try:
+            with _deadline(remaining):
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": payload_json},
+                    ],
+                    response_format=SESSION_SCHEMA,
+                )
+            break
+        except APIConnectionError as e:
+            # ONLY this exception is retried. Not `GenerationTimeout` — retrying something
+            # that just consumed the budget is incoherent. Not a rate limit — an immediate
+            # retry fails the same way and there is no budget for backoff. Not an
+            # `APIStatusError` — a 4xx is deterministic, so the same request returns the same
+            # error.
+            elapsed = time.monotonic() - started
+            left = deadline_seconds - elapsed
+            if attempts >= 2 or left < MIN_RETRY_BUDGET_SECONDS:
+                logger.warning(
+                    "Connection dropped after %.1fs; not retrying (attempt %d, %.1fs left)",
+                    elapsed, attempts, left,
+                )
+                # Carried on the exception so the record reflects what actually happened —
+                # a request that tried twice and still failed must not log as one attempt.
+                e.generation_attempts = attempts
+                raise
+            logger.warning(
+                "Connection dropped after %.1fs (%s); retrying with %.1fs left",
+                elapsed, type(e).__name__, left,
+            )
+            retry_reason = "connection"
 
     parsed = json.loads(response.choices[0].message.content)
     logger.info(
-        "Generated session with %d items using %s",
-        len(parsed.get("items", [])), model,
+        "Generated session with %d items using %s in %d attempt(s)",
+        len(parsed.get("items", [])), model, attempts,
     )
-    return parsed
+    return GenerationResult(session=parsed, attempts=attempts, retry_reason=retry_reason)

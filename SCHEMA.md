@@ -16,6 +16,9 @@
 | Checkin | groups | userId | groupId | - | - | Yes |
 | Entitlements | entitlement-grants | userId | startUtc | userId-endUtc-index | - | No |
 | Sessions | generated-sessions | userId | sessionId | - | - | No |
+| User | apns-tokens | userId | apnsToken | - | - | No |
+| Notifications | notification-tasks | shard | dueAtTaskId | userId-index | ttl | No |
+| Notifications | notification-log | userId | sentAtTaskId | - | ttl | No |
 
 ---
 
@@ -65,6 +68,7 @@
 | locale | String | No | Nullable -- device locale identifier, e.g. "en_US" (max 40 chars). Push-only client metadata |
 | language | String | No | Nullable -- device language code, e.g. "en" (max 16 chars). Push-only client metadata |
 | latestAppVersion | String | No | Nullable -- most recent app version seen, e.g. "1.4.2" (max 32 chars). Push-only client metadata |
+| firstAppVersion | String | No | Nullable -- app version at account creation, e.g. "1.1.6" (max 32 chars). Write-once: set only by the auth handler when the row is created, and absent from the `POST /user/properties` allowlist so nothing can revise it. Absent for every account created before it shipped |
 | hasCompletedOnboarding | Boolean | No | Set true when a user finishes the onboarding flow. Push-only; not backfilled for pre-feature users |
 | apnsDeviceToken | String | No | Nullable -- push token (max 200 chars) |
 | hasMetStrengthTierConditions | Boolean | No | Default false -- set true when user completes strength tier journey |
@@ -276,6 +280,110 @@ service reads it; the violation count in particular is never returned by any end
 Conditional write prevents duplicate `userId + startUtc` entries.
 
 ---
+
+---
+
+## Notifications Service
+
+### apns-tokens
+
+Lives in the **user stack**, not the notifications stack — the user Lambda writes it on
+registration while the notifications Lambda needs to read `user-properties`, and owning it in
+notifications would force a circular stack dependency. See the note in `app.py`.
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| userId | String | Yes | Partition key |
+| apnsToken | String | Yes | Sort key. Composite so one user can hold several devices |
+| apnsEnvironment | String | Yes | `sandbox` / `production` / NULL — a property of the BUILD, not of our backend env |
+| invalid | Boolean | Yes | Apple rejected it permanently (410 Unregistered / BadDeviceToken). `false` at creation |
+| invalidatedAt | String | Yes | ISO 8601, or NULL |
+| invalidReason | String | Yes | Apple's `reason` truncated to 200 chars, or NULL |
+| loggedOut | Boolean | Yes | The account signed out on this device. `false` at creation, reset by re-registration |
+| lastRegisteredUtc | String | Yes | ISO 8601, or NULL. Written by the user service |
+| lastDeliveredUtc | String | Yes | ISO 8601, or NULL. Written by notifications on a successful push |
+| backfilledFrom | String | Yes | `user-properties` if the row was created lazily by a send, else NULL |
+| createdDatetime | String | Yes | ISO 8601. Set once; later writes preserve it |
+| lastModifiedDatetime | String | Yes | ISO 8601 |
+
+**Every attribute is always present.** All three creation paths — registration, delivery
+backfill, and invalidation — go through a writer that initialises the full attribute set:
+`false` for the flags, DynamoDB NULL for the not-yet-known timestamps. Nothing is left absent,
+so "logged out is false" and "nobody has written logged out" are not the same thing on disk.
+
+**A token is sendable when `invalid` and `loggedOut` are both not-true.** The reads still use
+`is not True` rather than `is False`, because rows written before this invariant existed are
+still out there and a token should not be muted by its own age. Two implementations must agree:
+`_write` in `services/notifications/lambda/utils/tokens.py` and `_sync_apns_token` in
+`services/user/lambda/handlers/user.py` — the services cannot share code, so change both.
+
+**`apnsEnvironment` is not derivable from our environment.** Xcode rewrites `aps-environment`
+to `production` for App Store *and TestFlight* builds, so a TestFlight build of the staging app
+produces a production token. Since `APP_BUNDLE_ID_SUFFIX` is empty in both xcconfigs, staging
+and production also share one bundle id, so the staging table legitimately holds both kinds.
+
+### notification-tasks
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| shard | Number | Yes | Partition key, 0–99. Random at write time |
+| dueAtTaskId | String | Yes | Sort key, `{dueBinUtc}#{taskId}` |
+| taskId | String | Yes | UUID |
+| userId | String | Yes | Who to notify |
+| notificationType | String | Yes | Registry key — the task carries NO content |
+| createdAt | String | Yes | ISO 8601 |
+| claimedAt | String | No | Present only while a worker holds it; stale after 30 min |
+| bypassPrecondition | Boolean | No | **Test affordance.** Delivers even if the type's precondition now fails — e.g. nudging an account that has already unlocked its tier. Checked with `is True`. Never set by bulk scheduling; `schedule_tier_nudges.py` refuses the flag without `--user-id`. A send that used it is recorded with a `-bypass` suffix on the log row's `pathway` |
+| ttl | Number | Yes | 30 days. Orphan backstop only |
+
+**Ripeness is a main-table key condition, not a GSI**: the sort key leads with a fixed-width
+UTC bin, so `dueAtTaskId < f"{next_bin}#"` finds everything due, *including overdue work* —
+which is what makes a missed cron self-healing.
+
+**`userId-index`** is unused by the scheduler. It exists for the moment something enqueues
+automatically and must ask "does this user already have one pending?" before writing another.
+
+### notification-log
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| userId | String | Yes | Partition key |
+| sentAtTaskId | String | Yes | Sort key, `{sentAtUtc}#{uuid}` |
+| notificationType | String | Yes | |
+| outcome | String | Yes | See below |
+| tokenSuffix | String | No | **Last 8 characters only — never the full token** |
+| apnsStatusCode | Number | No | |
+| apnsId | String | No | Apple's `apns-id` header |
+| apnsReason | String | No | Apple's `reason` on failure |
+| apnsEnvironment | String | No | Which host actually answered |
+| taskId | String | No | Absent for direct sends |
+| pathway | String | No | `scheduled` or `direct` |
+| ttl | Number | Yes | 90 days |
+
+`outcome` is one of `delivered`, `skipped_precondition`, `skipped_no_token`,
+`skipped_unknown_type`, `failed_invalid_token`, `failed_transient`.
+
+**Attempts that sent nothing are logged, not dropped.** The question this table answers is "why
+did this user not get a notification", and a table of successes cannot answer it.
+
+### generated-sessions — retry accounting
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| attempts | Number | Yes | Model calls this request took. 1 for almost everything; 2 means the first attempt's connection dropped and enough budget survived to try again |
+| retryReason | String | Yes | `"connection"` when a retry fired, NULL otherwise |
+
+**A second attempt is not automatic.** `openai_client.MIN_RETRY_BUDGET_SECONDS` (16s) gates it:
+median generation is 15.7s against a ~25s budget, so retrying with less than that left converts
+a fast, actionable failure into a full-deadline wait for the same Retry button. Only
+`APIConnectionError` qualifies — a timeout has already spent the budget, and a 4xx is
+deterministic.
+
+Both attempts share ONE deadline, measured from the first call. That is what keeps two attempts
+inside API Gateway's fixed 29s ceiling; a fresh deadline per attempt could reach ~46s and return
+a bare 504 with no body the client can act on.
+
+Rows written before this shipped carry neither attribute — **treat absent as 1**.
 
 ## Cross-Table Relationships
 

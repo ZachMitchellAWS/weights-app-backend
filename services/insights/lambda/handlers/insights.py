@@ -4,18 +4,18 @@ Insights service Lambda handler.
 Serves the tier-unlock insight — the short generated narrative and audio clip the app shows on the
 Strength tab after a user reaches a new overall strength tier.
 
-Five invocation pathways:
+Four invocation pathways:
 1. POST_TIER_UNLOCK — API Gateway POST /insights/tier-unlock
 2. GET_TIER_UNLOCKS — API Gateway GET /insights/tier-unlocks
 3. GENERATE_TIER_UNLOCK_AUDIO — async self-invoke, TTS for a tier unlock
 4. GET_STARTER_INSIGHT / GENERATE_STARTER_AUDIO — the superseded starter insight. No client calls
    it; kept because reading it lazily migrates a legacy starter row into a tier-unlock row.
-5. PROCESS_TASKS — EventBridge cron, now a no-op (see `handler`).
 
 This service also generated Weekly Progress Narratives, which Smart Sessions replaced. That path
 is gone: `GET /insights/weekly`, the task queue, and the checkin Lambda's scheduling invoke. The
-`insight-tasks` table and the 15-minute cron rule were left standing rather than torn down, so no
-data was destroyed — they simply have nothing to do.
+EventBridge cron that drove it is gone too, along with the `PROCESS_TASKS` branch that absorbed
+it. The `insight-tasks` table was deliberately left standing so no data was destroyed — nothing
+writes to it, and nothing is scheduled to.
 """
 
 import json
@@ -62,10 +62,6 @@ PRESIGNED_URL_EXPIRY_SECONDS = 21600  # 6 hours
 
 # ===========================================================================
 # Pathway 1: SCHEDULE_TASK (async invoke from checkin Lambda)
-# ===========================================================================
-
-# ===========================================================================
-# Pathway 2: PROCESS_TASKS (EventBridge cron)
 # ===========================================================================
 
 # ===========================================================================
@@ -443,18 +439,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     Routes based on invocation type:
     - Async self-invoke → GENERATE_STARTER_AUDIO / GENERATE_TIER_UNLOCK_AUDIO
     - API Gateway → POST /insights/tier-unlock, GET /insights/tier-unlocks, GET /insights/starter
-    - EventBridge cron → PROCESS_TASKS, now a no-op (see below)
     """
     invocation_type = event.get("invocationType")
-
-    # EventBridge cron — DORMANT.
-    #
-    # This drove Weekly Progress Narratives generation, which Smart Sessions replaced. The rule and
-    # the insight-tasks table were deliberately left in place rather than torn down, so this fires
-    # every 15 minutes with nothing to do. Answered explicitly: without this branch it falls
-    # through to the 404 at the bottom and logs "Route not found: None None" forever.
-    if invocation_type == "PROCESS_TASKS":
-        return {"status": "noop", "reason": "weekly narratives removed"}
 
     # Async self-invoke to generate TTS audio for starter insight
     if invocation_type == "GENERATE_STARTER_AUDIO":

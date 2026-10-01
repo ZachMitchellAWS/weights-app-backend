@@ -11,8 +11,6 @@ from aws_cdk import (
     aws_apigateway as apigateway,
     aws_ssm as ssm,
     aws_iam as iam,
-    aws_events as events,
-    aws_events_targets as targets,
     aws_s3 as s3,
 )
 from constructs import Construct
@@ -78,7 +76,6 @@ class InsightsStack(Stack):
             entitlement_grants_table,
             groups_table,
         )
-        self._create_eventbridge_rule()
         self._create_api_routes()
 
     def _create_insight_tasks_table(self) -> dynamodb.Table:
@@ -290,25 +287,6 @@ class InsightsStack(Stack):
         )
 
         return function
-
-    def _create_eventbridge_rule(self) -> None:
-        """Create EventBridge rule that triggers task processing every 15 minutes."""
-        rule = events.Rule(
-            self,
-            "InsightsProcessTasksRule",
-            rule_name=f"{self.project_name}-{self.env_name}-insights-process-tasks",
-            schedule=events.Schedule.rate(Duration.minutes(15)),
-            description="Trigger insights Lambda to process ripe insight generation tasks",
-        )
-
-        rule.add_target(
-            targets.LambdaFunction(
-                self.insights_function,
-                event=events.RuleTargetInput.from_object({
-                    "invocationType": "PROCESS_TASKS"
-                }),
-            )
-        )
 
     def _create_api_routes(self) -> None:
         """

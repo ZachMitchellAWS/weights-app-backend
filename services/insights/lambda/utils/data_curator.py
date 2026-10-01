@@ -313,6 +313,26 @@ def _format_strength_status(
     return "\n".join(lines)
 
 
+def _build_all_time_e1rm(e1rm_records: list[dict]) -> dict[str, float]:
+    """Build a map of exerciseId -> all-time max e1RM value.
+
+    Restored verbatim from f0a2f03^. It was deleted with the Weekly Progress Narratives
+    teardown, but `curate_starter_data` and `curate_tier_unlock_data` still call it -- and
+    both only run when a user actually unlocks a tier, so the NameError shipped and sat
+    unnoticed from 2026-08-26 until it was found on 2026-09-08. Ten users unlocked a tier
+    and got nothing in that window.
+    """
+    result = {}
+    for rec in e1rm_records:
+        if rec.get('deleted'):
+            continue
+        ex_id = rec.get('exerciseId')
+        val = _to_float(rec.get('value', 0))
+        if ex_id and val > result.get(ex_id, 0):
+            result[ex_id] = val
+    return result
+
+
 def curate_starter_data(user_id: str) -> str | None:
     """
     Curate lightweight data for starter insight generation.

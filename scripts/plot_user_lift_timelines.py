@@ -154,6 +154,53 @@ def scan_user_properties(dynamodb, env: str):
     return props
 
 
+# Trial vs paid is INFERRED from grant duration: the backend never stores Apple's trial flag
+# (`_create_entitlement_grant` persists neither `offerType` nor `offerDiscountType`), so the
+# only signal is how long the grant runs. Real non-sandbox spans cluster hard at 7 and 365 days.
+# Same constants as `scripts/report_subscription_status.py`; that script imports from THIS one,
+# so the logic lives here to avoid a circular import — change both together.
+TRIAL_MAX_DAYS = 14
+PAID_MIN_DAYS = 28
+
+
+def scan_subscription_plan(dynamodb, env: str):
+    """Scan entitlement-grants -> {userId: "paid" | "trial" | "lapsed"}. Read-only.
+
+    Sandbox grants are excluded: they are StoreKit test purchases with accelerated renewals and
+    would read as real subscriptions. `!= "Sandbox"` rather than `== "Production"`, because the
+    oldest genuine grants predate the attribute entirely.
+
+    Anyone absent from the result is free — either never subscribed, or only ever in sandbox.
+    """
+    table = dynamodb.Table(table_name(env, "entitlement-grants"))
+    by_user = {}
+    scan_kwargs = {}
+    while True:
+        resp = table.scan(**scan_kwargs)
+        for g in resp.get("Items", []):
+            if g.get("transactionEnvironment") == "Sandbox":
+                continue
+            by_user.setdefault(g["userId"], []).append(g)
+        if "LastEvaluatedKey" not in resp:
+            break
+        scan_kwargs["ExclusiveStartKey"] = resp["LastEvaluatedKey"]
+
+    now = datetime.utcnow()
+    plans = {}
+    for user_id, grants in by_user.items():
+        latest = max(grants, key=lambda g: str(g.get("endUtc", "")))
+        end = parse_dt(latest.get("endUtc"))
+        start = parse_dt(latest.get("startUtc"))
+        if not end or not start:
+            continue
+        if end <= now:
+            plans[user_id] = "lapsed"
+            continue
+        span = (end - start).total_seconds() / 86400.0
+        plans[user_id] = "trial" if span <= TRIAL_MAX_DAYS else "paid"
+    return plans
+
+
 def query_lift_sets(dynamodb, env: str, user_id: str):
     """Query all non-deleted lift-sets for a user. Returns list of dicts sorted by date."""
     table = dynamodb.Table(table_name(env, "lift-sets"))
@@ -539,12 +586,17 @@ def _truncate(text, limit):
 # `scripts/` has no test harness, so these were checked by rendering worst-case content
 # ("1234.5", "1234.56", "9999", an 8-character version) and measuring the bounding boxes for
 # overlap and for overflow past the page. Re-run that check before moving one.
-COL_DAYS = 1.025
-COL_LAST = 1.114
-COL_SETS = 1.241
-COL_TIER = 1.282
-COL_PUSH = 1.322
-COL_VERSION = 1.357
+# Re-measured 2026-09-18 when `plan` was added. `sets` is RIGHT-aligned, so it grows leftward
+# into `last set` — the first candidate layout collided there by 0.03in and the measurement
+# caught it. Smallest surviving gap is 0.069in (header push->plan); `version` ends 0.28in
+# short of the page edge.
+COL_DAYS = 1.039
+COL_LAST = 1.130
+COL_SETS = 1.248
+COL_TIER = 1.279
+COL_PUSH = 1.325
+COL_PLAN = 1.372
+COL_VERSION = 1.411
 
 
 def _overview_page(pdf, users, now, plt, mdates, title, subtitle):
@@ -570,9 +622,9 @@ def _overview_page(pdf, users, now, plt, mdates, title, subtitle):
     # Roomy top margin so title / subtitle / legend stack without colliding.
     title_in, bottom_in = 2.2, 0.65
     # `right` buys the gutter the columns live in. It has been walked in from the original
-    # 0.90 as columns were added; at 0.775 the six of them fit with the plot still taking
+    # 0.90 as columns were added; at 0.755 the seven of them fit with the plot still taking
     # the majority of the page.
-    fig.subplots_adjust(left=0.29, right=0.775,
+    fig.subplots_adjust(left=0.29, right=0.755,
                         top=1 - title_in / height, bottom=bottom_in / height)
 
     # Font sizes scale down as the roster grows.
@@ -660,6 +712,11 @@ def _overview_page(pdf, users, now, plt, mdates, title, subtitle):
             ax.text(COL_TIER, y, "★",
                     transform=ax.get_yaxis_transform(), ha="center", va="center",
                     fontsize=name_fs + 1.5, color=star_c)
+        # Single glyph rather than a word: the gutter is tight, and it matches how `tier`
+        # and `push` already read. P = paid premium, T = trial, · = free.
+        ax.text(COL_PLAN, y, {"paid": "P", "trial": "T"}.get(u.get("plan"), "·"),
+                transform=ax.get_yaxis_transform(), ha="center", va="center",
+                fontsize=id_fs, color=dim)
         ax.text(COL_PUSH, y, "✓" if u.get("has_apns") else "·",
                 transform=ax.get_yaxis_transform(), ha="center", va="center",
                 fontsize=name_fs + (0 if u.get("has_apns") else 2),
@@ -697,6 +754,7 @@ def _overview_page(pdf, users, now, plt, mdates, title, subtitle):
     for x, label, ha in ((COL_DAYS, "days", "left"), (COL_LAST, "last set", "left"),
                          (COL_SETS, "sets", "right"),
                          (COL_TIER, "tier", "center"), (COL_PUSH, "push", "center"),
+                         (COL_PLAN, "plan", "center"),
                          (COL_VERSION, "version", "left")):
         ax.text(x, n - 0.35, label, transform=ax.get_yaxis_transform(),
                 ha=ha, va="bottom", fontsize=id_fs, fontweight="700", color=dim)
@@ -954,6 +1012,8 @@ def main():
               file=sys.stderr)
         user_props = {}
 
+    subscription_plans = scan_subscription_plan(dynamodb, args.env)
+
     users_with_sets = []
     users_without_sets = []
     for i, u in enumerate(users, 1):
@@ -967,6 +1027,9 @@ def main():
         u["has_apns"] = info.get("apns", False)
         u["bodyweight"] = info.get("bodyweight")
         u["app_version"] = info.get("version")
+        # Absent = free. "lapsed" renders as free too: they are not paying now, which is what
+        # the column is answering.
+        u["plan"] = subscription_plans.get(u["userId"])
         u["sex"] = info.get("sex")
         u["sets"] = sets
         (users_with_sets if sets else users_without_sets).append(u)

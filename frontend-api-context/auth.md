@@ -13,9 +13,16 @@ Creates a new user account.
 ```json
 {
   "emailAddress": "user@example.com",
-  "password": "securePassword123"
+  "password": "securePassword123",
+  "appVersion": "1.1.6"
 }
 ```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `emailAddress` | string | Required |
+| `password` | string | Required |
+| `appVersion` | string \| null | **Optional.** Marketing version (`CFBundleShortVersionString`), max 32 chars. Stored once as `firstAppVersion` on the user-properties row. A malformed or missing value is ignored, never a 400 — registration must not fail over metadata. |
 
 **Response (201):**
 ```json
@@ -32,6 +39,13 @@ Creates a new user account.
 **Side Effects:**
 - Creates user account and user properties record
 - Sends welcome email asynchronously
+- Records `firstAppVersion` when `appVersion` is supplied. This is the **only** write to that
+  field anywhere in the API — `POST /user/properties` ignores it — so it is the sole opportunity
+  to capture the version a user arrived on.
+
+> The Apple sign-in endpoint (not yet documented here) accepts the same optional `appVersion`
+> field, with identical handling. It is safe to send on every call: only a brand-new account
+> creates a user-properties row, so a returning user cannot have theirs overwritten.
 
 ---
 

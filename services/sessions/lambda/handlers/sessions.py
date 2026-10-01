@@ -215,8 +215,10 @@ def _resolve_response(session: dict, lifts: dict, catalog: list[dict]) -> bool:
 MAX_ITEMS = 3
 MAX_TOTAL_SETS = 12
 # Counted across the WHOLE session, not per lift: two lifts on a plan with one `progress`
-# entry each and one lift on a plan holding two are the same spend.
-MAX_PROGRESS_SETS = 2
+# entry each and one lift on a plan holding two are the same spend. One, because the session
+# spends its attempt on the priority lift and nowhere else — a plan carrying two `progress`
+# entries (Wave Loading) trips this too, which is the intent.
+MAX_PROGRESS_SETS = 1
 
 
 def _log_size_compliance(session: dict, catalog: list[dict]) -> None:
@@ -275,11 +277,20 @@ def _premium_ok(user_id: str) -> bool:
 # the record, and letting Sentry flush. Small, but it is the difference between a structured
 # 503 the client can retry and the Lambda being killed mid-sentence.
 #
-# 5.0 rather than 4.0 since the record write joined the tail of the request. Moderation does
-# NOT need its own allowance here: it runs before `_deadline_from` is called, so the time it
-# spends is already gone from `get_remaining_time_in_millis()` and generation's budget
-# shrinks to match automatically.
-RESPONSE_RESERVE_SECONDS = 5.0
+# 3.0, down from 5.0 on 2026-09-22 after measuring what the tail actually costs. Across 38
+# production invocations the work after generation returns — building the response, writing
+# the session record, returning — took a MEDIAN OF 0.05s and a MAX OF 0.16s. Five seconds was
+# roughly thirty times the worst observed case, and every one of those seconds came straight
+# out of the model's budget.
+#
+# The floor is not zero. `session_record.MIN_REMAINING_MS` is 2000: below two seconds the
+# record write skips itself rather than risk being killed mid-write. So 3.0 keeps a full
+# second of margin above that, which is ~6x the worst tail ever seen. Do not go below 2.5.
+#
+# Moderation does NOT need its own allowance here: it runs before `_deadline_from` is called,
+# so the time it spends is already gone from `get_remaining_time_in_millis()` and generation's
+# budget shrinks to match automatically.
+RESPONSE_RESERVE_SECONDS = 3.0
 
 
 def _deadline_from(context: Any) -> float:
@@ -297,7 +308,8 @@ def _deadline_from(context: Any) -> float:
 
 
 def _finalise(context, user_id, chips, note, note_used, mod_status, mod_categories,
-              outcome, elapsed, session, excluded_lifts=None) -> None:
+              outcome, elapsed, session, excluded_lifts=None,
+              attempts=1, retry_reason=None) -> None:
     """Record the request and, if warranted, count it against the user.
 
     One function so that no exit path can quietly skip it — an `outcome` field is worthless
@@ -309,6 +321,8 @@ def _finalise(context, user_id, chips, note, note_used, mod_status, mod_categori
         user_id=user_id,
         chips=chips,
         excluded_lifts=excluded_lifts or [],
+        attempts=attempts,
+        retry_reason=retry_reason,
         note=note,
         note_used=note_used,
         moderation_status=mod_status,
@@ -379,11 +393,13 @@ def generate(event: Dict[str, Any], user_id: str, context: Any) -> Dict[str, Any
 
     started = time.time()
     try:
-        session = generate_session(
+        result = generate_session(
             _load_system_prompt(),
             json.dumps(payload, default=str),
             deadline_seconds=_deadline_from(context),
         )
+        session = result.session
+        attempts, retry_reason = result.attempts, result.retry_reason
     except GenerationTimeout as e:
         # Expected under load, not an incident. Logged without a stack trace so a slow model
         # does not read as a crash in Sentry, and returned as the same retryable 503 the
@@ -403,7 +419,8 @@ def generate(event: Dict[str, Any], user_id: str, context: Any) -> Dict[str, Any
         logger.exception("Generation failed after %.1fs", elapsed)
         _finalise(context, user_id, user_context["chips"], raw_note, note_allowed,
                   mod_status, mod_categories, "failed", elapsed, None,
-                  excluded_lifts=user_context["excluded_lifts"])
+                  excluded_lifts=user_context["excluded_lifts"],
+                  attempts=getattr(e, "generation_attempts", 1))
         # Retryable on purpose: the client's Retry button re-requests from scratch, which is
         # the retry strategy for this endpoint — see openai_client on why there is no loop.
         return create_response(503, {
@@ -422,7 +439,8 @@ def generate(event: Dict[str, Any], user_id: str, context: Any) -> Dict[str, Any
     if not _resolve_response(session, lifts, catalog):
         _finalise(context, user_id, user_context["chips"], raw_note, note_allowed,
                   mod_status, mod_categories, "invalid", elapsed, session,
-                  excluded_lifts=user_context["excluded_lifts"])
+                  excluded_lifts=user_context["excluded_lifts"],
+                  attempts=attempts, retry_reason=retry_reason)
         return create_response(502, {
             "error": "Invalid generation",
             "message": "Model returned a session referencing unknown lifts or plans",
@@ -445,7 +463,8 @@ def generate(event: Dict[str, Any], user_id: str, context: Any) -> Dict[str, Any
             logger.info("Session generation returned no lifts for user %s (all lifts covered)", user_id)
             _finalise(context, user_id, user_context["chips"], raw_note, note_allowed,
                       mod_status, mod_categories, "nothing_to_recommend", elapsed, session,
-                  excluded_lifts=user_context["excluded_lifts"])
+                      excluded_lifts=user_context["excluded_lifts"],
+                      attempts=attempts, retry_reason=retry_reason)
             return create_response(200, {
                 "session": session,
                 "nothing_to_recommend": True,
@@ -459,7 +478,8 @@ def generate(event: Dict[str, Any], user_id: str, context: Any) -> Dict[str, Any
         )
         _finalise(context, user_id, user_context["chips"], raw_note, note_allowed,
                   mod_status, mod_categories, "invalid", elapsed, session,
-                  excluded_lifts=user_context["excluded_lifts"])
+                  excluded_lifts=user_context["excluded_lifts"],
+                  attempts=attempts, retry_reason=retry_reason)
         return create_response(502, {
             "error": "Invalid generation",
             "message": "Model returned no lifts while work remains for today",
@@ -467,7 +487,8 @@ def generate(event: Dict[str, Any], user_id: str, context: Any) -> Dict[str, Any
 
     _finalise(context, user_id, user_context["chips"], raw_note, note_allowed,
               mod_status, mod_categories, "ok", elapsed, session,
-                  excluded_lifts=user_context["excluded_lifts"])
+              excluded_lifts=user_context["excluded_lifts"],
+              attempts=attempts, retry_reason=retry_reason)
 
     # One boolean, no reason code. "Flagged" and "we could not check" are both "couldn't be
     # used" to the user, and a reason code would only tell someone probing the filter which
