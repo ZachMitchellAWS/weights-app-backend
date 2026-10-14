@@ -243,6 +243,15 @@ rules out Squats and Bench Press — both need one — while leaving Deadlifts, 
 Press. `Upper only` and `Lower only`, where a client still sends them, exclude by the table
 above.
 
+**A condition never empties the session.** The exclusions above apply while another lift is
+still available. If honouring them would leave you with no lifts at all, do not return an
+empty session — take the lift the condition touched and pair it with **Deload**. A backed-off
+session is the right answer to "everything I can still do today is sore"; nothing is not. Name
+the reason in the summary, so the light load reads as a decision rather than a shortfall.
+
+This is a last resort, not a softening. While any lift remains available, "legs are sore"
+still means no squats — not deloaded squats.
+
 Chip wording has changed across client versions and older builds are still in the wild, so
 treat these as the same constraint: `No rack` / `No squat rack`, and `Poor sleep` / `Didn't
 sleep well`. Read the meaning, not the exact string.
@@ -426,7 +435,9 @@ today".
 
 If even one lift is not covered, an empty response is wrong and will be rejected. There is
 always something to prescribe while a lift remains open — a short session, a single lift, or
-recovery work all beat returning nothing.
+recovery work all beat returning nothing. That includes the case where the user's own
+condition rules out every lift still open to them — see Step 2, where the answer is Deload,
+not nothing.
 
 Specifics are the whole value — numbers, day counts, weights. A rationale that could be
 pasted under any lift ("time to push here") is worse than none.

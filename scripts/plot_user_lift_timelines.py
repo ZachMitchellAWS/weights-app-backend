@@ -11,16 +11,19 @@ What it does
    substring, or whose full name matches an excluded name (both case-insensitive).
 2. For each remaining user, queries their (non-deleted) lift-sets.
 3. Keeps only users who have at least one lift-set.
-4. Produces a single multi-page PDF:
-     - Overview sheet 1: a swimlane -- one row per user with logged sets, most recently
-       active first, account-creation marker plus a dot per lift-set
-       (+ days/sets/tier/push/version cols).
-     - Overview sheet 2: users who signed up but logged no sets.
-     - "Effort & e1RM by Exercise" pages, ONLY for users who unlocked their starting
-       strength tier AND logged >5 sets: per exercise, each set's %1RM over time inside
-       shaded effort bands (easy/moderate/hard/near_max/progress), plus per-lift + overall
-       strength tier. Replicates the app's Epley/effort/tier math.
-     - With --per-user: one weight-over-time scatter page per user.
+4. Produces a ONE-PAGE PDF by default: the activity swimlane. One row per user with logged
+   sets, most recently active first, an account-creation marker plus a dot per lift-set
+   (+ days/sets/tier/push/version columns). That page is what this tool is for.
+
+   Three further page sets exist and are OPT-IN, because nobody reads them by default and
+   one of them is expensive:
+     --include-inactive  users who signed up but logged no sets.
+     --effort            "Effort & e1RM by Exercise", for users who unlocked their starting
+                         tier AND logged >5 sets: each set's %1RM over time inside shaded
+                         effort bands, plus per-lift and overall strength tier. Replicates
+                         the app's Epley/effort/tier math. Costs TWO extra DynamoDB queries
+                         per qualifying user, which is the bulk of a slow run.
+     --per-user          one weight-over-time scatter page per user.
 
 Usage
 -----
@@ -30,7 +33,7 @@ Usage
     python scripts/plot_user_lift_timelines.py --env staging
     python scripts/plot_user_lift_timelines.py --exclude zach chloe internal
     python scripts/plot_user_lift_timelines.py --limit 25        # first N eligible users (debugging)
-    python scripts/plot_user_lift_timelines.py --no-effort       # skip the Effort & e1RM pages
+    python scripts/plot_user_lift_timelines.py --effort          # add the Effort & e1RM pages
     python scripts/plot_user_lift_timelines.py --out /tmp/timelines.pdf
 
 Output defaults to  WeightApp-backend/plots/user_lift_timelines_<env>.pdf
@@ -503,7 +506,7 @@ def _attach_effort_data(u, e1rm_by_set, exercises_meta, min_sets=2):
 # Plotting
 # --------------------------------------------------------------------------- #
 def build_pdf(users_with_sets, users_without_sets, out_path: Path, env: str,
-              per_user: bool = False, effort: bool = True):
+              per_user: bool = False, effort: bool = False, inactive: bool = False):
     import matplotlib
 
     matplotlib.use("Agg")
@@ -525,7 +528,9 @@ def build_pdf(users_with_sets, users_without_sets, out_path: Path, env: str,
                 subtitle=f"{len(users_with_sets)} users with logged sets, most recently active "
                          f"first (latest set: {latest:%Y-%m-%d})",
             )
-        if users_without_sets:
+        # Opt-in. The activity swimlane above is what this document is for; the rest are
+        # kept because the code works, not because anyone reads them by default.
+        if inactive and users_without_sets:
             _overview_page(
                 pdf, users_without_sets, now, plt, mdates,
                 title=f"Signed Up — No Sets Logged  ·  {env}",
@@ -977,7 +982,9 @@ def main():
                         help="Do not open the PDF automatically when done.")
     parser.add_argument("--per-user", action="store_true",
                         help="Also append one detail page per user (default: overview page only).")
-    parser.add_argument("--no-effort", action="store_true",
+    parser.add_argument("--include-inactive", action="store_true",
+                        help="Add the 'signed up, no sets logged' sheet.")
+    parser.add_argument("--effort", action="store_true",
                         help="Skip the per-exercise Effort & e1RM pages for tier-unlocked power users.")
     args = parser.parse_args()
 
@@ -1054,8 +1061,10 @@ def main():
         print(f"  Limiting each sheet to first {args.limit} users (--limit).")
 
     # Effort & e1RM pages: only for tier-unlocked users with more than 5 sets.
+    # Two extra DynamoDB queries per qualifying user, so skipping this is the main reason
+    # the default run is fast.
     n_effort = 0
-    if not args.no_effort:
+    if args.effort:
         qualifying = [u for u in users_with_sets if u.get("tier_unlocked") and len(u["sets"]) > 5]
         print(f"Building Effort & e1RM data for {len(qualifying)} qualifying users "
               f"(tier unlocked + >5 sets) ...")
@@ -1071,12 +1080,17 @@ def main():
                 n_effort += 1
 
     total_sets = sum(len(u["sets"]) for u in users_with_sets)
-    extra = "overview + per-user pages" if args.per_user else "overview pages only"
-    print(f"Rendering {extra}: sheet 1 = {len(users_with_sets)} users ({total_sets} sets), "
-          f"sheet 2 = {len(users_without_sets)} users with no sets, "
-          f"effort pages = {n_effort} users ...")
+    parts = [f"activity swimlane ({len(users_with_sets)} users, {total_sets} sets)"]
+    if args.include_inactive:
+        parts.append(f"no-sets sheet ({len(users_without_sets)})")
+    if args.effort:
+        parts.append(f"effort pages ({n_effort})")
+    if args.per_user:
+        parts.append(f"per-user pages ({len(users_with_sets)})")
+    print("Rendering " + ", ".join(parts) + " ...")
     out = build_pdf(users_with_sets, users_without_sets, out_path, args.env,
-                    per_user=args.per_user, effort=not args.no_effort)
+                    per_user=args.per_user, effort=args.effort,
+                    inactive=args.include_inactive)
     print(f"Done -> {out}")
 
     if not args.no_open:

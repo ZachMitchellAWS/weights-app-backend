@@ -137,6 +137,10 @@ ERAS = [
     # but not the same conditions, because every budget change restarts Google's learning
     # phase. Collapsing them would assert an equivalence the data cannot support.
     ("Ads $30/day (restored)", "2026-09-30T17:54:00"),
+    # App Store release of 1.1.5 (new post-onboarding paywall + live StoreKit pricing).
+    # Dated from the first App Store signup on it, NOT the first 1.1.5 signup overall:
+    # TestFlight testers were on 1.1.5 hours earlier, and they are not ad traffic.
+    ("v1.1.5", "2026-10-01T16:16:30.571"),
 ]
 
 RATE_COLOUR = "#4C78A8"
@@ -268,6 +272,41 @@ def build_series(signups, trial_starts, paid_starts, earliest, now,
     return points
 
 
+def check_eras_against_versions(props_by_user, signups, eras):
+    """Warn when a time-based era boundary disagrees with a user's recorded firstAppVersion.
+
+    `ERAS` is expressed in time because that is what the cohort windows are built from, but a
+    version era is really a claim about which build a user arrived on — and since 1.1.5 the
+    backend records that directly. Where both exist they must agree; where they do not, the
+    boundary is misplaced and every downstream number inherits the error.
+
+    Only eras named for a version are checkable — an ad-budget change leaves no trace on the
+    user. The rule is simply: if a user's recorded version has an era of its own, that is the
+    era they belong in.
+    """
+    bounds = era_bounds(eras)
+    labels = [n for n, _ in eras]
+    # "v1.1.5" -> index of that era.
+    version_era = {}
+    for i, lab in enumerate(labels):
+        low = lab.lower()
+        if low.startswith("v") and any(ch.isdigit() for ch in low):
+            version_era[low[1:].strip()] = i
+
+    mismatch = []
+    for uid, created in signups:
+        recorded = (props_by_user.get(uid) or {}).get("firstAppVersion")
+        if not recorded:
+            continue
+        want = version_era.get(str(recorded).strip().lower())
+        if want is None:
+            continue
+        got = sum(1 for b in bounds if b <= created)
+        if got != want:
+            mismatch.append((uid, created, recorded, labels[got]))
+    return mismatch
+
+
 def era_summary(points, eras, now):
     """-> [(label, first_seen, peak_share, peak_at, enters_at)] for the console.
 
@@ -390,6 +429,68 @@ def build_bucket_series(signups, trial_starts, cancels, earliest, now, bucket_ho
             if p["t"] - q["t"] <= win:
                 tn += q["n"]; tk += q["k"]
         p["trailing_n"], p["trailing_k"] = tn, tk
+    return out
+
+
+def scan_lift_set_times(dynamodb, env: str, since, allowed_ids):
+    """-> [naive-UTC datetime] for every non-deleted lift-set at or after `since`.
+
+    Projected down to the three attributes that matter. The table is the largest in the
+    system and the only thing wanted here is a timestamp per set.
+    """
+    table = dynamodb.Table(table_name(env, "lift-sets"))
+    out = []
+    kwargs = {"ProjectionExpression": "userId, createdDatetime, deleted"}
+    while True:
+        resp = table.scan(**kwargs)
+        for s in resp.get("Items", []):
+            if s.get("deleted") or s.get("userId") not in allowed_ids:
+                continue
+            t = parse_dt(s.get("createdDatetime"))
+            if t is not None and t >= since:
+                out.append(t)
+        if "LastEvaluatedKey" not in resp:
+            break
+        kwargs["ExclusiveStartKey"] = resp["LastEvaluatedKey"]
+    return out
+
+
+def build_volume_series(times, now, lookback_days, bin_hours, trailing_days):
+    """-> [{t, sets, trailing}] over a COMPLETE grid of bins.
+
+    The grid is generated from the window, not from the data, so every bin exists even when
+    nobody trained in it. That is what makes the page the same width and the same point count
+    on every run — `lookback_days * 24 / bin_hours`, always — rather than silently skipping
+    quiet periods and compressing the time axis into a lie.
+
+    Bins are aligned to UTC midnight. The user base spans at least three timezones, so there
+    is no single local clock to align to and the intra-day shape is a blend of all of them.
+    """
+    step = timedelta(hours=bin_hours)
+    start = (now - timedelta(days=lookback_days)).replace(
+        minute=0, second=0, microsecond=0)
+    start = start.replace(hour=(start.hour // bin_hours) * bin_hours)
+
+    counts = {}
+    edges = []
+    t = start
+    while t <= now:
+        counts[t] = 0
+        edges.append(t)
+        t += step
+    for ts in times:
+        if ts < start:
+            continue
+        k = start + step * int((ts - start) // step)
+        if k in counts:
+            counts[k] += 1
+
+    out = [{"t": e, "sets": counts[e]} for e in edges]
+    # Trailing mean in the same unit as the bars, so one y-axis serves both.
+    span = max(1, round(trailing_days * 24 / bin_hours))
+    for i, p in enumerate(out):
+        w = [q["sets"] for q in out[max(0, i - span + 1):i + 1]]
+        p["trailing"] = sum(w) / len(w)
     return out
 
 
@@ -694,9 +795,61 @@ def render_signups_page(pdf, data, args):
     plt.close(fig)
 
 
-# One page per metric, then the immediate-rate page, then raw volume.
+def render_volume_page(pdf, data, args):
+    """Total lift-sets logged across the whole user base, in fixed bins over a fixed window.
+
+    Deliberately the simplest page here: no cohort, no rate, no era. Just how much training is
+    happening. Every other page is a ratio, and a ratio cannot distinguish "engagement held
+    up" from "almost nobody trained".
+
+    The window is fixed at `--volume-days` regardless of when it is run, and the bin grid is
+    complete, so the page is the same shape every time and two runs are directly comparable.
+    """
+    import matplotlib.dates as mdates
+    import matplotlib.pyplot as plt
+
+    points = data.get("volume") or []
+    if not points:
+        return
+    times = [p["t"] for p in points]
+    sets = [p["sets"] for p in points]
+    trail = [p["trailing"] for p in points]
+
+    span_days = max((times[-1] - times[0]).total_seconds() / 86400.0, 1.0)
+    fig, ax = plt.subplots(figsize=(max(11.0, span_days * args.inches_per_day), 7))
+
+    width = (args.volume_bin_hours / 24) * 0.9
+    ax.bar(times, sets, width=width, color=RATE_COLOUR, alpha=0.45, linewidth=0, zorder=2,
+           label=f"sets per {args.volume_bin_hours}h")
+    ax.plot(times, trail, color=RATE_COLOUR, linewidth=2.0, zorder=4,
+            label=f"trailing {args.trailing_days}d mean")
+
+    ax.set_ylabel(f"Lift-sets logged per {args.volume_bin_hours}h", color=RATE_COLOUR)
+    ax.tick_params(axis="y", labelcolor=RATE_COLOUR)
+    ax.set_ylim(bottom=0)
+    ax.grid(True, axis="y", alpha=0.25, linewidth=0.6)
+    ax.xaxis.set_major_locator(mdates.WeekdayLocator(byweekday=mdates.MO))
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%b %d"))
+    ax.xaxis.set_minor_locator(mdates.DayLocator())
+
+    total = sum(sets)
+    busiest = max(points, key=lambda p: p["sets"])
+    ax.set_title(
+        f"Lift-set volume — {data['env']}\n"
+        f"every set logged by the whole user base, {args.volume_bin_hours}h bins aligned to "
+        f"UTC midnight; window is a fixed {args.volume_days} days on every run\n"
+        f"{total:,} sets across {len(points)} bins · busiest bin {busiest['sets']} "
+        f"({busiest['t']:%b %d %H:%M}Z) · {times[0]:%Y-%m-%d} → {times[-1]:%Y-%m-%d}",
+        fontsize=11, loc="left", pad=12)
+    ax.legend(loc="upper left", fontsize=9, framealpha=0.9)
+    fig.tight_layout()
+    pdf.savefig(fig)
+    plt.close(fig)
+
+
+# One page per metric, then the immediate-rate page, raw signups, then raw training volume.
 PAGES = ([partial(render_rate_page, metric=m) for m in METRICS]
-         + [render_bucket_page, render_signups_page])
+         + [render_bucket_page, render_signups_page, render_volume_page])
 
 
 def build_pdf(data, out_path: Path, args) -> Path:
@@ -741,6 +894,10 @@ def main():
                              "disqualifies, whenever it happened.")
     parser.add_argument("--trailing-days", type=int, default=7,
                         help="Pooled trailing window drawn over the raw buckets. Default: 7.")
+    parser.add_argument("--volume-days", type=int, default=90,
+                        help="Fixed lookback for the lift-set volume page. Default: 90.")
+    parser.add_argument("--volume-bin-hours", type=int, default=6,
+                        help="Bin width for the volume page. Default: 6 (four bins per day).")
     parser.add_argument("--min-cohort", type=int, default=10,
                         help="Points whose denominator is smaller than this are marked as "
                              "uninterpretable. Default: 10")
@@ -777,6 +934,16 @@ def main():
         ]
         trial_starts, paid_starts = scan_grants(dynamodb, args.env)
         cancels = scan_cancellations(dynamodb, args.env)
+        volume_since = (datetime.now(timezone.utc).replace(tzinfo=None)
+                        - timedelta(days=args.volume_days))
+        lift_times = scan_lift_set_times(dynamodb, args.env, volume_since,
+                                         {u["userId"] for u in users})
+        # Only for the era cross-check below: `firstAppVersion` is the one place the backend
+        # records which build a user actually arrived on.
+        props = {}
+        for item in dynamodb.Table(table_name(args.env, "user-properties")).scan().get("Items", []):
+            if item.get("firstAppVersion"):
+                props[item["userId"]] = item
     except NoCredentialsError:
         print("ERROR: no AWS credentials found.", file=sys.stderr)
         return 1
@@ -810,6 +977,13 @@ def main():
         else:
             print(f"  {m.title:<40} denominator is empty")
 
+    bad = check_eras_against_versions(props, signups, ERAS)
+    if bad:
+        print(f"  WARNING: {len(bad)} user(s) whose recorded firstAppVersion disagrees with "
+              f"their time-based era — a boundary may be wrong:")
+        for uid, c, rec, lab in sorted(bad, key=lambda x: x[1])[:5]:
+            print(f"    {uid[:8]}…  created {c:%Y-%m-%d %H:%M}Z  recorded {rec}  placed in '{lab}'")
+
     print("  cohort composition by era (share of the measurement window):")
     for label, first, peak, peak_at, enters in era_summary(points, ERAS, now):
         if first is None:
@@ -834,8 +1008,17 @@ def main():
             print(f"    {thin}/{len(buckets)} buckets have <5 signups — per-bucket rates there "
                   f"are noise; read the trailing line.")
 
+    volume = build_volume_series(lift_times, now, args.volume_days,
+                                 args.volume_bin_hours, args.trailing_days)
+    if volume:
+        nz = sum(1 for v in volume if v["sets"])
+        print(f"  lift-set volume: {sum(v['sets'] for v in volume):,} sets over "
+              f"{len(volume)} × {args.volume_bin_hours}h bins ({args.volume_days}d window); "
+              f"{nz} bins had activity")
+
     out_path = args.out or (OUTPUT_DIR / f"conversion_trend_{args.env}.pdf")
-    out = build_pdf({"points": points, "buckets": buckets, "env": args.env}, out_path, args)
+    out = build_pdf({"points": points, "buckets": buckets, "volume": volume,
+                     "env": args.env}, out_path, args)
     print(f"Done -> {out}  ({len(PAGES)} pages)")
 
     if not args.no_open:

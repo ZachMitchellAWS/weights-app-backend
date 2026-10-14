@@ -16,7 +16,7 @@
 #   5. make deploy-staging
 #   6. make test
 
-.PHONY: help venv install install-dev build-layer upload-email-templates-staging upload-email-templates-production bootstrap-staging bootstrap-production bootstrap-us-east-1 synth-staging synth-production diff-staging diff-production deploy-staging deploy-production destroy-staging destroy-production clear-staging-db clear-production-db save-user-staging load-user-staging load-power-user-staging deploy-website-cert-staging deploy-website-cert-production deploy-website-infra-staging deploy-website-infra-production deploy-website-staging deploy-website-production whitelist-ip-staging plot-conversion test lint format clean
+.PHONY: help venv install install-dev build-layer upload-email-templates-staging upload-email-templates-production bootstrap-staging bootstrap-production bootstrap-us-east-1 synth-staging synth-production diff-staging diff-production deploy-staging deploy-production destroy-staging destroy-production clear-staging-db clear-production-db save-user-staging load-user-staging load-power-user-staging deploy-website-cert-staging deploy-website-cert-production deploy-website-infra-staging deploy-website-infra-production deploy-website-staging deploy-website-production whitelist-ip-staging plot-activity plot-conversion test lint format clean
 
 # Python command - use python3 for macOS/Linux compatibility
 PYTHON := python3
@@ -273,6 +273,15 @@ load-review-user:
 system-snapshot:
 	@echo "Capturing system snapshot for $(or $(ENV),production) ($(or $(HOURS),24)h window)..."
 	$(PYTHON) scripts/system_snapshot.py --env $(or $(ENV),production) --hours $(or $(HOURS),24)
+
+# Plot per-user lift activity: one row per user who has logged sets, most recent first.
+# Read-only; writes a single-page PDF into plots/.
+#   make plot-activity                   # production
+#   make plot-activity ENV=staging
+#   make plot-activity ARGS=--effort     # add the opt-in Effort & e1RM pages
+plot-activity:
+	@echo "Plotting lift activity for $(or $(ENV),production)..."
+	$(PYTHON) scripts/plot_user_lift_timelines.py --env $(or $(ENV),production) $(ARGS)
 
 # Plot the rolling free -> paid (yearly) conversion rate as a wide, scrollable PDF.
 # Read-only: scans users + entitlement-grants, writes only the PDF into plots/.

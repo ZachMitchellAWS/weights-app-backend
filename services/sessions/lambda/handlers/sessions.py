@@ -476,6 +476,36 @@ def generate(event: Dict[str, Any], user_id: str, context: Any) -> Dict[str, Any
             "Model returned an empty session for user %s with %d lifts still open: %s",
             user_id, len(open_lifts), ", ".join(open_lifts),
         )
+
+        # The model broke a rule, but the user should not pay for it.
+        #
+        # This fired on a real paying user who switched off three lifts, leaving only
+        # Deadlifts and Squats, then said his legs were sore. Step 2 of the prompt told the
+        # model to drop both; this branch then rejected the only answer left. He retried four
+        # times in 70 seconds and got a 502 every time, while the model had already written a
+        # perfectly good explanation. The prompt's Deload rule is the real fix — this is the
+        # net underneath it, because models are probabilistic and the client is ALREADY built
+        # for the graceful outcome: `SessionDraftService` treats an empty `items` as
+        # `nothingToRecommend` and renders the summary in `nothingTodayCard`.
+        #
+        # Recorded as `empty_absorbed`, NOT `nothing_to_recommend`: the legitimate
+        # "everything is covered" case above must stay distinguishable from a model ignoring
+        # its instructions, and `invalid` is taken by the branch that still genuinely 502s.
+        # A rising count here means the Deload rule is not landing.
+        summary = (session.get("summary") or "").strip()
+        if summary:
+            _finalise(context, user_id, user_context["chips"], raw_note, note_allowed,
+                      mod_status, mod_categories, "empty_absorbed", elapsed, session,
+                      excluded_lifts=user_context["excluded_lifts"],
+                      attempts=attempts, retry_reason=retry_reason)
+            return create_response(200, {
+                "session": session,
+                "nothing_to_recommend": True,
+                "note_used": note_allowed,
+            })
+
+        # No lifts AND no explanation is genuinely unusable — the card would render blank,
+        # which is worse than an error the user can retry.
         _finalise(context, user_id, user_context["chips"], raw_note, note_allowed,
                   mod_status, mod_categories, "invalid", elapsed, session,
                   excluded_lifts=user_context["excluded_lifts"],
