@@ -33,11 +33,18 @@ Usage
     python scripts/report_subscription_status.py
     python scripts/report_subscription_status.py --env staging
     python scripts/report_subscription_status.py --since 2026-09-06T02:33:00.000
+    python scripts/report_subscription_status.py --since 2026-10-01T17:00:00 --until 2026-10-08T00:00:00
+    python scripts/report_subscription_status.py --until 2026-09-23T21:31:51
     python scripts/report_subscription_status.py --include-sandbox
     python scripts/report_subscription_status.py --csv /tmp/subs.csv
 
-`--since` filters on the user's `createdDatetime` and is GLOBAL: it defines the population
-for the listing and for every conversion percentage.
+`--since` and `--until` filter on the user's `createdDatetime` and are GLOBAL: together they
+define the population for the listing and for every conversion percentage. Either may be used
+alone; `--since` on its own behaves exactly as it always has.
+
+The bounds are HALF-OPEN — `created >= since` and `created < until` — so two adjacent windows
+sharing a boundary partition the users exactly, with nobody counted twice. That matters
+because the usual reason to want both is comparing one period against the next.
 """
 
 import argparse
@@ -369,11 +376,13 @@ def conversion_stats(cohort_ids, grants_by_user, now, renewal=None):
 # Output
 # --------------------------------------------------------------------------- #
 def print_report(rows, stats, env, since, include_sandbox, grant_count, act=None,
-                 tz_name=REPORT_TIMEZONE):
+                 tz_name=REPORT_TIMEZONE, until=None):
     tz_label = datetime.now(ZoneInfo(tz_name)).strftime("%Z")
     scope = f"env={env}  users={stats['total']}  grants={grant_count}  times={tz_name}"
     if since:
         scope += f"  since={since:%Y-%m-%d %H:%M}"
+    if until:
+        scope += f"  until={until:%Y-%m-%d %H:%M}"
     if include_sandbox:
         scope += "  [SANDBOX INCLUDED]"
     print(f"\nSubscription status — {scope}\n")
@@ -473,6 +482,10 @@ def main():
                         help="Only users whose createdDatetime >= this ISO-8601 instant, "
                              "e.g. 2026-09-06T02:33:00.000. Applies to the listing AND the "
                              "conversion percentages.")
+    parser.add_argument("--until", default=None,
+                        help="Only users whose createdDatetime < this ISO-8601 instant. "
+                             "Exclusive, so adjacent windows do not double-count. Combines "
+                             "with --since; either works alone.")
     parser.add_argument("--exclude", nargs="*", default=TEST_ACCOUNT_SUBSTRINGS,
                         help=f"Email substrings to exclude (case-insensitive). "
                              f"Default: {TEST_ACCOUNT_SUBSTRINGS} plus the non-customer "
@@ -486,13 +499,22 @@ def main():
     parser.add_argument("--csv", type=Path, default=None, help="Also write a CSV here.")
     args = parser.parse_args()
 
-    since = None
-    if args.since:
-        since = parse_dt(args.since)
-        if since is None:
-            print(f"Could not parse --since {args.since!r}; expected ISO-8601 "
+    def _bound(flag, raw):
+        if not raw:
+            return None
+        parsed = parse_dt(raw)
+        if parsed is None:
+            print(f"Could not parse {flag} {raw!r}; expected ISO-8601 "
                   f"(e.g. 2026-09-06T02:33:00.000)", file=sys.stderr)
-            return 2
+            raise SystemExit(2)
+        return parsed
+
+    since = _bound("--since", args.since)
+    until = _bound("--until", args.until)
+    if since and until and until <= since:
+        print(f"--until ({until:%Y-%m-%d %H:%M}) must be after --since "
+              f"({since:%Y-%m-%d %H:%M}); that window selects nobody.", file=sys.stderr)
+        return 2
 
     try:
         dynamodb = boto3.Session(region_name=REGION).resource("dynamodb")
@@ -512,8 +534,11 @@ def main():
         print(f"DynamoDB error: {e}", file=sys.stderr)
         return 1
 
-    if since is not None:
-        users = [u for u in users if u["created"] and u["created"] >= since]
+    if since is not None or until is not None:
+        users = [u for u in users
+                 if u["created"]
+                 and (since is None or u["created"] >= since)
+                 and (until is None or u["created"] < until)]
 
     # Naive UTC, matching what parse_dt returns — every comparison in this script is
     # between two naive-UTC datetimes.
@@ -537,6 +562,7 @@ def main():
     act = activation_stats(cohort_ids, props_by_user, oldest)
     grant_count = sum(len(grants_by_user.get(u["userId"], [])) for u in users)
     print_report(rows, stats, args.env, since, args.include_sandbox, grant_count, act,
+                 until=until,
                  tz_name=args.timezone)
 
     if args.csv:

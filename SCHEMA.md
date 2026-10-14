@@ -238,7 +238,17 @@ shapes share the table and are separated by sort key.
 | noteUsed | Boolean | Yes | False when the note was withheld from the model |
 | moderationStatus | String | Yes | `ok` \| `flagged` \| `flagged_self_harm` \| `error` \| `absent` |
 | moderationCategories | List\<String\> | Yes | Populated when flagged |
-| outcome | String | Yes | `ok` \| `nothing_to_recommend` \| `invalid` \| `timeout` \| `failed` |
+| outcome | String | Yes | `ok` \| `nothing_to_recommend` \| `empty_absorbed` \| `invalid` \| `timeout` \| `failed` |
+
+`nothing_to_recommend` and `empty_absorbed` both mean the model returned no lifts, and the
+difference is the one worth watching. The first is legitimate: every lift was already covered
+for the day, and the user is told so. The second is the model ignoring its instructions —
+returning nothing while work remained — where the backend serves its summary anyway rather
+than erroring, because the client already renders it. **`empty_absorbed` should be zero in
+normal operation.** Anything above that means the Deload last-resort rule in
+`session_generation.md` Step 2 is not landing, and the fix is the prompt, not a wider net.
+`invalid` is reserved for responses that are genuinely unusable — unresolvable lift/plan ids,
+or no lifts AND no summary — and still returns 502.
 | durationMs | Number | Yes | Generation wall time |
 | model | String | Yes | Generation model used |
 | modelResponse | Map | No | `{summary, lifts[]}` — absent when generation never returned |
