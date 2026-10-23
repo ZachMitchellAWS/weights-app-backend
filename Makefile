@@ -225,17 +225,6 @@ clear-staging-db:
 	@read confirm
 	$(PYTHON) scripts/clear_staging_db.py
 
-# Clear all items from production DynamoDB tables
-# WARNING: This deletes ALL data from production tables
-# DISABLED: Too dangerous for production. Uncomment if absolutely needed.
-#clear-production-db:
-#	@echo "WARNING: This will delete ALL items from PRODUCTION DynamoDB tables!"
-#	@echo "Tables: users, user-properties, password-reset-codes, exercises, lift-sets, estimated-1rm, splits, set-plans, accessory-goal-checkins, entitlement-grants, subscription-events, insight-tasks, insights-cache"
-#	@echo "This action cannot be undone. Press Ctrl+C to cancel, or Enter to continue..."
-#	@read confirm
-#	$(PYTHON) scripts/clear_production_db.py
-
-
 # Save test user data from staging DynamoDB to snapshot file
 # Optionally pass USER_ID: make save-user-staging USER_ID=1702dad4-...
 save-user-staging:
