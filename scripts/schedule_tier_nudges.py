@@ -66,10 +66,11 @@ from utils.tasks import bin_for, build_task  # noqa: E402
 
 NOTIFICATION_TYPE = "unlock-strength-tier-nudge"
 
-# Wednesday 17:00 local. Monday=0 in `weekday()`, so Wednesday is 2.
+# Monday 17:00 local. Monday=0 in `weekday()`.
 #
-# THIRD TIMING. The history is kept because each move was made for a different reason and the
-# evidence for any of them is still thin enough that the next person should know that.
+# FOURTH TIMING, and a return to the third. The history is kept because each move was made for
+# a different reason and the evidence for any of them is still thin enough that the next person
+# should know that.
 #
 #   Thursday 17:30   original, unexamined.
 #   Wednesday 11:30  measured. Production behaviour on 2026-09-18, after excluding the owner,
@@ -79,7 +80,8 @@ NOTIFICATION_TYPE = "unlock-strength-tier-nudge"
 #                    volume (204) simultaneously; Saturday was the only clear negative. By hour,
 #                    08:00-12:00 carried ~45% of sets and 11:00 had the widest participation.
 #   Monday 17:00     a product bet on start-of-week intent, deliberately against that data.
-#   Wednesday 17:00  this one: the measured DAY, kept at the chosen HOUR.
+#   Wednesday 17:00  the measured DAY, kept at the chosen HOUR.
+#   Monday 17:00     this one: reverted, on the grounds below.
 #
 # What the Monday run actually produced, measured 2026-10-14 across every batch ever sent:
 #
@@ -87,14 +89,15 @@ NOTIFICATION_TYPE = "unlock-strength-tier-nudge"
 #   every earlier timing   0 / 52
 #
 # So Monday is the only timing that has ever produced anything at all — and 2 against 0 on
-# ~55 apiece is far short of meaning anything. Treat this move as neutral: it is not a
-# correction of a failure, it just puts the hour back on the day the data liked.
+# ~55 apiece is far short of meaning anything either way. That cuts both directions: it was
+# not evidence for leaving Monday, and it is not evidence for returning to it. The honest
+# description of this revert is a preference, not a finding.
 #
 # THE CAVEAT THAT OUTLASTS ALL OF THESE: the measurement describes people who ALREADY train,
 # and this nudge targets people who have never logged their five lifts. They are absent from
 # that data by definition. No amount of retiming fixes a message aimed at a population the
 # evidence cannot see, and day-of-week is almost certainly not the binding constraint.
-TARGET_WEEKDAY = 2
+TARGET_WEEKDAY = 0
 TARGET_LOCAL_TIME = time(17, 0)
 
 # Derived once, used everywhere a human-readable target is printed — help text, review banner.

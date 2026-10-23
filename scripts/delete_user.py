@@ -37,33 +37,46 @@ UUID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]
 
 
 # === Authoritative table inventory ==========================================
-# Format: (table_suffix, partition_key, sort_key_or_None, source_stack)
+# Format: (table_suffix, partition_key, sort_key_or_None, source_stack, index_or_None)
 #
 # Source stack column is for human reference when chasing down where a table
 # is declared. Keep this list in sync with the CDK stacks under
 # services/*/infrastructure/.
 #
+# `index` is for the one table NOT partitioned by userId: queries go through the
+# named GSI, while deletes still use the table's own key. That works because the
+# index projects ALL, so the base-table key attributes come back with each item.
+#
 # Excluded intentionally:
 #   - support-tickets   (PK=ticketId, not userId)
 #   - android-interest  (PK=submissionId, public form submissions)
-TABLES: List[Tuple[str, str, Optional[str], str]] = [
-    ("users",                     "userId", None,              "auth"),
-    ("password-reset-codes",      "userId", None,              "auth"),
-    ("user-properties",           "userId", None,              "user"),
-    ("account-deletion-requests", "userId", None,              "user"),
-    ("feedback",                  "userId", "createdDatetime", "user"),
-    ("ad-attributions",           "userId", "createdDatetime", "user"),
-    ("generated-sessions",        "userId", "sessionId",       "sessions"),
-    ("exercises",                 "userId", "exerciseItemId",  "checkin"),
-    ("lift-sets",                 "userId", "liftSetId",       "checkin"),
-    ("estimated-1rm",             "userId", "liftSetId",       "checkin"),
-    ("set-plans",                 "userId", "planId",          "checkin"),
-    ("accessory-goal-checkins",   "userId", "checkinId",       "checkin"),
-    ("groups",                    "userId", "groupId",         "checkin"),
-    ("entitlement-grants",        "userId", "startUtc",        "entitlements"),
-    ("subscription-events",       "userId", "eventTimestamp",  "entitlements"),
-    ("insight-tasks",             "userId", "insightWeek",     "insights"),
-    ("insights-cache",            "userId", "insightWeek",     "insights"),
+TABLES: List[Tuple[str, str, Optional[str], str, Optional[str]]] = [
+    ("users",                     "userId", None,              "auth",         None),
+    ("password-reset-codes",      "userId", None,              "auth",         None),
+    ("user-properties",           "userId", None,              "user",         None),
+    ("account-deletion-requests", "userId", None,              "user",         None),
+    ("feedback",                  "userId", "createdDatetime", "user",         None),
+    ("ad-attributions",           "userId", "createdDatetime", "user",         None),
+    ("generated-sessions",        "userId", "sessionId",       "sessions",     None),
+    ("exercises",                 "userId", "exerciseItemId",  "checkin",      None),
+    ("lift-sets",                 "userId", "liftSetId",       "checkin",      None),
+    ("estimated-1rm",             "userId", "liftSetId",       "checkin",      None),
+    ("set-plans",                 "userId", "planId",          "checkin",      None),
+    ("accessory-goal-checkins",   "userId", "checkinId",       "checkin",      None),
+    ("groups",                    "userId", "groupId",         "checkin",      None),
+    ("entitlement-grants",        "userId", "startUtc",        "entitlements", None),
+    ("subscription-events",       "userId", "eventTimestamp",  "entitlements", None),
+    ("insight-tasks",             "userId", "insightWeek",     "insights",     None),
+    ("insights-cache",            "userId", "insightWeek",     "insights",     None),
+    # The notifications subsystem shipped after this script was written, so these three
+    # were silently uncovered — a deleted user kept their device token and any queued push.
+    # `apns-tokens` is the one that matters for a real deletion request: an APNs token is a
+    # device identifier, exactly the kind of data such a request is about.
+    ("apns-tokens",               "userId", "apnsToken",       "notifications", None),
+    ("notification-log",          "userId", "sentAtTaskId",    "notifications", None),
+    # Partitioned by `shard`, not userId — queried through its GSI, deleted by its own key.
+    # Leaving a queued task behind would fire a push at an account that no longer exists.
+    ("notification-tasks",        "shard",  "dueAtTaskId",     "notifications", "userId-index"),
 ]
 
 
@@ -71,16 +84,27 @@ def table_name(env: str, suffix: str) -> str:
     return f"{PROJECT}-{env}-{suffix}"
 
 
-def query_all_items(table, pk_name: str, user_id: str) -> List[Dict]:
-    """Query a table for every item with the given userId, handling pagination."""
+def query_all_items(table, pk_name: str, user_id: str,
+                    index: Optional[str] = None) -> List[Dict]:
+    """Every item belonging to `user_id`, handling pagination.
+
+    With `index`, the lookup goes through that GSI on `userId` instead of the table's own
+    partition key — for tables not partitioned by user. The returned items still carry the
+    base-table key attributes (the indexes used here project ALL), so `delete_items` can key
+    off them unchanged.
+    """
+    # Always match on userId: when querying an index that IS the key, and when querying the
+    # base table it is the partition key by definition.
+    key_attr = "userId" if index else pk_name
+    kwargs = {"KeyConditionExpression": Key(key_attr).eq(user_id)}
+    if index:
+        kwargs["IndexName"] = index
+
     items: List[Dict] = []
-    response = table.query(KeyConditionExpression=Key(pk_name).eq(user_id))
+    response = table.query(**kwargs)
     items.extend(response.get("Items", []))
     while "LastEvaluatedKey" in response:
-        response = table.query(
-            KeyConditionExpression=Key(pk_name).eq(user_id),
-            ExclusiveStartKey=response["LastEvaluatedKey"],
-        )
+        response = table.query(**kwargs, ExclusiveStartKey=response["LastEvaluatedKey"])
         items.extend(response.get("Items", []))
     return items
 
@@ -92,11 +116,11 @@ def scan_user(env: str, user_id: str) -> Dict[str, List[Dict]]:
     """
     dynamodb = boto3.resource("dynamodb", region_name=REGION)
     found: Dict[str, List[Dict]] = {}
-    for suffix, pk, _sk, _source in TABLES:
+    for suffix, pk, _sk, _source, index in TABLES:
         full = table_name(env, suffix)
         table = dynamodb.Table(full)
         try:
-            items = query_all_items(table, pk, user_id)
+            items = query_all_items(table, pk, user_id, index=index)
         except ClientError as e:
             if e.response["Error"]["Code"] == "ResourceNotFoundException":
                 print(f"  {full:50s}  (table does not exist — skipped)")
@@ -112,7 +136,7 @@ def delete_items(env: str, found: Dict[str, List[Dict]]) -> int:
     """Delete every item in `found`. Returns total deleted count."""
     dynamodb = boto3.resource("dynamodb", region_name=REGION)
     total = 0
-    for suffix, pk, sk, _source in TABLES:
+    for suffix, pk, sk, _source, _index in TABLES:
         items = found.get(suffix, [])
         if not items:
             continue
